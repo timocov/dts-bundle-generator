@@ -1,0 +1,26 @@
+{
+  "name": "dts-bundle-generator",
+  "version": "0.1.0",
+  "description": "DTS Bundle Generator",
+  "main": "dist/bundle-generator.js",
+  "bin": {
+    "dts-bundle-generator": "bin/cli.js"
+  },
+  "author": "Eugene Timokhov",
+  "license": "MIT",
+  "readme": "README.md",
+  "devDependencies": {
+    "@types/argparse": "1.0.30",
+    "@types/node": "7.0.8"
+  },
+  "dependencies": {
+    "argparse": "1.0.9",
+    "tslib": "1.6.0",
+    "typescript": "2.2.1"
+  },
+  "files": [
+    "bin/cli.js",
+    "dist/**/*.js",
+    "README.md"
+  ]
+}

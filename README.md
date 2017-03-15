@@ -1,0 +1,118 @@
+# DTS Bundle Generator
+
+This small tool can generate a bundle of dts from your ts code.
+
+For example:
+```ts
+// a.ts
+export class A {}
+```
+```ts
+// b.ts
+export class B {}
+```
+```ts
+// entry.ts
+import { A } from './a';
+import { B } from './b';
+
+declare function makeA(): A;
+export function makeB(): B {
+	makeA();
+	return new B();
+}
+```
+
+When you run it as `dts-bundle-generator -o my.d.ts entry.ts` in `my.d.ts` you will get the following:
+```ts
+declare class B {
+}
+export declare function makeB(): B;
+```
+
+
+## Installation
+
+1.
+```
+npm install --save-dev dts-bundle-generator
+```
+or
+```
+npm install -g dts-bundle-generator
+```
+
+2. Enable `declaration` compiler options in `tsconfig.json`
+
+
+## Usage
+
+```
+usage: dts-bundle-generator [-h] -o OUTFILE [-v] [--no-check] [--output-source-file] file
+
+Positional arguments:
+  file
+
+Optional arguments:
+  -h, --help            Show this help message and exit.
+  -o OUTFILE, --out-file OUTFILE
+                        File name of generated d.ts
+  -v, --verbose         Enable verbose logging
+  --no-check            Skip validation of generated d.ts file
+  --output-source-file  Add comment with file path the definitions came from
+```
+
+Example:
+```
+./node_modules/.bin/dts-bundle-generator -o my.d.ts path/to/your/entry-file.ts
+```
+
+
+## TODO
+
+1. Add parameter to use custom `tsconfig` (currently it uses the closest `tsconfig.json`)
+
+
+## Why?
+
+If you have modules you can create definitions by default via `tsc`, but it generates it for each module separately. Yeah, you can use `outFile` (for `amd` and `system`) but it generates code like this:
+```ts
+declare module "a" {
+    export class A {
+    }
+}
+declare module "b" {
+    export class B {
+    }
+}
+declare module "entry" {
+    import { B } from "b";
+    export function makeB(): B;
+}
+```
+but:
+1. There is no one usages of `A` (maybe you do not want to export it?)
+2. If you bundle your code in such a way all the modules are merged (like when using Webpack or Rollup) and there are no such modules as `a` or `b` (actually `entry` too).
+
+## Known issues
+
+1. Currently it does not work with `outDir` compiler option.
+
+
+## Known limitations
+
+1. Do not rename types when import. If you use something like this:
+```ts
+import { A as B } from './b';
+export C extends B {}
+```
+you will get an error because this tool does not follow your renaming (and actually cannot).
+
+2. Do not use types from `* as name`-imports:
+```ts
+import * as someName from './some';
+export class A extends someName.SomeClass {}
+```
+This case is very similar to the previous one.
+
+3. All your types should have different names inside a bundle. If you have 2 `interface Options {}` they will be merged by `TypeScript` and you will get wrong definitions.
