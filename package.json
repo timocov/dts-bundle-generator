@@ -7,20 +7,27 @@
     "dts-bundle-generator": "bin/cli.js"
   },
   "author": "Eugene Timokhov",
-  "license": "MIT",
-  "readme": "README.md",
-  "devDependencies": {
-    "@types/argparse": "1.0.30",
-    "@types/node": "7.0.8"
+  "bugs": {
+    "url": "https://github.com/timocov/dts-bundle-generator/issues"
   },
   "dependencies": {
     "argparse": "1.0.9",
     "tslib": "1.6.0",
     "typescript": "2.2.1"
   },
+  "devDependencies": {
+    "@types/argparse": "1.0.30",
+    "@types/node": "7.0.8"
+  },
   "files": [
     "bin/cli.js",
     "dist/**/*.js",
     "README.md"
-  ]
+  ],
+  "license": "ISC",
+  "readme": "README.md",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/timocov/dts-bundle-generator.git"
+  }
 }
