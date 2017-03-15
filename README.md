@@ -75,7 +75,7 @@ Example:
 
 ## Why?
 
-If you have modules you can create definitions by default via `tsc`, but it generates it for each module separately. Yeah, you can use `outFile` (for `amd` and `system`) but it generates code like this:
+If you have modules you can create definitions by default via `tsc`, but it generates them for each module separately. Yeah, you can use `outFile` (for `amd` and `system`) but it generates code like this:
 ```ts
 declare module "a" {
     export class A {
