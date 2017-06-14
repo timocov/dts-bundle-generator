@@ -49,6 +49,17 @@ parser.addArgument(
 	},
 );
 
+parser.addArgument(
+	['--fail-on-class'],
+	{
+		action: 'storeTrue',
+		defaultValue: false,
+		dest: 'failOnClass',
+		help: 'Fail if generated dts contains class declaration',
+		type: Boolean,
+	},
+);
+
 parser.addArgument(['file'], { nargs: 1 });
 
 const args = parser.parseArgs();
@@ -58,7 +69,11 @@ if (args.verbose) {
 
 try {
 	const fileName = args.file[0];
-	const generatedDts = generateDtsBundle(fileName, { outputFilenames: args.outputSourceFileName });
+	const generatedDts = generateDtsBundle(fileName, {
+		failOnClass: args.failOnClass,
+		outputFilenames: args.outputSourceFileName,
+	});
+
 	normalLog(`Writing generated file to ${args.outFile}...`);
 	fs.writeFileSync(args.outFile, generatedDts);
 

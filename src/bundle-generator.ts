@@ -6,6 +6,7 @@ import { verboseLog, normalLog } from './logger';
 
 export interface GenerationOptions {
 	outputFilenames?: boolean;
+	failOnClass?: boolean;
 }
 
 const skippedNodes = [
@@ -66,6 +67,13 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			const hasNodeExportKeyword = hasNodeModifier(node, ts.SyntaxKind.ExportKeyword);
 
 			if (node.kind === ts.SyntaxKind.ClassDeclaration || node.kind === ts.SyntaxKind.EnumDeclaration) {
+				if (options.failOnClass === true && node.kind === ts.SyntaxKind.ClassDeclaration) {
+					const classDecl = (node as ts.ClassDeclaration);
+					const className = classDecl.name ? classDecl.name.text : '';
+					const errorMessage = `Class was found in generated dts.\n ${className} from ${sourceFile.fileName}`;
+					throw new Error(errorMessage);
+				}
+
 				// not all classes and enums can be exported - only exported from root file
 				let shouldNodeHasExportKeyword = isDeclarationExported(rootFileExports, typeChecker, node as (ts.ClassDeclaration | ts.EnumDeclaration));
 				if (node.kind === ts.SyntaxKind.EnumDeclaration) {

@@ -48,7 +48,9 @@ npm install -g dts-bundle-generator
 ## Usage
 
 ```
-usage: dts-bundle-generator [-h] -o OUTFILE [-v] [--no-check] [--output-source-file] file
+usage: dts-bundle-generator [-h] -o OUTFILE [-v] [--no-check] [--output-source-file]
+              [--fail-on-class]
+              file
 
 Positional arguments:
   file
@@ -60,6 +62,7 @@ Optional arguments:
   -v, --verbose         Enable verbose logging
   --no-check            Skip validation of generated d.ts file
   --output-source-file  Add comment with file path the definitions came from
+  --fail-on-class       Fail if generated dts contains class declaration
 ```
 
 Example:
