@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as path from 'path';
 import * as ts from 'typescript';
 import { ArgumentParser } from 'argparse';
 
@@ -14,7 +15,7 @@ parser.addArgument(
 	{
 		dest: 'outFile',
 		help: 'File name of generated d.ts',
-		required: true,
+		required: false,
 	},
 );
 
@@ -68,11 +69,16 @@ if (args.verbose) {
 }
 
 try {
-	const fileName = args.file[0];
-	const generatedDts = generateDtsBundle(fileName, {
+	const inputFilePath = args.file[0];
+	const generatedDts = generateDtsBundle(inputFilePath, {
 		failOnClass: args.failOnClass,
 		outputFilenames: args.outputSourceFileName,
 	});
+
+	if (args.outFile == null) {
+		const inputFileName = path.parse(inputFilePath).name;
+		args.outFile = path.join(inputFilePath, '..', inputFileName + '.d.ts');
+	}
 
 	normalLog(`Writing generated file to ${args.outFile}...`);
 	fs.writeFileSync(args.outFile, generatedDts);
@@ -83,7 +89,7 @@ try {
 	}
 
 	normalLog('Checking of the generated file...');
-	const program = ts.createProgram([args.outFile], getCompilerOptionsForFile(fileName));
+	const program = ts.createProgram([args.outFile], getCompilerOptionsForFile(inputFilePath));
 	checkProgramDiagnosticsErrors(program);
 	normalLog('Done.');
 } catch (ex) {

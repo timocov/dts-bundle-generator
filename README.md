@@ -48,7 +48,7 @@ npm install -g dts-bundle-generator
 ## Usage
 
 ```
-usage: dts-bundle-generator [-h] -o OUTFILE [-v] [--no-check] [--output-source-file]
+usage: dts-bundle-generator [-h] [-o OUTFILE] [-v] [--no-check] [--output-source-file]
               [--fail-on-class]
               file
 
