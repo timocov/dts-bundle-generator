@@ -31,10 +31,10 @@ export class TypesUsageEvaluator {
 			return false;
 		}
 
-		return this.isSymbolUsedBySymbol(this.getSymbol(typeNode.name), this.getActualSymbol(by));
+		return this.isSymbolUsedBySymbol(this.getSymbol(typeNode.name), this.getActualSymbol(by), new Set<ts.Symbol>());
 	}
 
-	private isSymbolUsedBySymbol(fromSymbol: ts.Symbol, toSymbol: ts.Symbol): boolean {
+	private isSymbolUsedBySymbol(fromSymbol: ts.Symbol, toSymbol: ts.Symbol, visitedSymbols: Set<ts.Symbol>): boolean {
 		if (fromSymbol === toSymbol) {
 			return true;
 		}
@@ -42,11 +42,18 @@ export class TypesUsageEvaluator {
 		const reachableNodes = this.nodesParentsMap.get(fromSymbol);
 		if (reachableNodes) {
 			for (const symbol of Array.from(reachableNodes)) {
-				if (this.isSymbolUsedBySymbol(symbol, toSymbol)) {
+				if (visitedSymbols.has(symbol)) {
+					continue;
+				}
+
+				visitedSymbols.add(symbol);
+				if (this.isSymbolUsedBySymbol(symbol, toSymbol, visitedSymbols)) {
 					return true;
 				}
 			}
 		}
+
+		visitedSymbols.add(fromSymbol);
 
 		return false;
 	}
