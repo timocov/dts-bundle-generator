@@ -1,10 +1,9 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 import { ArgumentParser } from 'argparse';
 
 import { generateDtsBundle } from './bundle-generator';
-import { enableVerbose, normalLog } from './logger';
+import { enableVerbose, normalLog, verboseLog } from './logger';
 import { checkProgramDiagnosticsErrors } from './check-diagnostics-errors';
 import { getCompilerOptionsForFile } from './get-compiler-options';
 
@@ -61,12 +60,68 @@ parser.addArgument(
 	},
 );
 
+parser.addArgument(
+	['--config'],
+	{
+		action: 'store',
+		dest: 'config',
+		help: 'File path to generator config file',
+		required: false,
+		type: String,
+	},
+);
+
 parser.addArgument(['file'], { nargs: 1 });
 
-const args = parser.parseArgs();
+function configToArgs(config: any, inFile: string): string[] {
+	const result: string[] = [];
+	for (const key of Object.keys(config)) {
+		const value = config[key];
+
+		if (typeof value === 'boolean') {
+			if (value === true) {
+				result.push(`--${key}`);
+			}
+
+			continue;
+		}
+
+		result.push(`--${key}`);
+
+		if (Array.isArray(value)) {
+			result.push(value.join(','));
+		} else {
+			result.push(value.toString());
+		}
+	}
+
+	result.push(inFile);
+
+	return result;
+}
+
+let args = parser.parseArgs();
+
+if (args.config != null) {
+	const configFilePath = args.config;
+	if (!ts.sys.fileExists(configFilePath)) {
+		throw new Error(`Config file "${configFilePath}" does not exist`);
+	}
+
+	const configText = ts.sys.readFile(configFilePath);
+	const config = JSON.parse(configText);
+	args = parser.parseArgs(configToArgs(config, args.file[0]));
+
+	if (args.outFile != null) {
+		args.outFile = path.resolve(configFilePath, '..', args.outFile);
+	}
+}
+
 if (args.verbose) {
 	enableVerbose();
 }
+
+verboseLog(`Arguments: ${JSON.stringify(args)}`);
 
 try {
 	const inputFilePath = args.file[0];
@@ -81,7 +136,7 @@ try {
 	}
 
 	normalLog(`Writing generated file to ${args.outFile}...`);
-	fs.writeFileSync(args.outFile, generatedDts);
+	ts.sys.writeFile(args.outFile, generatedDts);
 
 	if (args.noCheck) {
 		normalLog('Checking of the file is skipped due "no-check" flag');
