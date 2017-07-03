@@ -5,6 +5,7 @@ import { TypesUsageEvaluator, isNodeDeclaration } from './types-usage-evaluator'
 import { verboseLog, normalLog } from './logger';
 
 export interface GenerationOptions {
+	includes?: string[];
 	outputFilenames?: boolean;
 	failOnClass?: boolean;
 }
@@ -17,6 +18,8 @@ const skippedNodes = [
 ];
 
 export function generateDtsBundle(filePath: string, options: GenerationOptions = {}): string {
+	const includes = options.includes || [];
+
 	if (!ts.sys.fileExists(filePath)) {
 		throw new Error(`File "${filePath}" does not exist`);
 	}
@@ -25,7 +28,12 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 	const typeChecker = program.getTypeChecker();
 
 	// we do not need any types from node_modules dir
-	const sourceFiles = program.getSourceFiles().filter((file: ts.SourceFile) => file.fileName.indexOf('node_modules') === -1);
+	const sourceFiles = program.getSourceFiles().filter((file: ts.SourceFile) => {
+		const isExternal = file.fileName.indexOf('node_modules') === -1;
+		return isExternal || includes.some((includePart: string) => {
+			return file.fileName.indexOf(includePart) !== -1;
+		});
+	});
 	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker);
 
 	const rootSourceFileSymbol = typeChecker.getSymbolAtLocation(getRootSourceFile(program));

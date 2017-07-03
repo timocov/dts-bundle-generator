@@ -61,6 +61,17 @@ parser.addArgument(
 );
 
 parser.addArgument(
+	['--external-includes'],
+	{
+		action: 'store',
+		dest: 'externalIncludes',
+		help: 'Comma-separated packages from node_modules to include typings from it',
+		required: false,
+		type: String,
+	},
+);
+
+parser.addArgument(
 	['--config'],
 	{
 		action: 'store',
@@ -127,6 +138,7 @@ try {
 	const inputFilePath = args.file[0];
 	const generatedDts = generateDtsBundle(inputFilePath, {
 		failOnClass: args.failOnClass,
+		includes: args.externalIncludes ? args.externalIncludes.split(',') : [],
 		outputFilenames: args.outputSourceFileName,
 	});
 
