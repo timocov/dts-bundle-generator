@@ -12,11 +12,11 @@
   },
   "dependencies": {
     "argparse": "1.0.9",
-    "tslib": "1.6.0",
+    "tslib": "1.7.1",
     "typescript": "^2.2.1"
   },
   "devDependencies": {
-    "@types/argparse": "1.0.30",
+    "@types/argparse": "1.0.32",
     "@types/node": "7.0.8"
   },
   "files": [
