@@ -120,6 +120,10 @@ if (args.config != null) {
 	}
 
 	const configText = ts.sys.readFile(configFilePath);
+	if (configText === undefined) {
+		throw new Error('Cannot read config file');
+	}
+
 	const config = JSON.parse(configText);
 	args = parser.parseArgs(configToArgs(config, args.file[0]));
 

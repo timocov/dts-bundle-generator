@@ -37,6 +37,10 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker);
 
 	const rootSourceFileSymbol = typeChecker.getSymbolAtLocation(getRootSourceFile(program));
+	if (rootSourceFileSymbol === undefined) {
+		throw new Error('Symbol for root source file not found');
+	}
+
 	const rootFileExports = typeChecker.getExportsOfModule(rootSourceFileSymbol).map((symbol: ts.Symbol) => {
 		if (symbol.flags & ts.SymbolFlags.Alias) {
 			// so we need to have original symbols from source file
@@ -62,7 +66,9 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				isNodeUsed = rootFileExports.some(typesUsageEvaluator.isTypeUsedBySymbol.bind(typesUsageEvaluator, node));
 			} else if (node.kind === ts.SyntaxKind.VariableStatement) {
 				const declarations = (node as ts.VariableStatement).declarationList.declarations;
-				isNodeUsed = declarations.some(isDeclarationExported.bind(null, rootFileExports, typeChecker));
+				isNodeUsed = declarations.some((declaration: ts.VariableDeclaration) => {
+					return isDeclarationExported(rootFileExports, typeChecker, declaration);
+				});
 			}
 
 			if (!isNodeUsed) {
@@ -121,8 +127,8 @@ function getRootSourceFile(program: ts.Program): ts.SourceFile {
 	return program.getSourceFile(rootFiles[0]);
 }
 
-function isDeclarationExported(exportedSymbols: ts.Symbol[], typeChecker: ts.TypeChecker, declaration: ts.Declaration): boolean {
-	if (!declaration.name) {
+function isDeclarationExported(exportedSymbols: ts.Symbol[], typeChecker: ts.TypeChecker, declaration: ts.NamedDeclaration): boolean {
+	if (declaration.name === undefined) {
 		return false;
 	}
 

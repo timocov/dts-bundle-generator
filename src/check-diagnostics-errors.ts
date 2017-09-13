@@ -9,7 +9,7 @@ export function checkProgramDiagnosticsErrors(program: ts.Program): void {
 function checkDiagnosticsErrors(diagnostics: ts.Diagnostic[]): void {
 	const errors: string[] = [];
 	diagnostics.forEach((diagnostic: ts.Diagnostic) => {
-		if (!diagnostic.file) {
+		if (diagnostic.file === undefined || diagnostic.start === undefined) {
 			return;
 		}
 

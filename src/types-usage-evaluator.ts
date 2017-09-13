@@ -12,7 +12,7 @@ const declarationKinds = [
 	ts.SyntaxKind.VariableDeclaration,
 ];
 
-export function isNodeDeclaration(node: ts.Node): node is ts.Declaration {
+export function isNodeDeclaration(node: ts.Node): node is ts.NamedDeclaration {
 	return declarationKinds.indexOf(node.kind) !== -1;
 }
 
@@ -25,8 +25,8 @@ export class TypesUsageEvaluator {
 		this.computeUsages(files);
 	}
 
-	public isTypeUsedBySymbol(typeNode: ts.Declaration, by: ts.Symbol): boolean {
-		if (!typeNode.name) {
+	public isTypeUsedBySymbol(typeNode: ts.NamedDeclaration, by: ts.Symbol): boolean {
+		if (typeNode.name === undefined) {
 			// anon?
 			return false;
 		}
@@ -91,7 +91,7 @@ export class TypesUsageEvaluator {
 				const childSymbol = this.getSymbol(child);
 
 				let symbols = this.nodesParentsMap.get(childSymbol);
-				if (!symbols) {
+				if (symbols === undefined) {
 					symbols = new Set<ts.Symbol>();
 					this.nodesParentsMap.set(childSymbol, symbols);
 				}
@@ -105,7 +105,12 @@ export class TypesUsageEvaluator {
 	}
 
 	private getSymbol(node: ts.Node): ts.Symbol {
-		return this.getActualSymbol(this.typeChecker.getSymbolAtLocation(node));
+		const nodeSymbol = this.typeChecker.getSymbolAtLocation(node);
+		if (nodeSymbol === undefined) {
+			throw new Error(`Cannot find symbol for node: ${node.getText()}`);
+		}
+
+		return this.getActualSymbol(nodeSymbol);
 	}
 
 	private getActualSymbol(symbol: ts.Symbol): ts.Symbol {
