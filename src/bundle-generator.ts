@@ -29,8 +29,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 
 	// we do not need any types from node_modules dir
 	const sourceFiles = program.getSourceFiles().filter((file: ts.SourceFile) => {
-		const isExternal = file.fileName.indexOf('node_modules') === -1;
-		return isExternal || includes.some((includePart: string) => {
+		const isExternal = file.fileName.indexOf('node_modules') !== -1;
+		return !isExternal || includes.some((includePart: string) => {
 			return file.fileName.indexOf(includePart) !== -1;
 		});
 	});
