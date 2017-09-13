@@ -100,7 +100,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				nodeText = getTextAccordingExport(nodeText, hasNodeExportKeyword, true);
 			}
 
-			fileOutput += `${nodeText}\n`;
+			fileOutput += `${spacesToTabs(nodeText)}\n`;
 		}
 
 		if (fileOutput.length === 0) {
@@ -148,4 +148,10 @@ function getTextAccordingExport(nodeText: string, isNodeExported: boolean, shoul
 
 function hasNodeModifier(node: ts.Node, modifier: ts.SyntaxKind): boolean {
 	return Boolean(node.modifiers && node.modifiers.some((nodeModifier: ts.Modifier) => nodeModifier.kind === modifier));
+}
+
+function spacesToTabs(text: string): string {
+	return text.replace(/^(    )+/gm, (substring: string) => {
+		return '\t'.repeat(substring.length / 4);
+	});
 }
