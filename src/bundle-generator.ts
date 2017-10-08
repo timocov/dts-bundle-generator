@@ -201,7 +201,8 @@ function spacesToTabs(text: string): string {
 
 function getLibraryName(libraries: string[], fileName: string): string | null {
 	return libraries.find((library: string) => {
-		return fileName.indexOf(`node_modules/${library}`) !== -1;
+		const libraryPathPart = `node_modules/${library}`;
+		return fileName.endsWith(libraryPathPart) || fileName.indexOf(`${libraryPathPart}/`) !== -1;
 	}) || null;
 }
 
