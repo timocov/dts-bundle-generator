@@ -61,11 +61,22 @@ parser.addArgument(
 );
 
 parser.addArgument(
-	['--external-includes'],
+	['--external-inlines'],
 	{
 		action: 'store',
-		dest: 'externalIncludes',
-		help: 'Comma-separated packages from node_modules to include typings from it',
+		dest: 'externalInlines',
+		help: 'Comma-separated packages from node_modules to inline typings from it. Used types will be just inlined into output file',
+		required: false,
+		type: String,
+	},
+);
+
+parser.addArgument(
+	['--external-imports'],
+	{
+		action: 'store',
+		dest: 'externalImports',
+		help: 'Comma-separated packages from node_modules to import typings from it. Used types will be imported by "import { First, Second } from \'library-name\';"',
 		required: false,
 		type: String,
 	},
@@ -142,8 +153,9 @@ try {
 	const inputFilePath = args.file[0];
 	const generatedDts = generateDtsBundle(inputFilePath, {
 		failOnClass: args.failOnClass,
-		includes: args.externalIncludes ? args.externalIncludes.split(',') : [],
 		outputFilenames: args.outputSourceFileName,
+		inlinedLibraries: args.externalInlines ? args.externalInlines.split(',') : [],
+		importedLibraries: args.externalImports ? args.externalImports.split(',') : [],
 	});
 
 	if (args.outFile == null) {

@@ -49,8 +49,8 @@ npm install -g dts-bundle-generator
 
 ```
 usage: dts-bundle-generator [-h] [-o OUTFILE] [-v] [--no-check] [--output-source-file]
-              [--fail-on-class] [--external-includes EXTERNALINCLUDES]
-              [--config CONFIG]
+              [--fail-on-class] [--external-inlines EXTERNALINLINES]
+              [--external-imports EXTERNALIMPORTS] [--config CONFIG]
               file
 
 Positional arguments:
@@ -64,15 +64,21 @@ Optional arguments:
   --no-check            Skip validation of generated d.ts file
   --output-source-file  Add comment with file path the definitions came from
   --fail-on-class       Fail if generated dts contains class declaration
-  --external-includes EXTERNALINCLUDES
-                        Comma-separated packages from node_modules to include
-                        typings from it
+  --external-inlines EXTERNALINLINES
+                        Comma-separated packages from node_modules to inline
+                        typings from it. Used types will be just inlined into
+                        output file
+  --external-imports EXTERNALIMPORTS
+                        Comma-separated packages from node_modules to import
+                        typings from it. Used types will be imported by
+                        "import { First, Second } from 'library-name';"
   --config CONFIG       File path to generator config file
 ```
 
 Example:
 ```
 ./node_modules/.bin/dts-bundle-generator -o my.d.ts path/to/your/entry-file.ts
+./node_modules/.bin/dts-bundle-generator --external-inlines=@mycompany/internal-project --external-imports=@angular/core,rxjs path/to/your/entry-file.ts
 ```
 
 
