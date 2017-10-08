@@ -79,6 +79,8 @@ Example:
 ## TODO
 
 1. Add parameter to use custom `tsconfig` (currently it uses the closest `tsconfig.json`)
+2. Add `/// <reference types="library">` for white-listed libraries (for example `jquery`) if some types from `library` is used ([#3](https://github.com/timocov/dts-bundle-generator/issues/3))
+3. Add tests ([#2](https://github.com/timocov/dts-bundle-generator/issues/2))
 
 
 ## Why?
