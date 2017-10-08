@@ -5,9 +5,10 @@ import { TypesUsageEvaluator, isNodeDeclaration } from './types-usage-evaluator'
 import { verboseLog, normalLog } from './logger';
 
 export interface GenerationOptions {
-	includes?: string[];
 	outputFilenames?: boolean;
 	failOnClass?: boolean;
+	inlinedLibraries?: string[];
+	importedLibraries?: string[];
 }
 
 const skippedNodes = [
@@ -18,7 +19,8 @@ const skippedNodes = [
 ];
 
 export function generateDtsBundle(filePath: string, options: GenerationOptions = {}): string {
-	const includes = options.includes || [];
+	const inlinedLibraries = options.inlinedLibraries || [];
+	const importedLibraries = options.importedLibraries || [];
 
 	if (!ts.sys.fileExists(filePath)) {
 		throw new Error(`File "${filePath}" does not exist`);
@@ -27,13 +29,16 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 	const program = compileDts(filePath);
 	const typeChecker = program.getTypeChecker();
 
-	// we do not need any types from node_modules dir
+	// we do not need all files from node_modules dir - only inlined and imported
 	const sourceFiles = program.getSourceFiles().filter((file: ts.SourceFile) => {
 		const isExternal = file.fileName.indexOf('node_modules') !== -1;
-		return !isExternal || includes.some((includePart: string) => {
-			return file.fileName.indexOf(includePart) !== -1;
-		});
+		return !isExternal
+			|| getLibraryName(inlinedLibraries, file.fileName) !== null
+			|| getLibraryName(importedLibraries, file.fileName) !== null;
 	});
+
+	verboseLog(`Input source files:\n  ${sourceFiles.map((file: ts.SourceFile) => file.fileName).join('\n  ')}`);
+
 	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker);
 
 	const rootSourceFileSymbol = typeChecker.getSymbolAtLocation(getRootSourceFile(program));
@@ -49,6 +54,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 
 		return symbol;
 	});
+
+	const importedSymbols = new Map<string, Set<string>>();
 
 	let resultOutput = '';
 	for (const sourceFile of sourceFiles) {
@@ -73,6 +80,26 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 
 			if (!isNodeUsed) {
 				verboseLog(`Skip file member: ${node.getText().replace(/(\n|\r)/g, '').slice(0, 50)}...`);
+				continue;
+			}
+
+			const importedLibraryName = getLibraryName(importedLibraries, sourceFile.fileName);
+			if (importedLibraryName !== null) {
+				const nodeIdentifier = (node as ts.DeclarationStatement).name;
+				if (nodeIdentifier === undefined) {
+					throw new Error(`Import/usege unnamed declaration: ${node.getText()}`);
+				}
+
+				const importName = nodeIdentifier.getText();
+				normalLog(`Add import with name "${importName}" for library "${importedLibraryName}"`);
+
+				let libraryImports = importedSymbols.get(importedLibraryName);
+				if (libraryImports === undefined) {
+					libraryImports = new Set<string>();
+					importedSymbols.set(importedLibraryName, libraryImports);
+				}
+
+				libraryImports.add(importName);
 				continue;
 			}
 
@@ -104,7 +131,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		}
 
 		if (fileOutput.length === 0) {
-			normalLog(`No output for file: ${sourceFile.fileName}`);
+			verboseLog(`No output for file: ${sourceFile.fileName}`);
 		}
 
 		if (options.outputFilenames) {
@@ -112,6 +139,22 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		}
 
 		resultOutput += fileOutput;
+	}
+
+	if (importedSymbols.size !== 0) {
+		const importsArray: string[] = [];
+
+		// we need to have sorted imports of libraries to have more "stable" output
+		const sortedEntries = Array.from(importedSymbols.entries()).sort((firstEntry: [string, Set<String>], secondEntry: [string, Set<String>]) => {
+			return firstEntry[0].localeCompare(secondEntry[0]);
+		});
+
+		for (const entry of sortedEntries) {
+			const [libraryName, libraryImports] = entry;
+			importsArray.push(generateImport(libraryName, Array.from(libraryImports)));
+		}
+
+		resultOutput = `${importsArray.join('\n')}\n\n${resultOutput}`;
 	}
 
 	return resultOutput;
@@ -154,4 +197,15 @@ function spacesToTabs(text: string): string {
 	return text.replace(/^(    )+/gm, (substring: string) => {
 		return '\t'.repeat(substring.length / 4);
 	});
+}
+
+function getLibraryName(libraries: string[], fileName: string): string | null {
+	return libraries.find((library: string) => {
+		return fileName.indexOf(`node_modules/${library}`) !== -1;
+	}) || null;
+}
+
+function generateImport(libraryName: string, imports: string[]): string {
+	// sort to make output more "stable"
+	return `import { ${imports.sort().join(', ')} } from '${libraryName}';`
 }
