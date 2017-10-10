@@ -87,7 +87,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			if (importedLibraryName !== null) {
 				const nodeIdentifier = (node as ts.DeclarationStatement).name;
 				if (nodeIdentifier === undefined) {
-					throw new Error(`Import/usege unnamed declaration: ${node.getText()}`);
+					throw new Error(`Import/usage unnamed declaration: ${node.getText()}`);
 				}
 
 				const importName = nodeIdentifier.getText();
