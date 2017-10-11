@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/timocov/dts-bundle-generator.svg?branch=master)](https://travis-ci.org/timocov/dts-bundle-generator)
+
 # DTS Bundle Generator
 
 This small tool can generate a bundle of dts from your ts code.
