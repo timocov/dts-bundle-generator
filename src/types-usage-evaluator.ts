@@ -79,8 +79,7 @@ export class TypesUsageEvaluator {
 
 	private computeUsagesRecursively(parent: ts.Node, parentSymbol: ts.Symbol): void {
 		const queue = parent.getChildren();
-		for (let i = 0; i < queue.length; ++i) {
-			const child = queue[i];
+		for (const child of queue) {
 			if (child.kind === ts.SyntaxKind.JSDocComment) {
 				continue;
 			}

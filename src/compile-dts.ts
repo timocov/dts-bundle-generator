@@ -84,7 +84,7 @@ function getDeclarationFiles(rootFile: string, compilerOptions: ts.CompilerOptio
 			declarations[getAbsolutePath(fileName)] = data;
 		},
 		undefined,
-		true,
+		true
 	);
 
 	return declarations;

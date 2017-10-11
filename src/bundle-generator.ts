@@ -18,6 +18,7 @@ const skippedNodes = [
 	ts.SyntaxKind.ImportEqualsDeclaration,
 ];
 
+// tslint:disable-next-line:cyclomatic-complexity
 export function generateDtsBundle(filePath: string, options: GenerationOptions = {}): string {
 	const inlinedLibraries = options.inlinedLibraries || [];
 	const importedLibraries = options.importedLibraries || [];
@@ -145,7 +146,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		const importsArray: string[] = [];
 
 		// we need to have sorted imports of libraries to have more "stable" output
-		const sortedEntries = Array.from(importedSymbols.entries()).sort((firstEntry: [string, Set<String>], secondEntry: [string, Set<String>]) => {
+		const sortedEntries = Array.from(importedSymbols.entries()).sort((firstEntry: [string, Set<string>], secondEntry: [string, Set<string>]) => {
 			return firstEntry[0].localeCompare(secondEntry[0]);
 		});
 
@@ -208,5 +209,5 @@ function getLibraryName(libraries: string[], fileName: string): string | null {
 
 function generateImport(libraryName: string, imports: string[]): string {
 	// sort to make output more "stable"
-	return `import { ${imports.sort().join(', ')} } from '${libraryName}';`
+	return `import { ${imports.sort().join(', ')} } from '${libraryName}';`;
 }

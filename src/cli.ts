@@ -15,7 +15,7 @@ parser.addArgument(
 		dest: 'outFile',
 		help: 'File name of generated d.ts',
 		required: false,
-	},
+	}
 );
 
 parser.addArgument(
@@ -24,7 +24,7 @@ parser.addArgument(
 		action: 'storeTrue',
 		defaultValue: false,
 		help: 'Enable verbose logging',
-	},
+	}
 );
 
 parser.addArgument(
@@ -35,7 +35,7 @@ parser.addArgument(
 		dest: 'noCheck',
 		help: 'Skip validation of generated d.ts file',
 		type: Boolean,
-	},
+	}
 );
 
 parser.addArgument(
@@ -46,7 +46,7 @@ parser.addArgument(
 		dest: 'outputSourceFileName',
 		help: 'Add comment with file path the definitions came from',
 		type: Boolean,
-	},
+	}
 );
 
 parser.addArgument(
@@ -57,7 +57,7 @@ parser.addArgument(
 		dest: 'failOnClass',
 		help: 'Fail if generated dts contains class declaration',
 		type: Boolean,
-	},
+	}
 );
 
 parser.addArgument(
@@ -68,7 +68,7 @@ parser.addArgument(
 		help: 'Comma-separated packages from node_modules to inline typings from it. Used types will be just inlined into output file',
 		required: false,
 		type: String,
-	},
+	}
 );
 
 parser.addArgument(
@@ -79,7 +79,7 @@ parser.addArgument(
 		help: 'Comma-separated packages from node_modules to import typings from it. Used types will be imported by "import { First, Second } from \'library-name\';"',
 		required: false,
 		type: String,
-	},
+	}
 );
 
 parser.addArgument(
@@ -90,11 +90,12 @@ parser.addArgument(
 		help: 'File path to generator config file',
 		required: false,
 		type: String,
-	},
+	}
 );
 
 parser.addArgument(['file'], { nargs: 1 });
 
+// tslint:disable-next-line:no-any
 function configToArgs(config: any, inFile: string): string[] {
 	const result: string[] = [];
 	for (const key of Object.keys(config)) {

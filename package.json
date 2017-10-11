@@ -17,7 +17,8 @@
   },
   "devDependencies": {
     "@types/argparse": "1.0.32",
-    "@types/node": "7.0.8"
+    "@types/node": "7.0.8",
+    "tslint": "~5.7.0"
   },
   "files": [
     "bin/cli.js",
@@ -29,5 +30,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/timocov/dts-bundle-generator.git"
+  },
+  "scripts": {
+    "lint": "tslint --config tslint.json --project tsconfig.json",
+    "compile": "tsc"
   }
 }
