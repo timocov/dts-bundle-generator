@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/timocov/dts-bundle-generator.svg?branch=master)](https://travis-ci.org/timocov/dts-bundle-generator)
+[![npm version](https://badge.fury.io/js/dts-bundle-generator.svg)](https://badge.fury.io/js/dts-bundle-generator) [![Build Status](https://travis-ci.org/timocov/dts-bundle-generator.svg?branch=master)](https://travis-ci.org/timocov/dts-bundle-generator)
 
 # DTS Bundle Generator
 
