@@ -62,6 +62,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 	for (const sourceFile of sourceFiles) {
 		verboseLog(`\n\n======= Preparing file: ${sourceFile.fileName} =======`);
 
+		const sourceFileText = sourceFile.getFullText();
+
 		let fileOutput = '';
 		for (const node of sourceFile.statements) {
 			// we should skip import and exports statements
@@ -108,6 +110,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 
 			const hasNodeExportKeyword = hasNodeModifier(node, ts.SyntaxKind.ExportKeyword);
 
+			let shouldNodeHasExportKeyword = true;
 			if (node.kind === ts.SyntaxKind.ClassDeclaration || node.kind === ts.SyntaxKind.EnumDeclaration) {
 				if (options.failOnClass === true && node.kind === ts.SyntaxKind.ClassDeclaration) {
 					const classDecl = (node as ts.ClassDeclaration);
@@ -117,15 +120,23 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				}
 
 				// not all classes and enums can be exported - only exported from root file
-				let shouldNodeHasExportKeyword = isDeclarationExported(rootFileExports, typeChecker, node as (ts.ClassDeclaration | ts.EnumDeclaration));
+				shouldNodeHasExportKeyword = isDeclarationExported(rootFileExports, typeChecker, node as (ts.ClassDeclaration | ts.EnumDeclaration));
 				if (node.kind === ts.SyntaxKind.EnumDeclaration) {
 					// but const enum always can be exported
 					shouldNodeHasExportKeyword = shouldNodeHasExportKeyword || hasNodeModifier(node, ts.SyntaxKind.ConstKeyword);
 				}
+			}
 
-				nodeText = getTextAccordingExport(nodeText, hasNodeExportKeyword, shouldNodeHasExportKeyword);
-			} else {
-				nodeText = getTextAccordingExport(nodeText, hasNodeExportKeyword, true);
+			nodeText = getTextAccordingExport(nodeText, hasNodeExportKeyword, shouldNodeHasExportKeyword);
+
+			// add jsdoc for exported nodes only
+			if (shouldNodeHasExportKeyword) {
+				const start = node.getStart();
+				const fullStart = node.getFullStart();
+				const nodeJSDoc = sourceFileText.substring(fullStart, start).trim();
+				if (nodeJSDoc.length !== 0) {
+					nodeText = `${nodeJSDoc}\n${nodeText}`;
+				}
 			}
 
 			fileOutput += `${spacesToTabs(nodeText)}\n`;
