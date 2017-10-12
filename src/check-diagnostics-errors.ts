@@ -6,7 +6,7 @@ export function checkProgramDiagnosticsErrors(program: ts.Program): void {
 	checkDiagnosticsErrors(program.getDeclarationDiagnostics());
 }
 
-function checkDiagnosticsErrors(diagnostics: ts.Diagnostic[]): void {
+function checkDiagnosticsErrors(diagnostics: ReadonlyArray<ts.Diagnostic>): void {
 	const errors: string[] = [];
 	diagnostics.forEach((diagnostic: ts.Diagnostic) => {
 		if (diagnostic.file === undefined || diagnostic.start === undefined) {
