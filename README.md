@@ -52,7 +52,8 @@ npm install -g dts-bundle-generator
 ```
 usage: dts-bundle-generator [-h] [-o OUTFILE] [-v] [--no-check] [--output-source-file]
               [--fail-on-class] [--external-inlines EXTERNALINLINES]
-              [--external-imports EXTERNALIMPORTS] [--config CONFIG]
+              [--external-imports EXTERNALIMPORTS]
+              [--external-types EXTERNALTYPES] [--config CONFIG]
               file
 
 Positional arguments:
@@ -74,21 +75,32 @@ Optional arguments:
                         Comma-separated packages from node_modules to import
                         typings from it. Used types will be imported by
                         "import { First, Second } from 'library-name';"
+  --external-types EXTERNALTYPES
+                        Comma-separated packages from @types to import
+                        typings from it via triple-slash reference directive.
+                        By default all packages are allowed and will be used
+                        according their usages
   --config CONFIG       File path to generator config file
 ```
 
-Example:
-```
+Examples:
+```bash
 ./node_modules/.bin/dts-bundle-generator -o my.d.ts path/to/your/entry-file.ts
+```
+
+```bash
 ./node_modules/.bin/dts-bundle-generator --external-inlines=@mycompany/internal-project --external-imports=@angular/core,rxjs path/to/your/entry-file.ts
+```
+
+```bash
+./node_modules/.bin/dts-bundle-generator --external-types=jquery path/to/your/entry-file.ts
 ```
 
 
 ## TODO
 
 1. Add parameter to use custom `tsconfig` (currently it uses the closest `tsconfig.json`)
-2. Add `/// <reference types="library">` for white-listed libraries (for example `jquery`) if some types from `library` is used ([#3](https://github.com/timocov/dts-bundle-generator/issues/3))
-3. Add tests ([#2](https://github.com/timocov/dts-bundle-generator/issues/2))
+2. Add tests ([#2](https://github.com/timocov/dts-bundle-generator/issues/2))
 
 
 ## Why?
@@ -132,5 +144,24 @@ import * as someName from './some';
 export class A extends someName.SomeClass {}
 ```
 This case is very similar to the previous one.
+
+**NOTE:** some libraries with typings in `@types` (for example `react` or `react-dom`) has named exported namespace. As soon typings for this libraries will be imported via triple-slash directive you should import this libraries with renaming. For example for source
+
+```ts
+import * as ReactDOM from 'react-dom';
+export interface MyRenderer extends ReactDOM.Renderer {}
+```
+
+generated dts will be
+
+```ts
+/// <reference types="react" />
+/// <reference types="react-dom" />
+
+export interface MyRenderer extends ReactDOM.Renderer {
+}
+```
+
+So please **make sure** that your `* as name`-import has right `name`.
 
 3. All your types should have different names inside a bundle. If you have 2 `interface Options {}` they will be merged by `TypeScript` and you will get wrong definitions.
