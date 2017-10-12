@@ -2,6 +2,7 @@ import * as ts from 'typescript';
 
 import { compileDts } from './compile-dts';
 import { TypesUsageEvaluator, isNodeDeclaration } from './types-usage-evaluator';
+import { getLibraryName, getTypesLibraryName } from './node-modules-helpers';
 import { verboseLog, normalLog } from './logger';
 
 export interface GenerationOptions {
@@ -9,6 +10,7 @@ export interface GenerationOptions {
 	failOnClass?: boolean;
 	inlinedLibraries?: string[];
 	importedLibraries?: string[];
+	allowedTypesLibraries?: string[];
 }
 
 const skippedNodes = [
@@ -22,6 +24,7 @@ const skippedNodes = [
 export function generateDtsBundle(filePath: string, options: GenerationOptions = {}): string {
 	const inlinedLibraries = options.inlinedLibraries || [];
 	const importedLibraries = options.importedLibraries || [];
+	const allowedTypesLibs = options.allowedTypesLibraries;
 
 	if (!ts.sys.fileExists(filePath)) {
 		throw new Error(`File "${filePath}" does not exist`);
@@ -30,12 +33,20 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 	const program = compileDts(filePath);
 	const typeChecker = program.getTypeChecker();
 
-	// we do not need all files from node_modules dir - only inlined and imported
+	// we do not need all files from node_modules dir
 	const sourceFiles = program.getSourceFiles().filter((file: ts.SourceFile) => {
-		const isExternal = file.fileName.indexOf('node_modules') !== -1;
-		return !isExternal
-			|| getLibraryName(inlinedLibraries, file.fileName) !== null
-			|| getLibraryName(importedLibraries, file.fileName) !== null;
+		const fileName = file.fileName;
+		const libraryName = getLibraryName(fileName);
+		if (libraryName === null) {
+			return true;
+		}
+
+		const typesLibName = getTypesLibraryName(fileName);
+		if (typesLibName !== null && (allowedTypesLibs === undefined || allowedTypesLibs.indexOf(typesLibName) !== -1)) {
+			return true;
+		}
+
+		return inlinedLibraries.indexOf(libraryName) !== -1 || importedLibraries.indexOf(libraryName) !== -1;
 	});
 
 	verboseLog(`Input source files:\n  ${sourceFiles.map((file: ts.SourceFile) => file.fileName).join('\n  ')}`);
@@ -56,6 +67,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		return symbol;
 	});
 
+	const usedTypes = new Set<string>();
 	const importedSymbols = new Map<string, Set<string>>();
 
 	let resultOutput = '';
@@ -86,8 +98,18 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				continue;
 			}
 
-			const importedLibraryName = getLibraryName(importedLibraries, sourceFile.fileName);
-			if (importedLibraryName !== null) {
+			const typesLibraryName = getTypesLibraryName(sourceFile.fileName);
+			if (typesLibraryName !== null) {
+				if (!usedTypes.has(typesLibraryName)) {
+					normalLog(`Library "${typesLibraryName}" will be added via reference directive`);
+					usedTypes.add(typesLibraryName);
+				}
+
+				break;
+			}
+
+			const importedLibraryName = getLibraryName(sourceFile.fileName);
+			if (importedLibraryName !== null && importedLibraries.indexOf(importedLibraryName) !== -1) {
 				const nodeIdentifier = (node as ts.DeclarationStatement).name;
 				if (nodeIdentifier === undefined) {
 					throw new Error(`Import/usage unnamed declaration: ${node.getText()}`);
@@ -169,6 +191,11 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		resultOutput = `${importsArray.join('\n')}\n\n${resultOutput}`;
 	}
 
+	if (usedTypes.size !== 0) {
+		const header = generateReferenceTypesDirective(Array.from(usedTypes));
+		resultOutput = `${header}\n\n${resultOutput}`;
+	}
+
 	return resultOutput;
 }
 
@@ -211,14 +238,13 @@ function spacesToTabs(text: string): string {
 	});
 }
 
-function getLibraryName(libraries: string[], fileName: string): string | null {
-	return libraries.find((library: string) => {
-		const libraryPathPart = `node_modules/${library}`;
-		return fileName.endsWith(libraryPathPart) || fileName.indexOf(`${libraryPathPart}/`) !== -1;
-	}) || null;
-}
-
 function generateImport(libraryName: string, imports: string[]): string {
 	// sort to make output more "stable"
 	return `import { ${imports.sort().join(', ')} } from '${libraryName}';`;
+}
+
+function generateReferenceTypesDirective(libraries: string[]): string {
+	return libraries.sort().map((library: string) => {
+		return `/// <reference types="${library}" />`;
+	}).join('\n');
 }
