@@ -83,6 +83,17 @@ parser.addArgument(
 );
 
 parser.addArgument(
+	['--external-types'],
+	{
+		action: 'store',
+		dest: 'externalTypes',
+		help: 'Comma-separated packages from @types to import typings from it via triple-slash reference directive. By default all packages are allowed and will be used according their usages',
+		required: false,
+		type: String,
+	}
+);
+
+parser.addArgument(
 	['--config'],
 	{
 		action: 'store',
@@ -123,6 +134,10 @@ function configToArgs(config: any, inFile: string): string[] {
 	return result;
 }
 
+function parseArray(str: string): string[] {
+	return str.split(',');
+}
+
 let args = parser.parseArgs();
 
 if (args.config != null) {
@@ -155,8 +170,9 @@ try {
 	const generatedDts = generateDtsBundle(inputFilePath, {
 		failOnClass: args.failOnClass,
 		outputFilenames: args.outputSourceFileName,
-		inlinedLibraries: args.externalInlines ? args.externalInlines.split(',') : [],
-		importedLibraries: args.externalImports ? args.externalImports.split(',') : [],
+		inlinedLibraries: args.externalInlines ? parseArray(args.externalInlines) : [],
+		importedLibraries: args.externalImports ? parseArray(args.externalImports) : [],
+		allowedTypesLibraries: args.externalTypes ? parseArray(args.externalTypes) : undefined,
 	});
 
 	if (args.outFile == null) {
