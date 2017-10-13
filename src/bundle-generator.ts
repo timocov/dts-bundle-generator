@@ -154,8 +154,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			// add jsdoc for exported nodes only
 			if (shouldNodeHasExportKeyword) {
 				const start = node.getStart();
-				const fullStart = node.getFullStart();
-				const nodeJSDoc = sourceFileText.substring(fullStart, start).trim();
+				const jsDocStart = node.getStart(undefined, true);
+				const nodeJSDoc = sourceFileText.substring(jsDocStart, start).trim();
 				if (nodeJSDoc.length !== 0) {
 					nodeText = `${nodeJSDoc}\n${nodeText}`;
 				}
