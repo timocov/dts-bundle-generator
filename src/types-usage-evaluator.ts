@@ -1,20 +1,7 @@
 import * as ts from 'typescript';
+import { isNodeNamedDeclaration } from './typescript-helpers';
 
 export type NodesParents = Map<ts.Symbol, Set<ts.Symbol>>;
-
-const declarationKinds = [
-	ts.SyntaxKind.InterfaceDeclaration,
-	ts.SyntaxKind.ClassDeclaration,
-	ts.SyntaxKind.EnumDeclaration,
-	ts.SyntaxKind.TypeAliasDeclaration,
-	ts.SyntaxKind.ModuleDeclaration,
-	ts.SyntaxKind.FunctionDeclaration,
-	ts.SyntaxKind.VariableDeclaration,
-];
-
-export function isNodeDeclaration(node: ts.Node): node is ts.NamedDeclaration {
-	return declarationKinds.indexOf(node.kind) !== -1;
-}
 
 export class TypesUsageEvaluator {
 	private typeChecker: ts.TypeChecker;
@@ -67,7 +54,7 @@ export class TypesUsageEvaluator {
 	}
 
 	private computeUsageForNode(node: ts.Node): void {
-		if (isNodeDeclaration(node) && node.name) {
+		if (isNodeNamedDeclaration(node) && node.name) {
 			const childSymbol = this.getSymbol(node.name);
 			this.computeUsagesRecursively(node, childSymbol);
 		} else if (node.kind === ts.SyntaxKind.VariableStatement) {

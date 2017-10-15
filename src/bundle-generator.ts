@@ -1,7 +1,8 @@
 import * as ts from 'typescript';
 
 import { compileDts } from './compile-dts';
-import { TypesUsageEvaluator, isNodeDeclaration } from './types-usage-evaluator';
+import { TypesUsageEvaluator } from './types-usage-evaluator';
+import { hasNodeModifier, isNodeNamedDeclaration } from './typescript-helpers';
 import { getLibraryName, getTypesLibraryName } from './node-modules-helpers';
 import { verboseLog, normalLog } from './logger';
 
@@ -84,7 +85,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			}
 
 			let isNodeUsed = false;
-			if (isNodeDeclaration(node)) {
+			if (isNodeNamedDeclaration(node)) {
 				isNodeUsed = rootFileExports.some(typesUsageEvaluator.isTypeUsedBySymbol.bind(typesUsageEvaluator, node));
 			} else if (node.kind === ts.SyntaxKind.VariableStatement) {
 				const declarations = (node as ts.VariableStatement).declarationList.declarations;
@@ -226,10 +227,6 @@ function getTextAccordingExport(nodeText: string, isNodeExported: boolean, shoul
 	}
 
 	return nodeText;
-}
-
-function hasNodeModifier(node: ts.Node, modifier: ts.SyntaxKind): boolean {
-	return Boolean(node.modifiers && node.modifiers.some((nodeModifier: ts.Modifier) => nodeModifier.kind === modifier));
 }
 
 function spacesToTabs(text: string): string {
