@@ -81,7 +81,7 @@ parser.addArgument(
 	{
 		action: 'store',
 		dest: 'externalImports',
-		help: 'Comma-separated packages from node_modules to import typings from it. Used types will be imported by "import { First, Second } from \'library-name\';"',
+		help: 'Comma-separated packages from node_modules to import typings from it. Used types will be imported by "import { First, Second } from \'library-name\';". By default all libraries will be imported (except inlined)',
 		required: false,
 		type: String,
 	}

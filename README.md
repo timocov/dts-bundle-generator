@@ -74,7 +74,9 @@ Optional arguments:
   --external-imports EXTERNALIMPORTS
                         Comma-separated packages from node_modules to import
                         typings from it. Used types will be imported by
-                        "import { First, Second } from 'library-name';"
+                        "import { First, Second } from 'library-name';". By
+                        default all libraries will be imported (except
+                        inlined)
   --external-types EXTERNALTYPES
                         Comma-separated packages from @types to import
                         typings from it via triple-slash reference directive.
