@@ -88,6 +88,10 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 
 		const sourceFileText = sourceFile.getFullText();
 
+		const typesLibraryName = getTypesLibraryName(sourceFile.fileName);
+		const importedLibraryName = getLibraryName(sourceFile.fileName);
+		const isAllowedAsImportedLibrary = importedLibraryName !== null && importedLibraries.indexOf(importedLibraryName) !== -1;
+
 		let fileOutput = '';
 		for (const node of sourceFile.statements) {
 			// we should skip import and exports statements
@@ -110,7 +114,6 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				continue;
 			}
 
-			const typesLibraryName = getTypesLibraryName(sourceFile.fileName);
 			if (typesLibraryName !== null) {
 				if (!usedTypes.has(typesLibraryName)) {
 					normalLog(`Library "${typesLibraryName}" will be added via reference directive`);
@@ -120,8 +123,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				break;
 			}
 
-			const importedLibraryName = getLibraryName(sourceFile.fileName);
-			if (importedLibraryName !== null && importedLibraries.indexOf(importedLibraryName) !== -1) {
+			if (importedLibraryName !== null && isAllowedAsImportedLibrary) {
 				const nodeIdentifier = (node as ts.DeclarationStatement).name;
 				if (nodeIdentifier === undefined) {
 					throw new Error(`Import/usage unnamed declaration: ${node.getText()}`);
