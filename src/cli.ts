@@ -3,9 +3,14 @@ import * as ts from 'typescript';
 import { ArgumentParser } from 'argparse';
 
 import { generateDtsBundle } from './bundle-generator';
-import { enableVerbose, normalLog, verboseLog } from './logger';
 import { checkProgramDiagnosticsErrors } from './check-diagnostics-errors';
 import { getCompilerOptionsForFile } from './get-compiler-options';
+
+import {
+	enableVerbose,
+	normalLog,
+	verboseLog,
+} from './logger';
 
 const parser = new ArgumentParser();
 

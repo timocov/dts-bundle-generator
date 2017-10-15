@@ -2,9 +2,20 @@ import * as ts from 'typescript';
 
 import { compileDts } from './compile-dts';
 import { TypesUsageEvaluator } from './types-usage-evaluator';
-import { hasNodeModifier, isNodeNamedDeclaration } from './typescript-helpers';
-import { getLibraryName, getTypesLibraryName } from './node-modules-helpers';
-import { verboseLog, normalLog } from './logger';
+import {
+	hasNodeModifier,
+	isNodeNamedDeclaration,
+} from './typescript-helpers';
+
+import {
+	getLibraryName,
+	getTypesLibraryName,
+} from './node-modules-helpers';
+
+import {
+	normalLog,
+	verboseLog,
+} from './logger';
 
 export interface GenerationOptions {
 	outputFilenames?: boolean;
