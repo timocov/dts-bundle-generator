@@ -170,8 +170,8 @@ try {
 	const generatedDts = generateDtsBundle(inputFilePath, {
 		failOnClass: args.failOnClass,
 		outputFilenames: args.outputSourceFileName,
-		inlinedLibraries: args.externalInlines ? parseArray(args.externalInlines) : [],
-		importedLibraries: args.externalImports ? parseArray(args.externalImports) : [],
+		inlinedLibraries: args.externalInlines ? parseArray(args.externalInlines) : undefined,
+		importedLibraries: args.externalImports ? parseArray(args.externalImports) : undefined,
 		allowedTypesLibraries: args.externalTypes ? parseArray(args.externalTypes) : undefined,
 	});
 
