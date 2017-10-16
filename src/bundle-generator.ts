@@ -10,6 +10,7 @@ import {
 import {
 	getLibraryName,
 	getTypesLibraryName,
+	isTypescriptLibFile,
 } from './node-modules-helpers';
 
 import {
@@ -35,7 +36,7 @@ const skippedNodes = [
 // tslint:disable-next-line:cyclomatic-complexity
 export function generateDtsBundle(filePath: string, options: GenerationOptions = {}): string {
 	const inlinedLibraries = options.inlinedLibraries || [];
-	const importedLibraries = options.importedLibraries || [];
+	const importedLibraries = options.importedLibraries;
 	const allowedTypesLibs = options.allowedTypesLibraries;
 
 	if (!ts.sys.fileExists(filePath)) {
@@ -53,12 +54,16 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			return true;
 		}
 
-		const typesLibName = getTypesLibraryName(fileName);
-		if (typesLibName !== null && (allowedTypesLibs === undefined || allowedTypesLibs.indexOf(typesLibName) !== -1)) {
-			return true;
+		if (isTypescriptLibFile(fileName)) {
+			return false;
 		}
 
-		return inlinedLibraries.indexOf(libraryName) !== -1 || importedLibraries.indexOf(libraryName) !== -1;
+		const typesLibName = getTypesLibraryName(fileName);
+		if (typesLibName !== null) {
+			return isLibraryAllowed(typesLibName, allowedTypesLibs);
+		}
+
+		return inlinedLibraries.indexOf(libraryName) !== -1 || isLibraryAllowed(libraryName, importedLibraries);
 	});
 
 	verboseLog(`Input source files:\n  ${sourceFiles.map((file: ts.SourceFile) => file.fileName).join('\n  ')}`);
@@ -90,7 +95,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 
 		const typesLibraryName = getTypesLibraryName(sourceFile.fileName);
 		const importedLibraryName = getLibraryName(sourceFile.fileName);
-		const isAllowedAsImportedLibrary = importedLibraryName !== null && importedLibraries.indexOf(importedLibraryName) !== -1;
+		const shouldBeInlined = importedLibraryName !== null && inlinedLibraries.indexOf(importedLibraryName) !== -1;
+		const isAllowedAsImportedLibrary = importedLibraryName !== null && isLibraryAllowed(importedLibraryName, importedLibraries);
 
 		let fileOutput = '';
 		for (const node of sourceFile.statements) {
@@ -123,7 +129,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				break;
 			}
 
-			if (importedLibraryName !== null && isAllowedAsImportedLibrary) {
+			if (importedLibraryName !== null && isAllowedAsImportedLibrary && !shouldBeInlined) {
 				const nodeIdentifier = (node as ts.DeclarationStatement).name;
 				if (nodeIdentifier === undefined) {
 					throw new Error(`Import/usage unnamed declaration: ${node.getText()}`);
@@ -257,4 +263,8 @@ function generateReferenceTypesDirective(libraries: string[]): string {
 	return libraries.sort().map((library: string) => {
 		return `/// <reference types="${library}" />`;
 	}).join('\n');
+}
+
+function isLibraryAllowed(libraryName: string, allowedArray?: string[]): boolean {
+	return allowedArray === undefined || allowedArray.indexOf(libraryName) !== -1;
 }
