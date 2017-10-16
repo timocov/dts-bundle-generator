@@ -1,6 +1,6 @@
 {
   "name": "dts-bundle-generator",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "DTS Bundle Generator",
   "main": "dist/bundle-generator.js",
   "bin": {
