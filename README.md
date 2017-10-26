@@ -126,10 +126,6 @@ but:
 1. There is no one usages of `A` (maybe you do not want to export it?)
 2. If you bundle your code in such a way all the modules are merged (like when using Webpack or Rollup) and there are no such modules as `a` or `b` (actually `entry` too).
 
-## Known issues
-
-1. Currently it does not work with `outDir` compiler option.
-
 
 ## Known limitations
 

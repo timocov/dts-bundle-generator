@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as ts from 'typescript';
 
-import { verboseLog } from './logger';
+import { verboseLog, normalLog } from './logger';
 
 import { getCompilerOptionsForFile } from './get-compiler-options';
 import { checkProgramDiagnosticsErrors } from './check-diagnostics-errors';
@@ -12,6 +12,11 @@ interface DeclarationFiles {
 
 export function compileDts(rootFile: string): ts.Program {
 	const compilerOptions = getCompilerOptionsForFile(rootFile);
+	if (compilerOptions.outDir !== undefined) {
+		normalLog('Compiler options `outDir` is not supported and will be removed while generating dts');
+		compilerOptions.outDir = undefined;
+	}
+
 	const dtsFiles = getDeclarationFiles(rootFile, compilerOptions);
 
 	verboseLog(`dts cache:\n  ${Object.keys(dtsFiles).join('\n  ')}\n`);
