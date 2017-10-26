@@ -5,14 +5,17 @@
 This small tool can generate a bundle of dts from your ts code.
 
 For example:
+
 ```ts
 // a.ts
 export class A {}
 ```
+
 ```ts
 // b.ts
 export class B {}
 ```
+
 ```ts
 // entry.ts
 import { A } from './a';
@@ -20,32 +23,34 @@ import { B } from './b';
 
 declare function makeA(): A;
 export function makeB(): B {
-	makeA();
-	return new B();
+    makeA();
+    return new B();
 }
 ```
 
 When you run it as `dts-bundle-generator -o my.d.ts entry.ts` in `my.d.ts` you will get the following:
+
 ```ts
 declare class B {
 }
 export declare function makeB(): B;
 ```
 
-
 ## Installation
 
-1.
-```
+1. Installing the package from `npm`:
+
+```bash
 npm install --save-dev dts-bundle-generator
 ```
+
 or
-```
+
+```bash
 npm install -g dts-bundle-generator
 ```
 
 2. Enable `declaration` compiler options in `tsconfig.json`
-
 
 ## Usage
 
@@ -86,6 +91,7 @@ Optional arguments:
 ```
 
 Examples:
+
 ```bash
 ./node_modules/.bin/dts-bundle-generator -o my.d.ts path/to/your/entry-file.ts
 ```
@@ -98,16 +104,16 @@ Examples:
 ./node_modules/.bin/dts-bundle-generator --external-types=jquery path/to/your/entry-file.ts
 ```
 
-
 ## TODO
 
 1. Add parameter to use custom `tsconfig` (currently it uses the closest `tsconfig.json`)
-2. Add tests ([#2](https://github.com/timocov/dts-bundle-generator/issues/2))
 
+1. Add tests ([#2](https://github.com/timocov/dts-bundle-generator/issues/2))
 
-## Why?
+## Why
 
 If you have modules you can create definitions by default via `tsc`, but it generates them for each module separately. Yeah, you can use `outFile` (for `amd` and `system`) but it generates code like this:
+
 ```ts
 declare module "a" {
     export class A {
@@ -122,25 +128,31 @@ declare module "entry" {
     export function makeB(): B;
 }
 ```
-but:
-1. There is no one usages of `A` (maybe you do not want to export it?)
-2. If you bundle your code in such a way all the modules are merged (like when using Webpack or Rollup) and there are no such modules as `a` or `b` (actually `entry` too).
 
+but:
+
+1. There is no one usages of `A` (maybe you do not want to export it?)
+
+1. If you bundle your code in such a way all the modules are merged (like when using Webpack or Rollup) and there are no such modules as `a` or `b` (actually `entry` too).
 
 ## Known limitations
 
 1. Do not rename types when import. If you use something like this:
+
 ```ts
 import { A as B } from './b';
 export C extends B {}
 ```
+
 you will get an error because this tool does not follow your renaming (and actually cannot).
 
 2. Do not use types from `* as name`-imports:
+
 ```ts
 import * as someName from './some';
 export class A extends someName.SomeClass {}
 ```
+
 This case is very similar to the previous one.
 
 **NOTE:** some libraries with typings in `@types` (for example `react` or `react-dom`) has named exported namespace. As soon typings for this libraries will be imported via triple-slash directive you should import this libraries with renaming. For example for source
