@@ -24,6 +24,7 @@ export interface GenerationOptions {
 	inlinedLibraries?: string[];
 	importedLibraries?: string[];
 	allowedTypesLibraries?: string[];
+	umdModuleName?: string;
 }
 
 const skippedNodes = [
@@ -214,6 +215,10 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 	if (usedTypes.size !== 0) {
 		const header = generateReferenceTypesDirective(Array.from(usedTypes));
 		resultOutput = `${header}\n\n${resultOutput}`;
+	}
+
+	if (options.umdModuleName !== undefined) {
+		resultOutput += `\nexport as namespace ${options.umdModuleName};\n`;
 	}
 
 	return resultOutput;

@@ -87,6 +87,9 @@ Optional arguments:
                         typings from it via triple-slash reference directive.
                         By default all packages are allowed and will be used
                         according their usages
+  --umd-module-name UMDMODULENAME
+                        The name of UMD module. If specified `export as
+                        namespace ModuleName;` will be emitted
   --config CONFIG       File path to generator config file
 ```
 

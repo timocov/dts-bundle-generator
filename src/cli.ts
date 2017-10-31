@@ -99,6 +99,17 @@ parser.addArgument(
 );
 
 parser.addArgument(
+	['--umd-module-name'],
+	{
+		action: 'store',
+		dest: 'umdModuleName',
+		help: 'The name of UMD module. If specified `export as namespace ModuleName;` will be emitted',
+		required: false,
+		type: String,
+	}
+);
+
+parser.addArgument(
 	['--config'],
 	{
 		action: 'store',
@@ -178,6 +189,7 @@ try {
 		inlinedLibraries: args.externalInlines ? parseArray(args.externalInlines) : undefined,
 		importedLibraries: args.externalImports ? parseArray(args.externalImports) : undefined,
 		allowedTypesLibraries: args.externalTypes ? parseArray(args.externalTypes) : undefined,
+		umdModuleName: args.umdModuleName,
 	});
 
 	if (args.outFile == null) {
