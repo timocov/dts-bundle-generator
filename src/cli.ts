@@ -189,7 +189,7 @@ try {
 		inlinedLibraries: args.externalInlines ? parseArray(args.externalInlines) : undefined,
 		importedLibraries: args.externalImports ? parseArray(args.externalImports) : undefined,
 		allowedTypesLibraries: args.externalTypes ? parseArray(args.externalTypes) : undefined,
-		umdModuleName: args.umdModuleName,
+		umdModuleName: args.umdModuleName || undefined,
 	});
 
 	if (args.outFile == null) {
