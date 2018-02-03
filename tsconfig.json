@@ -1,14 +1,9 @@
 {
+	"extends": "./tsconfig.base.json",
 	"compilerOptions": {
-		"importHelpers": true,
-		"lib": ["es2015"],
-		"newLine": "LF",
-		"noEmitOnError": true,
-		"noFallthroughCasesInSwitch": true,
-		"noImplicitReturns": true,
-		"noUnusedLocals": true,
 		"outDir": "dist",
-		"strict": true,
-		"target": "es5"
-	}
+	},
+	"exclude": [
+		"tests/**"
+	]
 }

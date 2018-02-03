@@ -18,7 +18,9 @@
   },
   "devDependencies": {
     "@types/argparse": "1.0.32",
+    "@types/jasmine": "~2.8.6",
     "@types/node": "7.0.8",
+    "jasmine": "~2.9.0",
     "tslint": "~5.7.0"
   },
   "license": "MIT",
@@ -30,6 +32,8 @@
   "scripts": {
     "lint": "tslint --config tslint.json --project tsconfig.json",
     "compile": "tsc",
-    "prepare-release": "npm run compile && node build/index.js && npm run lint && node build/prod-ready"
+    "compile-tests": "tsc --project tsconfig.tests.json",
+    "prepare-release": "npm run compile && node build/index.js && npm run lint && npm run compile-tests && npm run test && node build/prod-ready",
+    "test": "jasmine tests/all-test-cases.js"
   }
 }

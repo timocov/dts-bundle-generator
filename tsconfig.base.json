@@ -1,0 +1,13 @@
+{
+	"compilerOptions": {
+		"importHelpers": true,
+		"lib": ["es2015"],
+		"newLine": "LF",
+		"noEmitOnError": true,
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": true,
+		"strict": true,
+		"target": "es5"
+	}
+}
