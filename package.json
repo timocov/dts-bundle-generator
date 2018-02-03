@@ -4,7 +4,7 @@
   "description": "DTS Bundle Generator",
   "main": "dist/bundle-generator.js",
   "bin": {
-    "dts-bundle-generator": "bin/cli.js"
+    "dts-bundle-generator": "dist/cli.js"
   },
   "author": "Eugene Timokhov",
   "bugs": {
@@ -21,7 +21,6 @@
     "tslint": "~5.7.0"
   },
   "files": [
-    "bin/cli.js",
     "dist/**/*.js",
     "README.md"
   ],

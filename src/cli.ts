@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import * as path from 'path';
 import * as ts from 'typescript';
 import { ArgumentParser } from 'argparse';
