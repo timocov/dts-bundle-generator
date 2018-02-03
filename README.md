@@ -39,18 +39,17 @@ export declare function makeB(): B;
 ## Installation
 
 1. Installing the package from `npm`:
+    ```bash
+    npm install --save-dev dts-bundle-generator
+    ```
 
-```bash
-npm install --save-dev dts-bundle-generator
-```
+    or
 
-or
+    ```bash
+    npm install -g dts-bundle-generator
+    ```
 
-```bash
-npm install -g dts-bundle-generator
-```
-
-2. Enable `declaration` compiler options in `tsconfig.json`
+1. Enable `declaration` compiler options in `tsconfig.json`
 
 ## Usage
 
@@ -142,39 +141,39 @@ but:
 
 1. Do not rename types when import. If you use something like this:
 
-```ts
-import { A as B } from './b';
-export C extends B {}
-```
+    ```ts
+    import { A as B } from './b';
+    export C extends B {}
+    ```
 
-you will get an error because this tool does not follow your renaming (and actually cannot).
+    you will get an error because this tool does not follow your renaming (and actually cannot).
 
-2. Do not use types from `* as name`-imports:
+1. Do not use types from `* as name`-imports:
 
-```ts
-import * as someName from './some';
-export class A extends someName.SomeClass {}
-```
+    ```ts
+    import * as someName from './some';
+    export class A extends someName.SomeClass {}
+    ```
 
-This case is very similar to the previous one.
+    This case is very similar to the previous one.
 
-**NOTE:** some libraries with typings in `@types` (for example `react` or `react-dom`) has named exported namespace. As soon typings for this libraries will be imported via triple-slash directive you should import this libraries with renaming. For example for source
+    **NOTE:** some libraries with typings in `@types` (for example `react` or `react-dom`) has named exported namespace. As soon typings for this libraries will be imported via triple-slash directive you should import this libraries with renaming. For example for source
 
-```ts
-import * as ReactDOM from 'react-dom';
-export interface MyRenderer extends ReactDOM.Renderer {}
-```
+    ```ts
+    import * as ReactDOM from 'react-dom';
+    export interface MyRenderer extends ReactDOM.Renderer {}
+    ```
 
-generated dts will be
+    generated dts will be
 
-```ts
-/// <reference types="react" />
-/// <reference types="react-dom" />
+    ```ts
+    /// <reference types="react" />
+    /// <reference types="react-dom" />
 
-export interface MyRenderer extends ReactDOM.Renderer {
-}
-```
+    export interface MyRenderer extends ReactDOM.Renderer {
+    }
+    ```
 
-So please **make sure** that your `* as name`-import has right `name`.
+    So please **make sure** that your `* as name`-import has right `name`.
 
-3. All your types should have different names inside a bundle. If you have 2 `interface Options {}` they will be merged by `TypeScript` and you will get wrong definitions.
+1. All your types should have different names inside a bundle. If you have 2 `interface Options {}` they will be merged by `TypeScript` and you will get wrong definitions.
