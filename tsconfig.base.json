@@ -1,6 +1,5 @@
 {
 	"compilerOptions": {
-		"importHelpers": true,
 		"lib": ["es2015"],
 		"newLine": "LF",
 		"noEmitOnError": true,

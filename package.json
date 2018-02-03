@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "argparse": "1.0.9",
-    "tslib": "1.7.1",
     "typescript": "^2.2.1"
   },
   "devDependencies": {
