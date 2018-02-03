@@ -20,6 +20,10 @@ function isDirectory(filePath: string): boolean {
 	return fs.lstatSync(path.resolve(testCasesDir, filePath)).isDirectory();
 }
 
+function prepareString(str: string): string {
+	return str.trim().replace(/\r\n/g, '\n');
+}
+
 function getTestCases(): TestCase[] {
 	return fs.readdirSync(testCasesDir)
 		.filter(isDirectory)
@@ -31,7 +35,7 @@ function getTestCases(): TestCase[] {
 				name: directoryName,
 				inputFileName: path.resolve(testCaseDir, 'input.ts'),
 				config: require(path.resolve(testCaseDir, 'config.js')) as TestCaseConfig,
-				outputFileContent: fs.readFileSync(outputFileName, 'utf-8').trim(),
+				outputFileContent: prepareString(fs.readFileSync(outputFileName, 'utf-8')),
 			};
 
 			return result;
@@ -40,7 +44,7 @@ function getTestCases(): TestCase[] {
 
 for (const testCase of getTestCases()) {
 	it(testCase.name, () => {
-		const result = generateDtsBundle(testCase.inputFileName, testCase.config.generatorOptions).trim();
+		const result = prepareString(generateDtsBundle(testCase.inputFileName, testCase.config.generatorOptions));
 		expect(result).toEqual(testCase.outputFileContent, 'Output should be the same as expected');
 	});
 }
