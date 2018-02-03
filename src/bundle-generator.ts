@@ -231,7 +231,13 @@ function getRootSourceFile(program: ts.Program): ts.SourceFile {
 		throw new Error(`There is not one root file - ${rootFiles.length}`);
 	}
 
-	return program.getSourceFile(rootFiles[0]);
+	const sourceFileName = rootFiles[0];
+	const sourceFile = program.getSourceFile(sourceFileName);
+	if (sourceFile === undefined) {
+		throw new Error(`Cannot get source file for root file ${sourceFileName}`);
+	}
+
+	return sourceFile;
 }
 
 function isDeclarationExported(exportedSymbols: ts.Symbol[], typeChecker: ts.TypeChecker, declaration: ts.NamedDeclaration): boolean {
