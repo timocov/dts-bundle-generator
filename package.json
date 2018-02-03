@@ -1,10 +1,11 @@
 {
+  "private": true,
   "name": "dts-bundle-generator",
   "version": "0.6.1",
   "description": "DTS Bundle Generator",
-  "main": "dist/bundle-generator.js",
+  "main": "bundle-generator.js",
   "bin": {
-    "dts-bundle-generator": "dist/cli.js"
+    "dts-bundle-generator": "cli.js"
   },
   "author": "Eugene Timokhov",
   "bugs": {
@@ -20,10 +21,6 @@
     "@types/node": "7.0.8",
     "tslint": "~5.7.0"
   },
-  "files": [
-    "dist/**/*.js",
-    "README.md"
-  ],
   "license": "MIT",
   "readme": "README.md",
   "repository": {
@@ -32,6 +29,7 @@
   },
   "scripts": {
     "lint": "tslint --config tslint.json --project tsconfig.json",
-    "compile": "tsc"
+    "compile": "tsc",
+    "prepare-release": "npm run compile && node build/index.js && npm run lint && node build/prod-ready"
   }
 }
