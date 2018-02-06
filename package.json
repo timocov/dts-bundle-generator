@@ -20,7 +20,7 @@
     "@types/node": "7.0.8",
     "@types/yargs": "~10.0.1",
     "jasmine": "~2.9.0",
-    "tslint": "~5.7.0"
+    "tslint": "~5.9.0"
   },
   "license": "MIT",
   "readme": "README.md",

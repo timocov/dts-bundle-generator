@@ -4,8 +4,8 @@ import { isNodeNamedDeclaration } from './typescript-helpers';
 export type NodesParents = Map<ts.Symbol, Set<ts.Symbol>>;
 
 export class TypesUsageEvaluator {
-	private typeChecker: ts.TypeChecker;
-	private nodesParentsMap: NodesParents = new Map<ts.Symbol, Set<ts.Symbol>>();
+	private readonly typeChecker: ts.TypeChecker;
+	private readonly nodesParentsMap: NodesParents = new Map<ts.Symbol, Set<ts.Symbol>>();
 
 	public constructor(files: ts.SourceFile[], typeChecker: ts.TypeChecker) {
 		this.typeChecker = typeChecker;
