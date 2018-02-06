@@ -2,7 +2,7 @@
 
 import * as path from 'path';
 import * as ts from 'typescript';
-import { ArgumentParser } from 'argparse';
+import * as yargs from 'yargs';
 
 import { generateDtsBundle } from './bundle-generator';
 import { checkProgramDiagnosticsErrors } from './check-diagnostics-errors';
@@ -14,168 +14,84 @@ import {
 	verboseLog,
 } from './logger';
 
-const parser = new ArgumentParser();
-
-parser.addArgument(
-	['-o', '--out-file'],
-	{
-		dest: 'outFile',
-		help: 'File name of generated d.ts',
-		required: false,
-	}
-);
-
-parser.addArgument(
-	['-v', '--verbose'],
-	{
-		action: 'storeTrue',
-		defaultValue: false,
-		help: 'Enable verbose logging',
-	}
-);
-
-parser.addArgument(
-	['--no-check'],
-	{
-		action: 'storeTrue',
-		defaultValue: false,
-		dest: 'noCheck',
-		help: 'Skip validation of generated d.ts file',
-		type: Boolean,
-	}
-);
-
-parser.addArgument(
-	['--output-source-file'],
-	{
-		action: 'storeTrue',
-		defaultValue: false,
-		dest: 'outputSourceFileName',
-		help: 'Add comment with file path the definitions came from',
-		type: Boolean,
-	}
-);
-
-parser.addArgument(
-	['--fail-on-class'],
-	{
-		action: 'storeTrue',
-		defaultValue: false,
-		dest: 'failOnClass',
-		help: 'Fail if generated dts contains class declaration',
-		type: Boolean,
-	}
-);
-
-parser.addArgument(
-	['--external-inlines'],
-	{
-		action: 'store',
-		dest: 'externalInlines',
-		help: 'Comma-separated packages from node_modules to inline typings from it. Used types will be just inlined into output file',
-		required: false,
-		type: String,
-	}
-);
-
-parser.addArgument(
-	['--external-imports'],
-	{
-		action: 'store',
-		dest: 'externalImports',
-		help: 'Comma-separated packages from node_modules to import typings from it. Used types will be imported by "import { First, Second } from \'library-name\';". By default all libraries will be imported (except inlined)',
-		required: false,
-		type: String,
-	}
-);
-
-parser.addArgument(
-	['--external-types'],
-	{
-		action: 'store',
-		dest: 'externalTypes',
-		help: 'Comma-separated packages from @types to import typings from it via triple-slash reference directive. By default all packages are allowed and will be used according their usages',
-		required: false,
-		type: String,
-	}
-);
-
-parser.addArgument(
-	['--umd-module-name'],
-	{
-		action: 'store',
-		dest: 'umdModuleName',
-		help: 'The name of UMD module. If specified `export as namespace ModuleName;` will be emitted',
-		required: false,
-		type: String,
-	}
-);
-
-parser.addArgument(
-	['--config'],
-	{
-		action: 'store',
-		dest: 'config',
-		help: 'File path to generator config file',
-		required: false,
-		type: String,
-	}
-);
-
-parser.addArgument(['file'], { nargs: 1 });
-
 // tslint:disable-next-line:no-any
-function configToArgs(config: any, inFile: string): string[] {
-	const result: string[] = [];
-	for (const key of Object.keys(config)) {
-		const value = config[key];
-
-		if (typeof value === 'boolean') {
-			if (value === true) {
-				result.push(`--${key}`);
-			}
-
-			continue;
-		}
-
-		result.push(`--${key}`);
-
-		if (Array.isArray(value)) {
-			result.push(value.join(','));
-		} else {
-			result.push(value.toString());
-		}
+function stringToArray(data: any): string[] {
+	if (typeof data !== 'string') {
+		throw new Error(`${data} is not a string`);
 	}
 
-	result.push(inFile);
-
-	return result;
+	return data.split(',');
 }
 
-function parseArray(str: string): string[] {
-	return str.split(',');
+interface ParsedArgs extends yargs.Arguments {
+	verbose: boolean;
+	'no-check': boolean;
+	'output-source-file': boolean;
+	'fail-on-class': boolean;
+
+	'out-file': string | undefined;
+	'umd-module-name': string | undefined;
+
+	'external-inlines': string[] | undefined;
+	'external-imports': string[] | undefined;
+	'external-types': string[] | undefined;
 }
 
-let args = parser.parseArgs();
-
-if (args.config != null) {
-	const configFilePath = args.config;
-	if (!ts.sys.fileExists(configFilePath)) {
-		throw new Error(`Config file "${configFilePath}" does not exist`);
-	}
-
-	const configText = ts.sys.readFile(configFilePath);
-	if (configText === undefined) {
-		throw new Error('Cannot read config file');
-	}
-
-	const config = JSON.parse(configText);
-	args = parser.parseArgs(configToArgs(config, args.file[0]));
-
-	if (args.outFile != null) {
-		args.outFile = path.resolve(configFilePath, '..', args.outFile);
-	}
-}
+const args = yargs
+	.usage('Usage: $0 [options] <file>')
+	.demandCommand(1, 1)
+	.option('out-file', {
+		alias: 'o',
+		type: 'string',
+		description: 'File name of generated d.ts',
+	})
+	.option('verbose', {
+		type: 'boolean',
+		default: false,
+		description: 'Enable verbose logging',
+	})
+	.option('no-check', {
+		type: 'boolean',
+		default: false,
+		description: 'Skip validation of generated d.ts file',
+	})
+	.option('output-source-file', {
+		type: 'boolean',
+		default: false,
+		description: 'Add comment with file path the definitions came from',
+	})
+	.option('fail-on-class', {
+		type: 'boolean',
+		default: false,
+		description: 'Fail if generated dts contains class declaration',
+	})
+	.option('external-inlines', {
+		type: 'string',
+		description: 'Comma-separated packages from node_modules to inline typings from it. Used types will be just inlined into output file',
+		coerce: stringToArray,
+	})
+	.option('external-imports', {
+		type: 'string',
+		description: 'Comma-separated packages from node_modules to import typings from it.\n' +
+			'Used types will be imported by "import { First, Second } from \'library-name\';".\n' +
+			'By default all libraries will be imported (except inlined)',
+		coerce: stringToArray,
+	})
+	.option('external-types', {
+		type: 'string',
+		description: 'Comma-separated packages from @types to import typings from it via triple-slash reference directive.\n' +
+			'By default all packages are allowed and will be used according their usages',
+		coerce: stringToArray,
+	})
+	.option('umd-module-name', {
+		type: 'string',
+		description: 'The name of UMD module. If specified `export as namespace ModuleName;` will be emitted',
+	})
+	.config('config', 'File path to generator config file')
+	.version()
+	.strict()
+	.example('$0 path/to/your/entry-file.ts', '')
+	.argv as ParsedArgs;
 
 if (args.verbose) {
 	enableVerbose();
@@ -184,31 +100,32 @@ if (args.verbose) {
 verboseLog(`Arguments: ${JSON.stringify(args)}`);
 
 try {
-	const inputFilePath = args.file[0];
+	const inputFilePath = args._[0];
 	const generatedDts = generateDtsBundle(inputFilePath, {
-		failOnClass: args.failOnClass,
-		outputFilenames: args.outputSourceFileName,
-		inlinedLibraries: args.externalInlines ? parseArray(args.externalInlines) : undefined,
-		importedLibraries: args.externalImports ? parseArray(args.externalImports) : undefined,
-		allowedTypesLibraries: args.externalTypes ? parseArray(args.externalTypes) : undefined,
-		umdModuleName: args.umdModuleName || undefined,
+		failOnClass: args['fail-on-class'],
+		outputFilenames: args['output-source-file'],
+		inlinedLibraries: args['external-inlines'],
+		importedLibraries: args['external-imports'],
+		allowedTypesLibraries: args['external-types'],
+		umdModuleName: args['umd-module-name'],
 	});
 
-	if (args.outFile == null) {
+	let outFile = args['out-file'];
+	if (outFile === undefined) {
 		const inputFileName = path.parse(inputFilePath).name;
-		args.outFile = path.join(inputFilePath, '..', inputFileName + '.d.ts');
+		outFile = path.join(inputFilePath, '..', inputFileName + '.d.ts');
 	}
 
-	normalLog(`Writing generated file to ${args.outFile}...`);
-	ts.sys.writeFile(args.outFile, generatedDts);
+	normalLog(`Writing generated file to ${outFile}...`);
+	ts.sys.writeFile(outFile, generatedDts);
 
-	if (args.noCheck) {
+	if (args['no-check']) {
 		normalLog('Checking of the file is skipped due "no-check" flag');
 		process.exit(0);
 	}
 
 	normalLog('Checking of the generated file...');
-	const program = ts.createProgram([args.outFile], getCompilerOptionsForFile(inputFilePath));
+	const program = ts.createProgram([outFile], getCompilerOptionsForFile(inputFilePath));
 	checkProgramDiagnosticsErrors(program);
 	normalLog('Done.');
 } catch (ex) {

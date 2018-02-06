@@ -54,42 +54,35 @@ export declare function makeB(): B;
 ## Usage
 
 ```
-usage: dts-bundle-generator [-h] [-o OUTFILE] [-v] [--no-check] [--output-source-file]
-              [--fail-on-class] [--external-inlines EXTERNALINLINES]
-              [--external-imports EXTERNALIMPORTS]
-              [--external-types EXTERNALTYPES] [--config CONFIG]
-              file
+Usage: dts-bundle-generator [options] <file>
 
-Positional arguments:
-  file
-
-Optional arguments:
-  -h, --help            Show this help message and exit.
-  -o OUTFILE, --out-file OUTFILE
-                        File name of generated d.ts
-  -v, --verbose         Enable verbose logging
+Options:
+  --help                Show help                                      [boolean]
+  --out-file, -o        File name of generated d.ts                     [string]
+  --verbose             Enable verbose logging        [boolean] [default: false]
   --no-check            Skip validation of generated d.ts file
+                                                      [boolean] [default: false]
   --output-source-file  Add comment with file path the definitions came from
+                                                      [boolean] [default: false]
   --fail-on-class       Fail if generated dts contains class declaration
-  --external-inlines EXTERNALINLINES
-                        Comma-separated packages from node_modules to inline
+                                                      [boolean] [default: false]
+  --external-inlines    Comma-separated packages from node_modules to inline
                         typings from it. Used types will be just inlined into
-                        output file
-  --external-imports EXTERNALIMPORTS
-                        Comma-separated packages from node_modules to import
-                        typings from it. Used types will be imported by
-                        "import { First, Second } from 'library-name';". By
-                        default all libraries will be imported (except
-                        inlined)
-  --external-types EXTERNALTYPES
-                        Comma-separated packages from @types to import
-                        typings from it via triple-slash reference directive.
+                        output file                                     [string]
+  --external-imports    Comma-separated packages from node_modules to import
+                        typings from it.
+                        Used types will be imported by "import { First, Second }
+                        from 'library-name';".
+                        By default all libraries will be imported (except
+                        inlined)                                        [string]
+  --external-types      Comma-separated packages from @types to import typings
+                        from it via triple-slash reference directive.
                         By default all packages are allowed and will be used
-                        according their usages
-  --umd-module-name UMDMODULENAME
-                        The name of UMD module. If specified `export as
-                        namespace ModuleName;` will be emitted
-  --config CONFIG       File path to generator config file
+                        according their usages                          [string]
+  --umd-module-name     The name of UMD module. If specified `export as
+                        namespace ModuleName;` will be emitted          [string]
+  --config              File path to generator config file
+  --version             Show version number                            [boolean]
 ```
 
 Examples:

@@ -12,13 +12,13 @@
     "url": "https://github.com/timocov/dts-bundle-generator/issues"
   },
   "dependencies": {
-    "argparse": "1.0.9",
-    "typescript": "^2.2.1"
+    "typescript": "^2.2.1",
+    "yargs": "~11.0.0"
   },
   "devDependencies": {
-    "@types/argparse": "1.0.32",
     "@types/jasmine": "~2.8.6",
     "@types/node": "7.0.8",
+    "@types/yargs": "~10.0.1",
     "jasmine": "~2.9.0",
     "tslint": "~5.7.0"
   },
@@ -34,5 +34,11 @@
     "compile-tests": "tsc --project tsconfig.tests.json",
     "prepare-release": "npm run compile && node build/index.js && npm run lint && npm run compile-tests && npm run test && node build/prod-ready",
     "test": "jasmine tests/all-test-cases.js"
+  },
+  "yargs": {
+    "boolean-negation": false,
+    "camel-case-expansion": false,
+    "dot-notation": false,
+    "short-option-groups": false
   }
 }
