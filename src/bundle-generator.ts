@@ -71,7 +71,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 
 	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker);
 
-	const rootSourceFileSymbol = typeChecker.getSymbolAtLocation(getRootSourceFile(program));
+	const rootSourceFile = getRootSourceFile(program);
+	const rootSourceFileSymbol = typeChecker.getSymbolAtLocation(rootSourceFile);
 	if (rootSourceFileSymbol === undefined) {
 		throw new Error('Symbol for root source file not found');
 	}
@@ -154,8 +155,10 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			const hasNodeExportKeyword = hasNodeModifier(node, ts.SyntaxKind.ExportKeyword);
 
 			let shouldNodeHasExportKeyword = true;
-			if (node.kind === ts.SyntaxKind.ClassDeclaration || node.kind === ts.SyntaxKind.EnumDeclaration) {
-				if (options.failOnClass === true && node.kind === ts.SyntaxKind.ClassDeclaration) {
+			const isClassDeclaration = node.kind === ts.SyntaxKind.ClassDeclaration;
+
+			if (isClassDeclaration || node.kind === ts.SyntaxKind.EnumDeclaration) {
+				if (options.failOnClass === true && isClassDeclaration) {
 					const classDecl = (node as ts.ClassDeclaration);
 					const className = classDecl.name ? classDecl.name.text : '';
 					const errorMessage = `Class was found in generated dts.\n ${className} from ${sourceFile.fileName}`;
@@ -171,6 +174,13 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			}
 
 			nodeText = getTextAccordingExport(nodeText, hasNodeExportKeyword, shouldNodeHasExportKeyword);
+
+			// strip the `default` keyword from node if it is not from entry file
+			if (hasNodeModifier(node, ts.SyntaxKind.DefaultKeyword) && node.getSourceFile() !== rootSourceFile) {
+				// we need to just remove `default` from any node except class
+				// for classes we need to replace `default` with `declare` instead
+				nodeText = nodeText.replace(/\bdefault\s/, isClassDeclaration ? 'declare ' : '');
+			}
 
 			// add jsdoc for exported nodes only
 			if (shouldNodeHasExportKeyword) {
