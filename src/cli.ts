@@ -15,12 +15,12 @@ import {
 } from './logger';
 
 // tslint:disable-next-line:no-any
-function stringToArray(data: any): string[] {
-	if (typeof data !== 'string') {
-		throw new Error(`${data} is not a string`);
+function toStringsArray(data: any): string[] {
+	if (!Array.isArray(data)) {
+		throw new Error(`${data} is not a array`);
 	}
 
-	return data.split(',');
+	return data.map(String);
 }
 
 interface ParsedArgs extends yargs.Arguments {
@@ -67,22 +67,23 @@ const args = yargs
 		description: 'Fail if generated dts contains class declaration',
 	})
 	.option('external-inlines', {
-		type: 'string',
-		description: 'Comma-separated packages from node_modules to inline typings from it. Used types will be just inlined into output file',
-		coerce: stringToArray,
+		type: 'array',
+		description: 'Array of the package names from node_modules to inline typings from it.\n' +
+			'Used types will be just inlined into output file',
+		coerce: toStringsArray,
 	})
 	.option('external-imports', {
-		type: 'string',
-		description: 'Comma-separated packages from node_modules to import typings from it.\n' +
+		type: 'array',
+		description: 'Array of the package names from node_modules to import typings from it.\n' +
 			'Used types will be imported by "import { First, Second } from \'library-name\';".\n' +
 			'By default all libraries will be imported (except inlined)',
-		coerce: stringToArray,
+		coerce: toStringsArray,
 	})
 	.option('external-types', {
-		type: 'string',
-		description: 'Comma-separated packages from @types to import typings from it via triple-slash reference directive.\n' +
+		type: 'array',
+		description: 'Array of the package names from @types to import typings from it via triple-slash reference directive.\n' +
 			'By default all packages are allowed and will be used according their usages',
-		coerce: stringToArray,
+		coerce: toStringsArray,
 	})
 	.option('umd-module-name', {
 		type: 'string',
@@ -96,6 +97,7 @@ const args = yargs
 	.version()
 	.strict()
 	.example('$0 path/to/your/entry-file.ts', '')
+	.example('$0 --external-types jquery react -- entry-file.ts', '')
 	.argv as ParsedArgs;
 
 if (args.verbose) {
