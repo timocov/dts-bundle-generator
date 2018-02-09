@@ -33,7 +33,7 @@ function getTestCases(): TestCase[] {
 
 			const result: TestCase = {
 				name: directoryName,
-				inputFileName: path.resolve(testCaseDir, 'input.ts'),
+				inputFileName: path.relative(process.cwd(), path.resolve(testCaseDir, 'input.ts')),
 				config: require(path.resolve(testCaseDir, 'config.js')) as TestCaseConfig,
 				outputFileContent: prepareString(fs.readFileSync(outputFileName, 'utf-8')),
 			};
