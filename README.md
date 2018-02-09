@@ -81,6 +81,8 @@ Options:
                         according their usages                          [string]
   --umd-module-name     The name of UMD module. If specified `export as
                         namespace ModuleName;` will be emitted          [string]
+  --project             The path to a tsconfig.json file that will be used to
+                        compile files                                   [string]
   --config              File path to generator config file
   --version             Show version number                            [boolean]
 ```
@@ -100,8 +102,6 @@ Examples:
 ```
 
 ## TODO
-
-1. Add parameter to use custom `tsconfig` (currently it uses the closest `tsconfig.json`)
 
 1. Add tests ([#2](https://github.com/timocov/dts-bundle-generator/issues/2))
 

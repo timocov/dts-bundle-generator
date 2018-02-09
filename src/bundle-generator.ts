@@ -25,6 +25,7 @@ export interface GenerationOptions {
 	importedLibraries?: string[];
 	allowedTypesLibraries?: string[];
 	umdModuleName?: string;
+	preferredConfigPath?: string;
 }
 
 const skippedNodes = [
@@ -44,7 +45,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		throw new Error(`File "${filePath}" does not exist`);
 	}
 
-	const program = compileDts(filePath);
+	const program = compileDts(filePath, options.preferredConfigPath);
 	const typeChecker = program.getTypeChecker();
 
 	// we do not need all files from node_modules dir

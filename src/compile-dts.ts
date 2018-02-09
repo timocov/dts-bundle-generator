@@ -3,15 +3,15 @@ import * as ts from 'typescript';
 
 import { verboseLog, normalLog } from './logger';
 
-import { getCompilerOptionsForFile } from './get-compiler-options';
+import { getCompilerOptions } from './get-compiler-options';
 import { checkProgramDiagnosticsErrors } from './check-diagnostics-errors';
 
 interface DeclarationFiles {
 	[filePath: string]: string;
 }
 
-export function compileDts(rootFile: string): ts.Program {
-	const compilerOptions = getCompilerOptionsForFile(rootFile);
+export function compileDts(rootFile: string, preferredConfigPath?: string): ts.Program {
+	const compilerOptions = getCompilerOptions(rootFile, preferredConfigPath);
 	if (compilerOptions.outDir !== undefined) {
 		normalLog('Compiler options `outDir` is not supported and will be removed while generating dts');
 		compilerOptions.outDir = undefined;

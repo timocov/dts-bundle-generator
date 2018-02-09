@@ -6,7 +6,7 @@ import * as yargs from 'yargs';
 
 import { generateDtsBundle } from './bundle-generator';
 import { checkProgramDiagnosticsErrors } from './check-diagnostics-errors';
-import { getCompilerOptionsForFile } from './get-compiler-options';
+import { getCompilerOptions } from './get-compiler-options';
 
 import {
 	enableVerbose,
@@ -31,6 +31,7 @@ interface ParsedArgs extends yargs.Arguments {
 
 	'out-file': string | undefined;
 	'umd-module-name': string | undefined;
+	project: string | undefined;
 
 	'external-inlines': string[] | undefined;
 	'external-imports': string[] | undefined;
@@ -87,6 +88,10 @@ const args = yargs
 		type: 'string',
 		description: 'The name of UMD module. If specified `export as namespace ModuleName;` will be emitted',
 	})
+	.option('project', {
+		type: 'string',
+		description: 'The path to a tsconfig.json file that will be used to compile files',
+	})
 	.config('config', 'File path to generator config file')
 	.version()
 	.strict()
@@ -108,6 +113,7 @@ try {
 		importedLibraries: args['external-imports'],
 		allowedTypesLibraries: args['external-types'],
 		umdModuleName: args['umd-module-name'],
+		preferredConfigPath: args.project,
 	});
 
 	let outFile = args['out-file'];
@@ -125,7 +131,7 @@ try {
 	}
 
 	normalLog('Checking of the generated file...');
-	const program = ts.createProgram([outFile], getCompilerOptionsForFile(inputFilePath));
+	const program = ts.createProgram([outFile], getCompilerOptions(inputFilePath, args.project));
 	checkProgramDiagnosticsErrors(program);
 	normalLog('Done.');
 } catch (ex) {

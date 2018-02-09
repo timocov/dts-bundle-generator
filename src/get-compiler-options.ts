@@ -1,17 +1,9 @@
-import * as path from 'path';
 import * as ts from 'typescript';
 
 import { verboseLog } from './logger';
 
-export function getCompilerOptionsForFile(filePath: string): ts.CompilerOptions {
-	// special case for windows
-	const searchPath = path.join(ts.sys.getCurrentDirectory(), filePath).replace(/\\/g, '/');
-
-	const configFileName = ts.findConfigFile(searchPath, ts.sys.fileExists);
-
-	if (!configFileName) {
-		throw new Error(`Cannot find config file`);
-	}
+export function getCompilerOptions(inputFileName: string, preferredConfigPath?: string): ts.CompilerOptions {
+	const configFileName = preferredConfigPath !== undefined ? preferredConfigPath : findConfig(inputFileName);
 
 	verboseLog(`Using config: ${configFileName}`);
 
@@ -26,4 +18,17 @@ export function getCompilerOptionsForFile(filePath: string): ts.CompilerOptions 
 	}
 
 	return compilerOptionsParseResult.options;
+}
+
+function findConfig(inputFile: string): string {
+	// special case for windows
+	const searchPath = inputFile.replace(/\\/g, '/');
+
+	const configFileName = ts.findConfigFile(searchPath, ts.sys.fileExists);
+
+	if (!configFileName) {
+		throw new Error(`Cannot find config file`);
+	}
+
+	return configFileName;
 }
