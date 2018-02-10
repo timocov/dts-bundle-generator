@@ -101,10 +101,6 @@ Examples:
 ./node_modules/.bin/dts-bundle-generator --external-types=jquery path/to/your/entry-file.ts
 ```
 
-## TODO
-
-1. Add tests ([#2](https://github.com/timocov/dts-bundle-generator/issues/2))
-
 ## Why
 
 If you have modules you can create definitions by default via `tsc`, but it generates them for each module separately. Yeah, you can use `outFile` (for `amd` and `system`) but it generates code like this:
