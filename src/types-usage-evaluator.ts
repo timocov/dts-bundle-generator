@@ -57,8 +57,8 @@ export class TypesUsageEvaluator {
 		if (isNodeNamedDeclaration(node) && node.name) {
 			const childSymbol = this.getSymbol(node.name);
 			this.computeUsagesRecursively(node, childSymbol);
-		} else if (node.kind === ts.SyntaxKind.VariableStatement) {
-			for (const varDeclaration of (node as ts.VariableStatement).declarationList.declarations) {
+		} else if (ts.isVariableStatement(node)) {
+			for (const varDeclaration of node.declarationList.declarations) {
 				this.computeUsageForNode(varDeclaration);
 			}
 		}
@@ -73,7 +73,7 @@ export class TypesUsageEvaluator {
 
 			queue.push(...child.getChildren());
 
-			if (child.kind === ts.SyntaxKind.Identifier) {
+			if (ts.isIdentifier(child)) {
 				const childSymbol = this.getSymbol(child);
 
 				let symbols = this.nodesParentsMap.get(childSymbol);

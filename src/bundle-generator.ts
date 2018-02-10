@@ -111,8 +111,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			let isNodeUsed = false;
 			if (isNodeNamedDeclaration(node)) {
 				isNodeUsed = rootFileExports.some(typesUsageEvaluator.isTypeUsedBySymbol.bind(typesUsageEvaluator, node));
-			} else if (node.kind === ts.SyntaxKind.VariableStatement) {
-				const declarations = (node as ts.VariableStatement).declarationList.declarations;
+			} else if (ts.isVariableStatement(node)) {
+				const declarations = node.declarationList.declarations;
 				isNodeUsed = declarations.some((declaration: ts.VariableDeclaration) => {
 					return isDeclarationExported(rootFileExports, typeChecker, declaration);
 				});
@@ -156,19 +156,17 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			const hasNodeExportKeyword = hasNodeModifier(node, ts.SyntaxKind.ExportKeyword);
 
 			let shouldNodeHasExportKeyword = true;
-			const isClassDeclaration = node.kind === ts.SyntaxKind.ClassDeclaration;
 
-			if (isClassDeclaration || node.kind === ts.SyntaxKind.EnumDeclaration) {
-				if (options.failOnClass === true && isClassDeclaration) {
-					const classDecl = (node as ts.ClassDeclaration);
-					const className = classDecl.name ? classDecl.name.text : '';
+			if (ts.isClassDeclaration(node) || ts.isEnumDeclaration(node)) {
+				if (options.failOnClass === true && ts.isClassDeclaration(node)) {
+					const className = node.name ? node.name.text : '';
 					const errorMessage = `Class was found in generated dts.\n ${className} from ${sourceFile.fileName}`;
 					throw new Error(errorMessage);
 				}
 
 				// not all classes and enums can be exported - only exported from root file
-				shouldNodeHasExportKeyword = isDeclarationExported(rootFileExports, typeChecker, node as (ts.ClassDeclaration | ts.EnumDeclaration));
-				if (node.kind === ts.SyntaxKind.EnumDeclaration) {
+				shouldNodeHasExportKeyword = isDeclarationExported(rootFileExports, typeChecker, node);
+				if (ts.isEnumDeclaration(node)) {
 					// but const enum always can be exported
 					shouldNodeHasExportKeyword = shouldNodeHasExportKeyword || hasNodeModifier(node, ts.SyntaxKind.ConstKeyword);
 				}
@@ -180,7 +178,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			if (hasNodeModifier(node, ts.SyntaxKind.DefaultKeyword) && node.getSourceFile() !== rootSourceFile) {
 				// we need to just remove `default` from any node except class
 				// for classes we need to replace `default` with `declare` instead
-				nodeText = nodeText.replace(/\bdefault\s/, isClassDeclaration ? 'declare ' : '');
+				nodeText = nodeText.replace(/\bdefault\s/, ts.isClassDeclaration(node) ? 'declare ' : '');
 			}
 
 			// add jsdoc for exported nodes only
