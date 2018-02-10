@@ -30,7 +30,6 @@ export interface GenerationOptions {
 
 const skippedNodes = [
 	ts.SyntaxKind.ExportDeclaration,
-	ts.SyntaxKind.ExportAssignment,
 	ts.SyntaxKind.ImportDeclaration,
 	ts.SyntaxKind.ImportEqualsDeclaration,
 ];
@@ -101,6 +100,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		const shouldBeInlined = importedLibraryName !== null && inlinedLibraries.indexOf(importedLibraryName) !== -1;
 		const isAllowedAsImportedLibrary = importedLibraryName !== null && isLibraryAllowed(importedLibraryName, importedLibraries);
 
+		const isRootSourceFile = sourceFile === rootSourceFile;
+
 		let fileOutput = '';
 		for (const node of sourceFile.statements) {
 			// we should skip import and exports statements
@@ -109,7 +110,14 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			}
 
 			let isNodeUsed = false;
-			if (isNodeNamedDeclaration(node)) {
+			if (ts.isExportAssignment(node)) {
+				// we should skip `export default` expressions from non-root files and `export =` from all files
+				if (node.isExportEquals || !isRootSourceFile) {
+					continue;
+				}
+
+				isNodeUsed = true;
+			} else if (isNodeNamedDeclaration(node)) {
 				isNodeUsed = rootFileExports.some(typesUsageEvaluator.isTypeUsedBySymbol.bind(typesUsageEvaluator, node));
 			} else if (ts.isVariableStatement(node)) {
 				const declarations = node.declarationList.declarations;
@@ -153,7 +161,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 
 			let nodeText = node.getText();
 
-			const hasNodeExportKeyword = hasNodeModifier(node, ts.SyntaxKind.ExportKeyword);
+			const hasNodeExportKeyword = ts.isExportAssignment(node) || hasNodeModifier(node, ts.SyntaxKind.ExportKeyword);
 
 			let shouldNodeHasExportKeyword = true;
 
@@ -175,7 +183,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			nodeText = getTextAccordingExport(nodeText, hasNodeExportKeyword, shouldNodeHasExportKeyword);
 
 			// strip the `default` keyword from node if it is not from entry file
-			if (hasNodeModifier(node, ts.SyntaxKind.DefaultKeyword) && node.getSourceFile() !== rootSourceFile) {
+			if (hasNodeModifier(node, ts.SyntaxKind.DefaultKeyword) && !isRootSourceFile) {
 				// we need to just remove `default` from any node except class
 				// for classes we need to replace `default` with `declare` instead
 				nodeText = nodeText.replace(/\bdefault\s/, ts.isClassDeclaration(node) ? 'declare ' : '');
