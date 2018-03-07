@@ -4,15 +4,14 @@ import * as path from 'path';
 import * as ts from 'typescript';
 import * as yargs from 'yargs';
 
-import { generateDtsBundle } from './bundle-generator';
-import { checkProgramDiagnosticsErrors } from './check-diagnostics-errors';
-import { getCompilerOptions } from './get-compiler-options';
+import { generateDtsBundle } from '../bundle-generator';
+import { checkProgramDiagnosticsErrors } from '../check-diagnostics-errors';
+import { getCompilerOptions } from '../get-compiler-options';
 
 import {
 	enableVerbose,
 	normalLog,
-	verboseLog,
-} from './logger';
+} from '../logger';
 
 // tslint:disable-next-line:no-any
 function toStringsArray(data: any): string[] {
@@ -103,8 +102,6 @@ const args = yargs
 if (args.verbose) {
 	enableVerbose();
 }
-
-verboseLog(`Arguments: ${JSON.stringify(args)}`);
 
 try {
 	const inputFilePath = args._[0];
