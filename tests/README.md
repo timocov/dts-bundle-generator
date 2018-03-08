@@ -1,6 +1,6 @@
 ## Create new test case
 
-To create new test case you need to create new folder in `tests/test-cases` (as sample you may use `tests/test-case-sample` folder).
+To create new test case you need to create new folder in `tests/test-cases` (as a sample you may use `tests/test-case-sample` folder).
 New folder's name will be used as name of test case.
 
 Each test case must have at least 3 files:
@@ -16,3 +16,4 @@ Each test case must have at least 3 files:
 npm run compile-tests
 npm run test
 ```
+	

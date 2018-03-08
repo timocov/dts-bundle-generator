@@ -147,7 +147,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				}
 
 				const importName = nodeIdentifier.getText();
-				normalLog(`Add import with name "${importName}" for library "${importedLibraryName}"`);
+				normalLog(`Adding import with name "${importName}" for library "${importedLibraryName}"`);
 
 				let libraryImports = importedSymbols.get(importedLibraryName);
 				if (libraryImports === undefined) {
@@ -172,10 +172,10 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 					throw new Error(errorMessage);
 				}
 
-				// not all classes and enums can be exported - only exported from root file
+				// not every class and enum can be exported (only exported from root file can)
 				shouldNodeHasExportKeyword = isDeclarationExported(rootFileExports, typeChecker, node);
 				if (ts.isEnumDeclaration(node)) {
-					// but const enum always can be exported
+					// const enum always can be exported
 					shouldNodeHasExportKeyword = shouldNodeHasExportKeyword || hasNodeModifier(node, ts.SyntaxKind.ConstKeyword);
 				}
 			}
@@ -184,7 +184,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 
 			// strip the `default` keyword from node if it is not from entry file
 			if (hasNodeModifier(node, ts.SyntaxKind.DefaultKeyword) && !isRootSourceFile) {
-				// we need to just remove `default` from any node except class
+				// we need just to remove `default` from any node except class node
 				// for classes we need to replace `default` with `declare` instead
 				nodeText = nodeText.replace(/\bdefault\s/, ts.isClassDeclaration(node) ? 'declare ' : '');
 			}

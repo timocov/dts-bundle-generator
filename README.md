@@ -2,7 +2,7 @@
 
 # DTS Bundle Generator
 
-This small tool can generate a bundle of dts from your ts code.
+Small tool to generate a dts bundle from your ts code.
 
 For example:
 
@@ -28,7 +28,7 @@ export function makeB(): B {
 }
 ```
 
-When you run it as `dts-bundle-generator -o my.d.ts entry.ts` in `my.d.ts` you will get the following:
+When you run `dts-bundle-generator -o my.d.ts entry.ts` in `my.d.ts` you will get the following:
 
 ```ts
 declare class B {
@@ -38,7 +38,7 @@ export declare function makeB(): B;
 
 ## Installation
 
-1. Installing the package from `npm`:
+1. Install the package from `npm`:
     ```bash
     npm install --save-dev dts-bundle-generator
     ```
@@ -49,7 +49,7 @@ export declare function makeB(): B;
     npm install -g dts-bundle-generator
     ```
 
-1. Enable `declaration` compiler options in `tsconfig.json`
+1. Enable `declaration` compiler option in `tsconfig.json`
 
 ## Usage
 
@@ -103,7 +103,7 @@ Examples:
 
 ## Why
 
-If you have modules you can create definitions by default via `tsc`, but it generates them for each module separately. Yeah, you can use `outFile` (for `amd` and `system`) but it generates code like this:
+If you have modules you can create definitions by default via `tsc`, but `tsc` generates them for each module separately. Yeah, you can use `outFile` (for `amd` and `system`) but generated code looks like this:
 
 ```ts
 declare module "a" {
@@ -122,9 +122,9 @@ declare module "entry" {
 
 but:
 
-1. There is no one usages of `A` (maybe you do not want to export it?)
+1. There is not a single usage of `A` (maybe you do not want to export it?)
 
-1. If you bundle your code in such a way all the modules are merged (like when using Webpack or Rollup) and there are no such modules as `a` or `b` (actually `entry` too).
+1. If you bundle your code this way all the modules are merged (like when using Webpack or Rollup) and there are no such modules as `a` or `b` (actually `entry` too).
 
 ## Known limitations
 

@@ -9,12 +9,12 @@ export function getCompilerOptions(inputFileName: string, preferredConfigPath?: 
 
 	const configParseResult = ts.readConfigFile(configFileName, ts.sys.readFile);
 	if (configParseResult.error) {
-		throw new Error(`Error while process tsconfig file: ${JSON.stringify(configParseResult.error)}`);
+		throw new Error(`Error while processing tsconfig file: ${JSON.stringify(configParseResult.error)}`);
 	}
 
 	const compilerOptionsParseResult = ts.convertCompilerOptionsFromJson(configParseResult.config.compilerOptions, './');
 	if (compilerOptionsParseResult.errors.length !== 0) {
-		throw new Error(`Error while process tsconfig compiler options: ${JSON.stringify(compilerOptionsParseResult.errors)}`);
+		throw new Error(`Error while processing tsconfig compiler options: ${JSON.stringify(compilerOptionsParseResult.errors)}`);
 	}
 
 	return compilerOptionsParseResult.options;

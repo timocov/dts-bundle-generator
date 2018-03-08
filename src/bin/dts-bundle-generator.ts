@@ -68,7 +68,7 @@ const args = yargs
 	.option('external-inlines', {
 		type: 'array',
 		description: 'Array of the package names from node_modules to inline typings from it.\n' +
-			'Used types will be just inlined into output file',
+			'Used types will just be inlined into output file',
 		coerce: toStringsArray,
 	})
 	.option('external-imports', {
@@ -125,11 +125,11 @@ try {
 	ts.sys.writeFile(outFile, generatedDts);
 
 	if (args['no-check']) {
-		normalLog('Checking of the file is skipped due "no-check" flag');
+		normalLog('File checking is skipped due to "no-check" flag');
 		process.exit(0);
 	}
 
-	normalLog('Checking of the generated file...');
+	normalLog('Checking the generated file...');
 	const program = ts.createProgram([outFile], getCompilerOptions(inputFilePath, args.project));
 	checkProgramDiagnosticsErrors(program);
 	normalLog('Done.');
