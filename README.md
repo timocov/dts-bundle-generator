@@ -67,7 +67,7 @@ Options:
   --fail-on-class       Fail if generated dts contains class declaration
                                                       [boolean] [default: false]
   --external-inlines    Comma-separated packages from node_modules to inline
-                        typings from it. Used types will be just inlined into
+                        typings from it. Used types will just be inlined into
                         output file                                     [string]
   --external-imports    Comma-separated packages from node_modules to import
                         typings from it.
