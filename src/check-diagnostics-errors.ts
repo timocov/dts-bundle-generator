@@ -23,5 +23,5 @@ function checkDiagnosticsErrors(diagnostics: ReadonlyArray<ts.Diagnostic>): void
 	}
 
 	errorLog(errors.join('\n'));
-	throw new Error('Compile with errors');
+	throw new Error('Compiled with errors');
 }

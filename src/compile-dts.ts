@@ -13,7 +13,7 @@ interface DeclarationFiles {
 export function compileDts(rootFile: string, preferredConfigPath?: string): ts.Program {
 	const compilerOptions = getCompilerOptions(rootFile, preferredConfigPath);
 	if (compilerOptions.outDir !== undefined) {
-		normalLog('Compiler options `outDir` is not supported and will be removed while generating dts');
+		normalLog('Compiler option `outDir` is not supported and will be removed while generating dts');
 		compilerOptions.outDir = undefined;
 	}
 
