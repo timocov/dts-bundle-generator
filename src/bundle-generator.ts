@@ -20,6 +20,7 @@ import {
 
 export interface GenerationOptions {
 	failOnClass?: boolean;
+	sortNodes?: boolean;
 	inlinedLibraries?: string[];
 	importedLibraries?: string[];
 	allowedTypesLibraries?: string[];
@@ -88,7 +89,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 	const usedTypes = new Set<string>();
 	const importedSymbols = new Map<string, Set<string>>();
 
-	let resultOutput = '';
+	const nodesForOutput: string[] = [];
 	for (const sourceFile of sourceFiles) {
 		verboseLog(`\n\n======= Preparing file: ${sourceFile.fileName} =======`);
 
@@ -100,8 +101,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		const isAllowedAsImportedLibrary = importedLibraryName !== null && isLibraryAllowed(importedLibraryName, importedLibraries);
 
 		const isRootSourceFile = sourceFile === rootSourceFile;
+		const prevNodesLength = nodesForOutput.length;
 
-		let fileOutput = '';
 		for (const node of sourceFile.statements) {
 			// we should skip import and exports statements
 			if (skippedNodes.indexOf(node.kind) !== -1) {
@@ -184,39 +185,43 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				}
 			}
 
-			fileOutput += `${spacesToTabs(nodeText)}\n`;
+			nodesForOutput.push(spacesToTabs(nodeText));
 		}
 
-		if (fileOutput.length === 0) {
+		if (prevNodesLength === nodesForOutput.length) {
 			verboseLog(`No output for file: ${sourceFile.fileName}`);
 		}
+	}
 
-		resultOutput += fileOutput;
+	let resultOutput = '';
+
+	if (usedTypes.size !== 0) {
+		const header = generateReferenceTypesDirective(Array.from(usedTypes));
+		resultOutput += `${header}\n\n`;
 	}
 
 	if (importedSymbols.size !== 0) {
-		const importsArray: string[] = [];
-
 		// we need to have sorted imports of libraries to have more "stable" output
 		const sortedEntries = Array.from(importedSymbols.entries()).sort((firstEntry: [string, Set<string>], secondEntry: [string, Set<string>]) => {
 			return firstEntry[0].localeCompare(secondEntry[0]);
 		});
 
-		for (const entry of sortedEntries) {
+		const importsArray = sortedEntries.map((entry: [string, Set<string>]) => {
 			const [libraryName, libraryImports] = entry;
-			importsArray.push(generateImport(libraryName, Array.from(libraryImports)));
-		}
+			return generateImport(libraryName, Array.from(libraryImports));
+		});
 
-		resultOutput = `${importsArray.join('\n')}\n\n${resultOutput}`;
+		resultOutput += `${importsArray.join('\n')}\n\n`;
 	}
 
-	if (usedTypes.size !== 0) {
-		const header = generateReferenceTypesDirective(Array.from(usedTypes));
-		resultOutput = `${header}\n\n${resultOutput}`;
+	if (options.sortNodes) {
+		nodesForOutput.sort();
 	}
+
+	resultOutput += nodesForOutput.join('\n');
 
 	if (options.umdModuleName !== undefined) {
-		resultOutput += `\nexport as namespace ${options.umdModuleName};\n`;
+		resultOutput += `\n\nexport as namespace ${options.umdModuleName};\n`;
 	}
 
 	return resultOutput;
