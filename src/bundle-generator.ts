@@ -19,7 +19,6 @@ import {
 } from './logger';
 
 export interface GenerationOptions {
-	outputFilenames?: boolean;
 	failOnClass?: boolean;
 	inlinedLibraries?: string[];
 	importedLibraries?: string[];
@@ -190,10 +189,6 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 
 		if (fileOutput.length === 0) {
 			verboseLog(`No output for file: ${sourceFile.fileName}`);
-		}
-
-		if (options.outputFilenames) {
-			fileOutput = `// File: ${sourceFile.fileName}\n\n${fileOutput}\n`;
 		}
 
 		resultOutput += fileOutput;

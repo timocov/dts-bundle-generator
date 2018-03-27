@@ -25,7 +25,6 @@ function toStringsArray(data: any): string[] {
 interface ParsedArgs extends yargs.Arguments {
 	verbose: boolean;
 	'no-check': boolean;
-	'output-source-file': boolean;
 	'fail-on-class': boolean;
 
 	'out-file': string | undefined;
@@ -54,11 +53,6 @@ const args = yargs
 		type: 'boolean',
 		default: false,
 		description: 'Skip validation of generated d.ts file',
-	})
-	.option('output-source-file', {
-		type: 'boolean',
-		default: false,
-		description: 'Add comment with file path the definitions came from',
 	})
 	.option('fail-on-class', {
 		type: 'boolean',
@@ -107,7 +101,6 @@ try {
 	const inputFilePath = args._[0];
 	const generatedDts = generateDtsBundle(inputFilePath, {
 		failOnClass: args['fail-on-class'],
-		outputFilenames: args['output-source-file'],
 		inlinedLibraries: args['external-inlines'],
 		importedLibraries: args['external-imports'],
 		allowedTypesLibraries: args['external-types'],
