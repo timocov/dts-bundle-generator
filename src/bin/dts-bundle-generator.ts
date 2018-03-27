@@ -23,6 +23,7 @@ function toStringsArray(data: any): string[] {
 }
 
 interface ParsedArgs extends yargs.Arguments {
+	sort: boolean;
 	verbose: boolean;
 	'no-check': boolean;
 	'fail-on-class': boolean;
@@ -86,6 +87,11 @@ const args = yargs
 		type: 'string',
 		description: 'The path to a tsconfig.json file that will be used to compile files',
 	})
+	.option('sort', {
+		type: 'boolean',
+		default: false,
+		description: 'Sort output nodes',
+	})
 	.config('config', 'File path to generator config file')
 	.version()
 	.strict()
@@ -106,6 +112,7 @@ try {
 		allowedTypesLibraries: args['external-types'],
 		umdModuleName: args['umd-module-name'],
 		preferredConfigPath: args.project,
+		sortNodes: args.sort,
 	});
 
 	let outFile = args['out-file'];
