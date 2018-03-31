@@ -18,10 +18,22 @@ export class TypesUsageEvaluator {
 			return false;
 		}
 
-		return this.isSymbolUsedBySymbol(this.getSymbol(typeNode.name), this.getActualSymbol(by), new Set<ts.Symbol>());
+		return this.isSymbolUsedBySymbol(this.getSymbol(typeNode.name), by);
 	}
 
-	private isSymbolUsedBySymbol(fromSymbol: ts.Symbol, toSymbol: ts.Symbol, visitedSymbols: Set<ts.Symbol>): boolean {
+	public isSymbolUsedBySymbol(symbol: ts.Symbol, by: ts.Symbol): boolean {
+		return this.isSymbolUsedBySymbolImpl(this.getActualSymbol(symbol), this.getActualSymbol(by), new Set<ts.Symbol>());
+	}
+
+	public getSymbolsUsingNode(typeNode: ts.NamedDeclaration): Set<ts.Symbol> | null {
+		if (typeNode.name === undefined) {
+			return null;
+		}
+
+		return this.nodesParentsMap.get(this.getSymbol(typeNode.name)) || null;
+	}
+
+	private isSymbolUsedBySymbolImpl(fromSymbol: ts.Symbol, toSymbol: ts.Symbol, visitedSymbols: Set<ts.Symbol>): boolean {
 		if (fromSymbol === toSymbol) {
 			return true;
 		}
@@ -34,7 +46,7 @@ export class TypesUsageEvaluator {
 				}
 
 				visitedSymbols.add(symbol);
-				if (this.isSymbolUsedBySymbol(symbol, toSymbol, visitedSymbols)) {
+				if (this.isSymbolUsedBySymbolImpl(symbol, toSymbol, visitedSymbols)) {
 					return true;
 				}
 			}

@@ -109,24 +109,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				continue;
 			}
 
-			let isNodeUsed = false;
-			if (ts.isExportAssignment(node)) {
-				// we should skip `export default` expressions from non-root files and `export =` from all files
-				if (node.isExportEquals || !isRootSourceFile) {
-					continue;
-				}
-
-				isNodeUsed = true;
-			} else if (isNodeNamedDeclaration(node)) {
-				isNodeUsed = rootFileExports.some(typesUsageEvaluator.isTypeUsedBySymbol.bind(typesUsageEvaluator, node));
-			} else if (ts.isVariableStatement(node)) {
-				const declarations = node.declarationList.declarations;
-				isNodeUsed = declarations.some((declaration: ts.VariableDeclaration) => {
-					return isDeclarationExported(rootFileExports, typeChecker, declaration);
-				});
-			}
-
-			if (!isNodeUsed) {
+			if (!isNodeUsed(node, rootFileExports, isRootSourceFile, typesUsageEvaluator, typeChecker)) {
 				verboseLog(`Skip file member: ${node.getText().replace(/(\n|\r)/g, '').slice(0, 50)}...`);
 				continue;
 			}
@@ -146,16 +129,19 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 					throw new Error(`Import/usage unnamed declaration: ${node.getText()}`);
 				}
 
-				const importName = nodeIdentifier.getText();
-				normalLog(`Adding import with name "${importName}" for library "${importedLibraryName}"`);
+				if (shouldNodeBeImported(node as ts.DeclarationStatement, rootFileExports, typesUsageEvaluator)) {
+					const importName = nodeIdentifier.getText();
+					normalLog(`Adding import with name "${importName}" for library "${importedLibraryName}"`);
 
-				let libraryImports = importedSymbols.get(importedLibraryName);
-				if (libraryImports === undefined) {
-					libraryImports = new Set<string>();
-					importedSymbols.set(importedLibraryName, libraryImports);
+					let libraryImports = importedSymbols.get(importedLibraryName);
+					if (libraryImports === undefined) {
+						libraryImports = new Set<string>();
+						importedSymbols.set(importedLibraryName, libraryImports);
+					}
+
+					libraryImports.add(importName);
 				}
 
-				libraryImports.add(importName);
 				continue;
 			}
 
@@ -295,4 +281,49 @@ function generateReferenceTypesDirective(libraries: string[]): string {
 
 function isLibraryAllowed(libraryName: string, allowedArray?: string[]): boolean {
 	return allowedArray === undefined || allowedArray.indexOf(libraryName) !== -1;
+}
+
+function isNodeUsed(
+	node: ts.Node,
+	rootFileExports: ts.Symbol[],
+	isNodeFromRootFile: boolean,
+	typesUsageEvaluator: TypesUsageEvaluator,
+	typeChecker: ts.TypeChecker
+): boolean {
+	if (ts.isExportAssignment(node)) {
+		// we should allow only `export default` expressions from root file only
+		return isNodeFromRootFile && !node.isExportEquals;
+	} else if (isNodeNamedDeclaration(node)) {
+		return rootFileExports.some((rootExport: ts.Symbol) => typesUsageEvaluator.isTypeUsedBySymbol(node, rootExport));
+	} else if (ts.isVariableStatement(node)) {
+		return node.declarationList.declarations.some((declaration: ts.VariableDeclaration) => {
+			return isDeclarationExported(rootFileExports, typeChecker, declaration);
+		});
+	}
+
+	return false;
+}
+
+function shouldNodeBeImported(node: ts.NamedDeclaration, rootFileExports: ts.Symbol[], typesUsageEvaluator: TypesUsageEvaluator): boolean {
+	const symbolsUsingNode = typesUsageEvaluator.getSymbolsUsingNode(node as ts.DeclarationStatement);
+	if (symbolsUsingNode === null) {
+		throw new Error('Something went wrong - value cannot be null');
+	}
+
+	// we should import only symbols which are used in types directly
+	return Array.from(symbolsUsingNode).some((symbol: ts.Symbol) => {
+		if (symbol.valueDeclaration === undefined && symbol.declarations === undefined) {
+			return false;
+		} else if (symbol.valueDeclaration !== undefined && isDeclarationFromExternalModule(symbol.valueDeclaration)) {
+			return false;
+		} else if (symbol.declarations !== undefined && symbol.declarations.every(isDeclarationFromExternalModule)) {
+			return false;
+		}
+
+		return rootFileExports.some((rootSymbol: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(symbol, rootSymbol));
+	});
+}
+
+function isDeclarationFromExternalModule(node: ts.Declaration): boolean {
+	return getLibraryName(node.getSourceFile().fileName) !== null;
 }
