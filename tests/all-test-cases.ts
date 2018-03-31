@@ -26,7 +26,9 @@ function prepareString(str: string): string {
 
 function getTestCases(): TestCase[] {
 	return fs.readdirSync(testCasesDir)
-		.filter(isDirectory)
+		.filter((filePath: string) => {
+			return isDirectory(filePath) && path.basename(filePath) !== 'node_modules';
+		})
 		.map((directoryName: string) => {
 			const testCaseDir = path.resolve(testCasesDir, directoryName);
 			const outputFileName = path.resolve(testCaseDir, 'output.d.ts');
