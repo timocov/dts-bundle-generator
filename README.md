@@ -57,34 +57,33 @@ export declare function makeB(): B;
 Usage: dts-bundle-generator [options] <file>
 
 Options:
-  --help                Show help                                      [boolean]
-  --out-file, -o        File name of generated d.ts                     [string]
-  --verbose             Enable verbose logging        [boolean] [default: false]
-  --no-check            Skip validation of generated d.ts file
+  --help              Show help                                        [boolean]
+  --out-file, -o      File name of generated d.ts                       [string]
+  --verbose           Enable verbose logging          [boolean] [default: false]
+  --no-check          Skip validation of generated d.ts file
                                                       [boolean] [default: false]
-  --output-source-file  Add comment with file path the definitions came from
+  --fail-on-class     Fail if generated dts contains class declaration
                                                       [boolean] [default: false]
-  --fail-on-class       Fail if generated dts contains class declaration
-                                                      [boolean] [default: false]
-  --external-inlines    Comma-separated packages from node_modules to inline
-                        typings from it. Used types will just be inlined into
-                        output file                                     [string]
-  --external-imports    Comma-separated packages from node_modules to import
-                        typings from it.
-                        Used types will be imported by "import { First, Second }
-                        from 'library-name';".
-                        By default all libraries will be imported (except
-                        inlined)                                        [string]
-  --external-types      Comma-separated packages from @types to import typings
-                        from it via triple-slash reference directive.
-                        By default all packages are allowed and will be used
-                        according their usages                          [string]
-  --umd-module-name     The name of UMD module. If specified `export as
-                        namespace ModuleName;` will be emitted          [string]
-  --project             The path to a tsconfig.json file that will be used to
-                        compile files                                   [string]
-  --config              File path to generator config file
-  --version             Show version number                            [boolean]
+  --external-inlines  Array of the package names from node_modules to inline
+                      typings from it.
+                      Used types will just be inlined into output file   [array]
+  --external-imports  Array of the package names from node_modules to import
+                      typings from it.
+                      Used types will be imported by "import { First, Second }
+                      from 'library-name';".
+                      By default all libraries will be imported (except inlined)
+                                                                         [array]
+  --external-types    Array of the package names from @types to import typings
+                      from it via triple-slash reference directive.
+                      By default all packages are allowed and will be used
+                      according their usages                             [array]
+  --umd-module-name   The name of UMD module. If specified `export as namespace
+                      ModuleName;` will be emitted                      [string]
+  --project           The path to a tsconfig.json file that will be used to
+                      compile files                                     [string]
+  --sort              Sort output nodes               [boolean] [default: false]
+  --config            File path to generator config file
+  --version           Show version number                              [boolean]
 ```
 
 Examples:
