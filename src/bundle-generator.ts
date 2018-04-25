@@ -7,11 +7,16 @@ import {
 	isNodeNamedDeclaration,
 } from './typescript-helpers';
 
+import { getLibraryName } from './node-modules-helpers';
+
 import {
-	getLibraryName,
-	getTypesLibraryName,
-	isTypescriptLibFile,
-} from './node-modules-helpers';
+	getModuleInfo,
+	ModuleCriteria,
+	ModuleInfo,
+	ModuleType,
+} from './module-info';
+
+import { generateOutput } from './generate-output';
 
 import {
 	normalLog,
@@ -34,11 +39,12 @@ const skippedNodes = [
 	ts.SyntaxKind.ImportEqualsDeclaration,
 ];
 
-// tslint:disable-next-line:cyclomatic-complexity
 export function generateDtsBundle(filePath: string, options: GenerationOptions = {}): string {
-	const inlinedLibraries = options.inlinedLibraries || [];
-	const importedLibraries = options.importedLibraries;
-	const allowedTypesLibs = options.allowedTypesLibraries;
+	const criteria: ModuleCriteria = {
+		allowedTypesLibraries: options.allowedTypesLibraries,
+		importedLibraries: options.importedLibraries,
+		inlinedLibraries: options.inlinedLibraries || [],
+	};
 
 	if (!ts.sys.fileExists(filePath)) {
 		throw new Error(`File "${filePath}" does not exist`);
@@ -47,24 +53,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 	const program = compileDts(filePath, options.preferredConfigPath);
 	const typeChecker = program.getTypeChecker();
 
-	// we do not need all files from node_modules dir
 	const sourceFiles = program.getSourceFiles().filter((file: ts.SourceFile) => {
-		const fileName = file.fileName;
-		const libraryName = getLibraryName(fileName);
-		if (libraryName === null) {
-			return true;
-		}
-
-		if (isTypescriptLibFile(fileName)) {
-			return false;
-		}
-
-		const typesLibName = getTypesLibraryName(fileName);
-		if (typesLibName !== null) {
-			return isLibraryAllowed(typesLibName, allowedTypesLibs);
-		}
-
-		return inlinedLibraries.indexOf(libraryName) !== -1 || isLibraryAllowed(libraryName, importedLibraries);
+		return getModuleInfo(file.fileName, criteria).type !== ModuleType.ShouldNotBeUsed;
 	});
 
 	verboseLog(`Input source files:\n  ${sourceFiles.map((file: ts.SourceFile) => file.fileName).join('\n  ')}`);
@@ -86,145 +76,131 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		return symbol;
 	});
 
-	const usedTypes = new Set<string>();
-	const importedSymbols = new Map<string, Set<string>>();
+	const collectionResult: CollectingResult = {
+		typesReferences: new Set<string>(),
+		imports: new Map<string, Set<string>>(),
+		statements: [],
+	};
 
-	const nodesForOutput: string[] = [];
 	for (const sourceFile of sourceFiles) {
 		verboseLog(`\n\n======= Preparing file: ${sourceFile.fileName} =======`);
 
-		const sourceFileText = sourceFile.getFullText();
+		const prevStatementsCount = collectionResult.statements.length;
+		updateResult(
+			{
+				currentModule: getModuleInfo(sourceFile.fileName, criteria),
+				statements: sourceFile.statements,
+				isStatementUsed: (statement: ts.Statement) => isNodeUsed(statement, rootFileExports, typesUsageEvaluator, typeChecker),
+				shouldStatementBeImported: (statement: ts.DeclarationStatement) => shouldNodeBeImported(statement, rootFileExports, typesUsageEvaluator),
+			},
+			collectionResult
+		);
 
-		const typesLibraryName = getTypesLibraryName(sourceFile.fileName);
-		const importedLibraryName = getLibraryName(sourceFile.fileName);
-		const shouldBeInlined = importedLibraryName !== null && inlinedLibraries.indexOf(importedLibraryName) !== -1;
-		const isAllowedAsImportedLibrary = importedLibraryName !== null && isLibraryAllowed(importedLibraryName, importedLibraries);
-
-		const isRootSourceFile = sourceFile === rootSourceFile;
-		const prevNodesLength = nodesForOutput.length;
-
-		for (const node of sourceFile.statements) {
-			// we should skip import and exports statements
-			if (skippedNodes.indexOf(node.kind) !== -1) {
-				continue;
-			}
-
-			if (!isNodeUsed(node, rootFileExports, isRootSourceFile, typesUsageEvaluator, typeChecker)) {
-				verboseLog(`Skip file member: ${node.getText().replace(/(\n|\r)/g, '').slice(0, 50)}...`);
-				continue;
-			}
-
-			if (typesLibraryName !== null) {
-				if (!usedTypes.has(typesLibraryName)) {
-					normalLog(`Library "${typesLibraryName}" will be added via reference directive`);
-					usedTypes.add(typesLibraryName);
-				}
-
-				break;
-			}
-
-			if (importedLibraryName !== null && isAllowedAsImportedLibrary && !shouldBeInlined) {
-				const nodeIdentifier = (node as ts.DeclarationStatement).name;
-				if (nodeIdentifier === undefined) {
-					throw new Error(`Import/usage unnamed declaration: ${node.getText()}`);
-				}
-
-				if (shouldNodeBeImported(node as ts.DeclarationStatement, rootFileExports, typesUsageEvaluator)) {
-					const importName = nodeIdentifier.getText();
-					normalLog(`Adding import with name "${importName}" for library "${importedLibraryName}"`);
-
-					let libraryImports = importedSymbols.get(importedLibraryName);
-					if (libraryImports === undefined) {
-						libraryImports = new Set<string>();
-						importedSymbols.set(importedLibraryName, libraryImports);
-					}
-
-					libraryImports.add(importName);
-				}
-
-				continue;
-			}
-
-			let nodeText = node.getText();
-
-			const hasNodeExportKeyword = ts.isExportAssignment(node) || hasNodeModifier(node, ts.SyntaxKind.ExportKeyword);
-
-			let shouldNodeHasExportKeyword = true;
-
-			if (ts.isClassDeclaration(node) || ts.isEnumDeclaration(node)) {
-				if (options.failOnClass === true && ts.isClassDeclaration(node)) {
-					const className = node.name ? node.name.text : '';
-					const errorMessage = `Class was found in generated dts.\n ${className} from ${sourceFile.fileName}`;
-					throw new Error(errorMessage);
-				}
-
-				// not every class and enum can be exported (only exported from root file can)
-				shouldNodeHasExportKeyword = isDeclarationExported(rootFileExports, typeChecker, node);
-				if (ts.isEnumDeclaration(node)) {
-					// const enum always can be exported
-					shouldNodeHasExportKeyword = shouldNodeHasExportKeyword || hasNodeModifier(node, ts.SyntaxKind.ConstKeyword);
-				}
-			}
-
-			nodeText = getTextAccordingExport(nodeText, hasNodeExportKeyword, shouldNodeHasExportKeyword);
-
-			// strip the `default` keyword from node if it is not from entry file
-			if (hasNodeModifier(node, ts.SyntaxKind.DefaultKeyword) && !isRootSourceFile) {
-				// we need just to remove `default` from any node except class node
-				// for classes we need to replace `default` with `declare` instead
-				nodeText = nodeText.replace(/\bdefault\s/, ts.isClassDeclaration(node) ? 'declare ' : '');
-			}
-
-			// add jsdoc for exported nodes only
-			if (shouldNodeHasExportKeyword) {
-				const start = node.getStart();
-				const jsDocStart = node.getStart(undefined, true);
-				const nodeJSDoc = sourceFileText.substring(jsDocStart, start).trim();
-				if (nodeJSDoc.length !== 0) {
-					nodeText = `${nodeJSDoc}\n${nodeText}`;
-				}
-			}
-
-			nodesForOutput.push(spacesToTabs(nodeText));
-		}
-
-		if (prevNodesLength === nodesForOutput.length) {
+		if (collectionResult.statements.length === prevStatementsCount) {
 			verboseLog(`No output for file: ${sourceFile.fileName}`);
 		}
 	}
 
-	let resultOutput = '';
-
-	if (usedTypes.size !== 0) {
-		const header = generateReferenceTypesDirective(Array.from(usedTypes));
-		resultOutput += `${header}\n\n`;
+	if (options.failOnClass) {
+		const isClassStatementFound = collectionResult.statements.some((statement: ts.Statement) => ts.isClassDeclaration(statement));
+		if (isClassStatementFound) {
+			throw new Error('At least 1 class statement is found in generated dts.');
+		}
 	}
 
-	if (importedSymbols.size !== 0) {
-		// we need to have sorted imports of libraries to have more "stable" output
-		const sortedEntries = Array.from(importedSymbols.entries()).sort((firstEntry: [string, Set<string>], secondEntry: [string, Set<string>]) => {
-			return firstEntry[0].localeCompare(secondEntry[0]);
-		});
-
-		const importsArray = sortedEntries.map((entry: [string, Set<string>]) => {
-			const [libraryName, libraryImports] = entry;
-			return generateImport(libraryName, Array.from(libraryImports));
-		});
-
-		resultOutput += `${importsArray.join('\n')}\n\n`;
+	for (const statement of rootSourceFile.statements) {
+		// add skipped by `updateResult` `export default` from root file if present
+		if (ts.isExportAssignment(statement) && !statement.isExportEquals) {
+			collectionResult.statements.push(statement);
+		}
 	}
 
-	if (options.sortNodes) {
-		nodesForOutput.sort();
+	return generateOutput(
+		{
+			...collectionResult,
+			needStripDefaultKeywordForStatement: (statement: ts.Statement) => statement.getSourceFile() !== rootSourceFile,
+			shouldStatementHasExportKeyword: (statement: ts.Statement) => {
+				let result = true;
+
+				if (ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement)) {
+					// not every class and enum can be exported (only exported from root file can)
+					result = isDeclarationExported(rootFileExports, typeChecker, statement);
+					if (ts.isEnumDeclaration(statement)) {
+						// const enum always can be exported
+						result = result || hasNodeModifier(statement, ts.SyntaxKind.ConstKeyword);
+					}
+				}
+
+				return result;
+			},
+		},
+		{
+			sortStatements: options.sortNodes,
+			umdModuleName: options.umdModuleName,
+		}
+	);
+}
+
+interface CollectingResult {
+	typesReferences: Set<string>;
+	imports: Map<string, Set<string>>;
+	statements: ts.Statement[];
+}
+
+interface UpdateParams {
+	currentModule: ModuleInfo;
+	statements: ReadonlyArray<ts.Statement>;
+	isStatementUsed(statement: ts.Statement): boolean;
+	shouldStatementBeImported(statement: ts.DeclarationStatement): boolean;
+}
+
+function updateResult(params: UpdateParams, result: CollectingResult): void {
+	for (const statement of params.statements) {
+		// we should skip import and exports statements
+		if (skippedNodes.indexOf(statement.kind) !== -1) {
+			continue;
+		}
+
+		if (!params.isStatementUsed(statement)) {
+			verboseLog(`Skip file member: ${statement.getText().replace(/(\n|\r)/g, '').slice(0, 50)}...`);
+			continue;
+		}
+
+		if (params.currentModule.type === ModuleType.ShouldBeReferencedAsTypes) {
+			addTypesReference(params.currentModule.typesLibraryName, result.typesReferences);
+			break;
+		} else if (params.currentModule.type === ModuleType.ShouldBeImported) {
+			if (params.shouldStatementBeImported(statement as ts.DeclarationStatement)) {
+				addImport(statement as ts.DeclarationStatement, params.currentModule.libraryName, result.imports);
+			}
+		} else if (params.currentModule.type === ModuleType.ShouldBeInlined) {
+			result.statements.push(statement);
+		}
+	}
+}
+
+function addTypesReference(library: string, typesReferences: Set<string>): void {
+	if (!typesReferences.has(library)) {
+		normalLog(`Library "${library}" will be added via reference directive`);
+		typesReferences.add(library);
+	}
+}
+
+function addImport(statement: ts.DeclarationStatement, library: string, imports: Map<string, Set<string>>): void {
+	if (statement.name === undefined) {
+		throw new Error(`Import/usage unnamed declaration: ${statement.getText()}`);
 	}
 
-	resultOutput += nodesForOutput.join('\n');
+	const importName = statement.name.getText();
+	normalLog(`Adding import with name "${importName}" for library "${library}"`);
 
-	if (options.umdModuleName !== undefined) {
-		resultOutput += `\n\nexport as namespace ${options.umdModuleName};\n`;
+	let libraryImports = imports.get(library);
+	if (libraryImports === undefined) {
+		libraryImports = new Set<string>();
+		imports.set(library, libraryImports);
 	}
 
-	return resultOutput;
+	libraryImports.add(importName);
 }
 
 function getRootSourceFile(program: ts.Program): ts.SourceFile {
@@ -243,7 +219,7 @@ function getRootSourceFile(program: ts.Program): ts.SourceFile {
 	return sourceFile;
 }
 
-function isDeclarationExported(exportedSymbols: ts.Symbol[], typeChecker: ts.TypeChecker, declaration: ts.NamedDeclaration): boolean {
+function isDeclarationExported(exportedSymbols: ReadonlyArray<ts.Symbol>, typeChecker: ts.TypeChecker, declaration: ts.NamedDeclaration): boolean {
 	if (declaration.name === undefined) {
 		return false;
 	}
@@ -252,48 +228,13 @@ function isDeclarationExported(exportedSymbols: ts.Symbol[], typeChecker: ts.Typ
 	return exportedSymbols.some((rootExport: ts.Symbol) => rootExport === declarationSymbol);
 }
 
-function getTextAccordingExport(nodeText: string, isNodeExported: boolean, shouldNodeBeExported: boolean): string {
-	if (shouldNodeBeExported && !isNodeExported) {
-		return 'export ' + nodeText;
-	} else if (isNodeExported && !shouldNodeBeExported) {
-		return nodeText.slice('export '.length);
-	}
-
-	return nodeText;
-}
-
-function spacesToTabs(text: string): string {
-	return text.replace(/^(    )+/gm, (substring: string) => {
-		return '\t'.repeat(substring.length / 4);
-	});
-}
-
-function generateImport(libraryName: string, imports: string[]): string {
-	// sort to make output more "stable"
-	return `import { ${imports.sort().join(', ')} } from '${libraryName}';`;
-}
-
-function generateReferenceTypesDirective(libraries: string[]): string {
-	return libraries.sort().map((library: string) => {
-		return `/// <reference types="${library}" />`;
-	}).join('\n');
-}
-
-function isLibraryAllowed(libraryName: string, allowedArray?: string[]): boolean {
-	return allowedArray === undefined || allowedArray.indexOf(libraryName) !== -1;
-}
-
 function isNodeUsed(
 	node: ts.Node,
-	rootFileExports: ts.Symbol[],
-	isNodeFromRootFile: boolean,
+	rootFileExports: ReadonlyArray<ts.Symbol>,
 	typesUsageEvaluator: TypesUsageEvaluator,
 	typeChecker: ts.TypeChecker
 ): boolean {
-	if (ts.isExportAssignment(node)) {
-		// we should allow only `export default` expressions from root file only
-		return isNodeFromRootFile && !node.isExportEquals;
-	} else if (isNodeNamedDeclaration(node)) {
+	if (isNodeNamedDeclaration(node)) {
 		return rootFileExports.some((rootExport: ts.Symbol) => typesUsageEvaluator.isTypeUsedBySymbol(node, rootExport));
 	} else if (ts.isVariableStatement(node)) {
 		return node.declarationList.declarations.some((declaration: ts.VariableDeclaration) => {
@@ -304,7 +245,7 @@ function isNodeUsed(
 	return false;
 }
 
-function shouldNodeBeImported(node: ts.NamedDeclaration, rootFileExports: ts.Symbol[], typesUsageEvaluator: TypesUsageEvaluator): boolean {
+function shouldNodeBeImported(node: ts.NamedDeclaration, rootFileExports: ReadonlyArray<ts.Symbol>, typesUsageEvaluator: TypesUsageEvaluator): boolean {
 	const symbolsUsingNode = typesUsageEvaluator.getSymbolsUsingNode(node as ts.DeclarationStatement);
 	if (symbolsUsingNode === null) {
 		throw new Error('Something went wrong - value cannot be null');
