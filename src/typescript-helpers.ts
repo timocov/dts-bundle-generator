@@ -25,3 +25,12 @@ export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker):
 
 	return symbol;
 }
+
+/**
+ * Returns whether statement is `declare module` ModuleDeclaration (not `declare global` or `namespace`)
+ */
+export function isDeclareModuleStatement(statement: ts.Statement): statement is ts.ModuleDeclaration {
+	// `declare module ""`, `declare global` and `namespace {}` are ModuleDeclaration
+	// but here we need to check only `declare module` statements
+	return ts.isModuleDeclaration(statement) && !(statement.flags & ts.NodeFlags.Namespace) && !(statement.flags & ts.NodeFlags.GlobalAugmentation);
+}
