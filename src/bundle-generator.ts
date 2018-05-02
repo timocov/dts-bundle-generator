@@ -1,9 +1,11 @@
 import * as ts from 'typescript';
+import * as path from 'path';
 
 import { compileDts } from './compile-dts';
 import { TypesUsageEvaluator } from './types-usage-evaluator';
 import {
 	hasNodeModifier,
+	isDeclareModuleStatement,
 	isNodeNamedDeclaration,
 } from './typescript-helpers';
 
@@ -92,6 +94,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				statements: sourceFile.statements,
 				isStatementUsed: (statement: ts.Statement) => isNodeUsed(statement, rootFileExports, typesUsageEvaluator, typeChecker),
 				shouldStatementBeImported: (statement: ts.DeclarationStatement) => shouldNodeBeImported(statement, rootFileExports, typesUsageEvaluator),
+				getModuleInfo: (fileName: string) => getModuleInfo(fileName, criteria),
 			},
 			collectionResult
 		);
@@ -152,12 +155,34 @@ interface UpdateParams {
 	statements: ReadonlyArray<ts.Statement>;
 	isStatementUsed(statement: ts.Statement): boolean;
 	shouldStatementBeImported(statement: ts.DeclarationStatement): boolean;
+	getModuleInfo(fileName: string): ModuleInfo;
 }
 
 function updateResult(params: UpdateParams, result: CollectingResult): void {
+	if (params.currentModule.type === ModuleType.ShouldNotBeUsed) {
+		return;
+	}
+
 	for (const statement of params.statements) {
 		// we should skip import and exports statements
 		if (skippedNodes.indexOf(statement.kind) !== -1) {
+			continue;
+		}
+
+		if (isDeclareModuleStatement(statement)) {
+			if (statement.body !== undefined && ts.isModuleBlock(statement.body)) {
+				const moduleName = statement.name.text;
+				const moduleFileName = resolveModuleFileName(params.currentModule.fileName, moduleName);
+				updateResult(
+					{
+						...params,
+						currentModule: params.getModuleInfo(moduleFileName),
+						statements: statement.body.statements,
+					},
+					result
+				);
+			}
+
 			continue;
 		}
 
@@ -177,6 +202,10 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 			result.statements.push(statement);
 		}
 	}
+}
+
+function resolveModuleFileName(currentFileName: string, moduleName: string): string {
+	return moduleName.startsWith('.') ? path.resolve(currentFileName, '..', moduleName) : `node_modules/${moduleName}/`;
 }
 
 function addTypesReference(library: string, typesReferences: Set<string>): void {
