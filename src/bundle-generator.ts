@@ -125,8 +125,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			shouldStatementHasExportKeyword: (statement: ts.Statement) => {
 				let result = true;
 
-				if (ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement)) {
-					// not every class and enum can be exported (only exported from root file can)
+				if (ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement) || ts.isFunctionDeclaration(statement)) {
+					// not every class, enum and function can be exported (only exported from root file can)
 					result = isDeclarationExported(rootFileExports, typeChecker, statement);
 					if (ts.isEnumDeclaration(statement)) {
 						// const enum always can be exported
