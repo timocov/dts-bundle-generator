@@ -180,6 +180,10 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 			continue;
 		}
 
+		if (params.currentModule.type === ModuleType.ShouldBeUsedForModulesOnly) {
+			continue;
+		}
+
 		if (!params.isStatementUsed(statement)) {
 			verboseLog(`Skip file member: ${statement.getText().replace(/(\n|\r)/g, '').slice(0, 50)}...`);
 			continue;

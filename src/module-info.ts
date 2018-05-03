@@ -9,6 +9,7 @@ export const enum ModuleType {
 	ShouldBeInlined,
 	ShouldBeImported,
 	ShouldBeReferencedAsTypes,
+	ShouldBeUsedForModulesOnly,
 }
 
 export interface UsedModuleInfoCommon {
@@ -29,11 +30,15 @@ export interface ReferencedModuleInfo extends UsedModuleInfoCommon {
 	typesLibraryName: string;
 }
 
+export interface UsedForModulesModuleInfo extends UsedModuleInfoCommon {
+	type: ModuleType.ShouldBeUsedForModulesOnly;
+}
+
 export interface NotUsedModuleInfo {
 	type: ModuleType.ShouldNotBeUsed;
 }
 
-export type ModuleInfo = NotUsedModuleInfo | InlinedModuleInfo | ImportedModuleInfo | ReferencedModuleInfo;
+export type ModuleInfo = NotUsedModuleInfo | InlinedModuleInfo | ImportedModuleInfo | ReferencedModuleInfo | UsedForModulesModuleInfo;
 
 export interface ModuleCriteria {
 	inlinedLibraries: string[];
@@ -64,7 +69,7 @@ export function getModuleInfo(fileName: string, criteria: ModuleCriteria): Modul
 		return { type: ModuleType.ShouldBeReferencedAsTypes, fileName: fileName, typesLibraryName: typesLibraryName };
 	}
 
-	return { type: ModuleType.ShouldNotBeUsed };
+	return { type: ModuleType.ShouldBeUsedForModulesOnly, fileName: fileName };
 }
 
 function shouldLibraryBeInlined(npmLibraryName: string, typesLibraryName: string | null, inlinedLibraries: string[]): boolean {
