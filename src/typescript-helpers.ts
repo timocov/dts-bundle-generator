@@ -17,3 +17,12 @@ export function isNodeNamedDeclaration(node: ts.Node): node is ts.NamedDeclarati
 export function hasNodeModifier(node: ts.Node, modifier: ts.SyntaxKind): boolean {
 	return Boolean(node.modifiers && node.modifiers.some((nodeModifier: ts.Modifier) => nodeModifier.kind === modifier));
 }
+
+/**
+ * Returns whether statement is `declare module` ModuleDeclaration (not `declare global` or `namespace`)
+ */
+export function isDeclareModuleStatement(statement: ts.Statement): statement is ts.ModuleDeclaration {
+	// `declare module ""`, `declare global` and `namespace {}` are ModuleDeclaration
+	// but here we need to check only `declare module` statements
+	return ts.isModuleDeclaration(statement) && !(statement.flags & ts.NodeFlags.Namespace) && !(statement.flags & ts.NodeFlags.GlobalAugmentation);
+}
