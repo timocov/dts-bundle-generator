@@ -3,6 +3,7 @@ import * as ts from 'typescript';
 import { compileDts } from './compile-dts';
 import { TypesUsageEvaluator } from './types-usage-evaluator';
 import {
+	getActualSymbol,
 	hasNodeModifier,
 	isNodeNamedDeclaration,
 } from './typescript-helpers';
@@ -67,14 +68,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		throw new Error('Symbol for root source file not found');
 	}
 
-	const rootFileExports = typeChecker.getExportsOfModule(rootSourceFileSymbol).map((symbol: ts.Symbol) => {
-		if (symbol.flags & ts.SymbolFlags.Alias) {
-			// so we need to have original symbols from source file
-			symbol = typeChecker.getAliasedSymbol(symbol);
-		}
-
-		return symbol;
-	});
+	const rootFileExports = typeChecker.getExportsOfModule(rootSourceFileSymbol).map((symbol: ts.Symbol) => getActualSymbol(symbol, typeChecker));
 
 	const collectionResult: CollectingResult = {
 		typesReferences: new Set<string>(),

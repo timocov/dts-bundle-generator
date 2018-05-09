@@ -17,3 +17,11 @@ export function isNodeNamedDeclaration(node: ts.Node): node is ts.NamedDeclarati
 export function hasNodeModifier(node: ts.Node, modifier: ts.SyntaxKind): boolean {
 	return Boolean(node.modifiers && node.modifiers.some((nodeModifier: ts.Modifier) => nodeModifier.kind === modifier));
 }
+
+export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker): ts.Symbol {
+	if (symbol.flags & ts.SymbolFlags.Alias) {
+		symbol = typeChecker.getAliasedSymbol(symbol);
+	}
+
+	return symbol;
+}

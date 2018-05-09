@@ -1,5 +1,8 @@
 import * as ts from 'typescript';
-import { isNodeNamedDeclaration } from './typescript-helpers';
+import {
+	getActualSymbol,
+	isNodeNamedDeclaration,
+} from './typescript-helpers';
 
 export type NodesParents = Map<ts.Symbol, Set<ts.Symbol>>;
 
@@ -112,10 +115,6 @@ export class TypesUsageEvaluator {
 	}
 
 	private getActualSymbol(symbol: ts.Symbol): ts.Symbol {
-		if (symbol.flags & ts.SymbolFlags.Alias) {
-			return this.getActualSymbol(this.typeChecker.getAliasedSymbol(symbol));
-		}
-
-		return symbol;
+		return getActualSymbol(symbol, this.typeChecker);
 	}
 }
