@@ -9,10 +9,12 @@ export const enum ModuleType {
 	ShouldBeInlined,
 	ShouldBeImported,
 	ShouldBeReferencedAsTypes,
+	ShouldBeUsedForModulesOnly,
 }
 
 export interface UsedModuleInfoCommon {
 	fileName: string;
+	isExternal: boolean;
 }
 
 export interface InlinedModuleInfo extends UsedModuleInfoCommon {
@@ -22,18 +24,25 @@ export interface InlinedModuleInfo extends UsedModuleInfoCommon {
 export interface ImportedModuleInfo extends UsedModuleInfoCommon {
 	type: ModuleType.ShouldBeImported;
 	libraryName: string;
+	isExternal: true;
 }
 
 export interface ReferencedModuleInfo extends UsedModuleInfoCommon {
 	type: ModuleType.ShouldBeReferencedAsTypes;
 	typesLibraryName: string;
+	isExternal: true;
+}
+
+export interface UsedForModulesModuleInfo extends UsedModuleInfoCommon {
+	type: ModuleType.ShouldBeUsedForModulesOnly;
+	isExternal: true;
 }
 
 export interface NotUsedModuleInfo {
 	type: ModuleType.ShouldNotBeUsed;
 }
 
-export type ModuleInfo = NotUsedModuleInfo | InlinedModuleInfo | ImportedModuleInfo | ReferencedModuleInfo;
+export type ModuleInfo = NotUsedModuleInfo | InlinedModuleInfo | ImportedModuleInfo | ReferencedModuleInfo | UsedForModulesModuleInfo;
 
 export interface ModuleCriteria {
 	inlinedLibraries: string[];
@@ -44,7 +53,7 @@ export interface ModuleCriteria {
 export function getModuleInfo(fileName: string, criteria: ModuleCriteria): ModuleInfo {
 	const npmLibraryName = getLibraryName(fileName);
 	if (npmLibraryName === null) {
-		return { type: ModuleType.ShouldBeInlined, fileName: fileName };
+		return { type: ModuleType.ShouldBeInlined, fileName: fileName, isExternal: false };
 	}
 
 	if (isTypescriptLibFile(fileName)) {
@@ -53,18 +62,18 @@ export function getModuleInfo(fileName: string, criteria: ModuleCriteria): Modul
 
 	const typesLibraryName = getTypesLibraryName(fileName);
 	if (shouldLibraryBeInlined(npmLibraryName, typesLibraryName, criteria.inlinedLibraries)) {
-		return { type: ModuleType.ShouldBeInlined, fileName: fileName };
+		return { type: ModuleType.ShouldBeInlined, fileName: fileName, isExternal: true };
 	}
 
 	if (shouldLibraryBeImported(npmLibraryName, typesLibraryName, criteria.importedLibraries)) {
-		return { type: ModuleType.ShouldBeImported, fileName: fileName, libraryName: npmLibraryName };
+		return { type: ModuleType.ShouldBeImported, fileName: fileName, libraryName: npmLibraryName, isExternal: true };
 	}
 
 	if (typesLibraryName !== null && isLibraryAllowed(typesLibraryName, criteria.allowedTypesLibraries)) {
-		return { type: ModuleType.ShouldBeReferencedAsTypes, fileName: fileName, typesLibraryName: typesLibraryName };
+		return { type: ModuleType.ShouldBeReferencedAsTypes, fileName: fileName, typesLibraryName: typesLibraryName, isExternal: true };
 	}
 
-	return { type: ModuleType.ShouldNotBeUsed };
+	return { type: ModuleType.ShouldBeUsedForModulesOnly, fileName: fileName, isExternal: true };
 }
 
 function shouldLibraryBeInlined(npmLibraryName: string, typesLibraryName: string | null, inlinedLibraries: string[]): boolean {

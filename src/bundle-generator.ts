@@ -1,10 +1,12 @@
 import * as ts from 'typescript';
+import * as path from 'path';
 
 import { compileDts } from './compile-dts';
 import { TypesUsageEvaluator } from './types-usage-evaluator';
 import {
 	getActualSymbol,
 	hasNodeModifier,
+	isDeclareModuleStatement,
 	isNodeNamedDeclaration,
 } from './typescript-helpers';
 
@@ -86,6 +88,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				statements: sourceFile.statements,
 				isStatementUsed: (statement: ts.Statement) => isNodeUsed(statement, rootFileExports, typesUsageEvaluator, typeChecker),
 				shouldStatementBeImported: (statement: ts.DeclarationStatement) => shouldNodeBeImported(statement, rootFileExports, typesUsageEvaluator),
+				getModuleInfo: (fileName: string) => getModuleInfo(fileName, criteria),
 			},
 			collectionResult
 		);
@@ -116,8 +119,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 			shouldStatementHasExportKeyword: (statement: ts.Statement) => {
 				let result = true;
 
-				if (ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement)) {
-					// not every class and enum can be exported (only exported from root file can)
+				if (ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement) || ts.isFunctionDeclaration(statement)) {
+					// not every class, enum and function can be exported (only exported from root file can)
 					result = isDeclarationExported(rootFileExports, typeChecker, statement);
 					if (ts.isEnumDeclaration(statement)) {
 						// const enum always can be exported
@@ -146,12 +149,26 @@ interface UpdateParams {
 	statements: ReadonlyArray<ts.Statement>;
 	isStatementUsed(statement: ts.Statement): boolean;
 	shouldStatementBeImported(statement: ts.DeclarationStatement): boolean;
+	getModuleInfo(fileName: string): ModuleInfo;
 }
 
 function updateResult(params: UpdateParams, result: CollectingResult): void {
+	if (params.currentModule.type === ModuleType.ShouldNotBeUsed) {
+		return;
+	}
+
 	for (const statement of params.statements) {
 		// we should skip import and exports statements
 		if (skippedNodes.indexOf(statement.kind) !== -1) {
+			continue;
+		}
+
+		if (isDeclareModuleStatement(statement)) {
+			updateResultForModuleDeclaration(statement, params, result);
+			continue;
+		}
+
+		if (params.currentModule.type === ModuleType.ShouldBeUsedForModulesOnly) {
 			continue;
 		}
 
@@ -171,6 +188,44 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 			result.statements.push(statement);
 		}
 	}
+}
+
+function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, params: UpdateParams, result: CollectingResult): void {
+	if (params.currentModule.type === ModuleType.ShouldNotBeUsed) {
+		return;
+	}
+
+	if (moduleDecl.body === undefined || !ts.isModuleBlock(moduleDecl.body)) {
+		return;
+	}
+
+	const moduleName = moduleDecl.name.text;
+	const moduleFileName = resolveModuleFileName(params.currentModule.fileName, moduleName);
+	const moduleInfo = params.getModuleInfo(moduleFileName);
+
+	if (moduleInfo.type === ModuleType.ShouldNotBeUsed) {
+		return;
+	}
+
+	// if we have declaration of external module inside internal one
+	// we need to just add it to result without any processing
+	if (!params.currentModule.isExternal && moduleInfo.isExternal) {
+		result.statements.push(moduleDecl);
+		return;
+	}
+
+	updateResult(
+		{
+			...params,
+			currentModule: moduleInfo,
+			statements: moduleDecl.body.statements,
+		},
+		result
+	);
+}
+
+function resolveModuleFileName(currentFileName: string, moduleName: string): string {
+	return moduleName.startsWith('.') ? path.resolve(currentFileName, '..', moduleName) : `node_modules/${moduleName}/`;
 }
 
 function addTypesReference(library: string, typesReferences: Set<string>): void {
