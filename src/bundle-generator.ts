@@ -164,19 +164,7 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 		}
 
 		if (isDeclareModuleStatement(statement)) {
-			if (statement.body !== undefined && ts.isModuleBlock(statement.body)) {
-				const moduleName = statement.name.text;
-				const moduleFileName = resolveModuleFileName(params.currentModule.fileName, moduleName);
-				updateResult(
-					{
-						...params,
-						currentModule: params.getModuleInfo(moduleFileName),
-						statements: statement.body.statements,
-					},
-					result
-				);
-			}
-
+			updateResultForModuleDeclaration(statement, params, result);
 			continue;
 		}
 
@@ -200,6 +188,40 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 			result.statements.push(statement);
 		}
 	}
+}
+
+function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, params: UpdateParams, result: CollectingResult): void {
+	if (params.currentModule.type === ModuleType.ShouldNotBeUsed) {
+		return;
+	}
+
+	if (moduleDecl.body === undefined || !ts.isModuleBlock(moduleDecl.body)) {
+		return;
+	}
+
+	const moduleName = moduleDecl.name.text;
+	const moduleFileName = resolveModuleFileName(params.currentModule.fileName, moduleName);
+	const moduleInfo = params.getModuleInfo(moduleFileName);
+
+	if (moduleInfo.type === ModuleType.ShouldNotBeUsed) {
+		return;
+	}
+
+	// if we have declaration of external module inside internal one
+	// we need to just add it to result without any processing
+	if (!params.currentModule.isExternal && moduleInfo.isExternal) {
+		result.statements.push(moduleDecl);
+		return;
+	}
+
+	updateResult(
+		{
+			...params,
+			currentModule: moduleInfo,
+			statements: moduleDecl.body.statements,
+		},
+		result
+	);
 }
 
 function resolveModuleFileName(currentFileName: string, moduleName: string): string {
