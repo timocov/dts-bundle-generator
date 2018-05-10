@@ -1,4 +1,5 @@
 import * as ts from 'typescript';
+import * as path from 'path';
 
 import { verboseLog } from './logger';
 
@@ -12,7 +13,14 @@ export function getCompilerOptions(inputFileName: string, preferredConfigPath?: 
 		throw new Error(`Error while processing tsconfig file: ${JSON.stringify(configParseResult.error)}`);
 	}
 
-	const compilerOptionsParseResult = ts.convertCompilerOptionsFromJson(configParseResult.config.compilerOptions, './');
+	const parseConfigHost: ts.ParseConfigHost = {
+		useCaseSensitiveFileNames: ts.sys.useCaseSensitiveFileNames,
+		readDirectory: ts.sys.readDirectory,
+		fileExists: ts.sys.fileExists,
+		readFile: ts.sys.readFile,
+	};
+
+	const compilerOptionsParseResult = ts.parseJsonConfigFileContent(configParseResult.config, parseConfigHost, path.join(configFileName, '..'));
 	if (compilerOptionsParseResult.errors.length !== 0) {
 		throw new Error(`Error while processing tsconfig compiler options: ${JSON.stringify(compilerOptionsParseResult.errors)}`);
 	}
