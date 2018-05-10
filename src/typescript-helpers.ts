@@ -34,3 +34,10 @@ export function isDeclareModuleStatement(statement: ts.Statement): statement is 
 	// but here we need to check only `declare module` statements
 	return ts.isModuleDeclaration(statement) && !(statement.flags & ts.NodeFlags.Namespace) && !(statement.flags & ts.NodeFlags.GlobalAugmentation);
 }
+
+/**
+ * Returns whether statement is `declare global` ModuleDeclaration
+ */
+export function isDeclareGlobalStatement(statement: ts.Statement): statement is ts.ModuleDeclaration {
+	return ts.isModuleDeclaration(statement) && Boolean(statement.flags & ts.NodeFlags.GlobalAugmentation);
+}
