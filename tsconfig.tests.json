@@ -1,7 +1,10 @@
 {
-    "extends": "./tsconfig.base.json",
-    "include": [
-        "tests/all-test-cases.ts",
-        "tests/test-cases/**/config.ts"
-    ]
+	"extends": "./tsconfig.base.json",
+	"compilerOptions": {
+		"sourceMap": true
+	},
+	"include": [
+		"tests/all-test-cases.ts",
+		"tests/test-cases/**/config.ts"
+	]
 }
