@@ -248,16 +248,17 @@ function addImport(statement: ts.DeclarationStatement, library: string, imports:
 		throw new Error(`Import/usage unnamed declaration: ${statement.getText()}`);
 	}
 
-	const importName = statement.name.getText();
-	normalLog(`Adding import with name "${importName}" for library "${library}"`);
-
 	let libraryImports = imports.get(library);
 	if (libraryImports === undefined) {
 		libraryImports = new Set<string>();
 		imports.set(library, libraryImports);
 	}
 
-	libraryImports.add(importName);
+	const importName = statement.name.getText();
+	if (!libraryImports.has(importName)) {
+		normalLog(`Adding import with name "${importName}" for library "${library}"`);
+		libraryImports.add(importName);
+	}
 }
 
 function getRootSourceFile(program: ts.Program): ts.SourceFile {
