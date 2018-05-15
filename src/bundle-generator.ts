@@ -6,6 +6,7 @@ import { TypesUsageEvaluator } from './types-usage-evaluator';
 import {
 	getActualSymbol,
 	hasNodeModifier,
+	isDeclareGlobalStatement,
 	isDeclareModuleStatement,
 	isNodeNamedDeclaration,
 } from './typescript-helpers';
@@ -126,6 +127,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 						// const enum always can be exported
 						result = result || hasNodeModifier(statement, ts.SyntaxKind.ConstKeyword);
 					}
+				} else if (isDeclareGlobalStatement(statement)) {
+					result = false;
 				}
 
 				return result;
@@ -169,6 +172,11 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 		}
 
 		if (params.currentModule.type === ModuleType.ShouldBeUsedForModulesOnly) {
+			continue;
+		}
+
+		if (isDeclareGlobalStatement(statement) && params.currentModule.type === ModuleType.ShouldBeInlined) {
+			result.statements.push(statement);
 			continue;
 		}
 
