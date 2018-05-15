@@ -233,7 +233,7 @@ function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, para
 }
 
 function resolveModuleFileName(currentFileName: string, moduleName: string): string {
-	return moduleName.startsWith('.') ? path.resolve(currentFileName, '..', moduleName) : `node_modules/${moduleName}/`;
+	return moduleName.startsWith('.') ? path.join(currentFileName, '..', moduleName) : `node_modules/${moduleName}/`;
 }
 
 function addTypesReference(library: string, typesReferences: Set<string>): void {
