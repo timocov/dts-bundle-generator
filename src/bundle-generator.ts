@@ -44,18 +44,19 @@ const skippedNodes = [
 ];
 
 export function generateDtsBundle(filePath: string, options: GenerationOptions = {}): string {
-	const criteria: ModuleCriteria = {
-		allowedTypesLibraries: options.allowedTypesLibraries,
-		importedLibraries: options.importedLibraries,
-		inlinedLibraries: options.inlinedLibraries || [],
-	};
-
 	if (!ts.sys.fileExists(filePath)) {
 		throw new Error(`File "${filePath}" does not exist`);
 	}
 
 	const program = compileDts(filePath, options.preferredConfigPath);
 	const typeChecker = program.getTypeChecker();
+
+	const criteria: ModuleCriteria = {
+		allowedTypesLibraries: options.allowedTypesLibraries,
+		importedLibraries: options.importedLibraries,
+		inlinedLibraries: options.inlinedLibraries || [],
+		typeRoots: ts.getEffectiveTypeRoots(program.getCompilerOptions(), {}),
+	};
 
 	const sourceFiles = program.getSourceFiles().filter((file: ts.SourceFile) => {
 		return getModuleInfo(file.fileName, criteria).type !== ModuleType.ShouldNotBeUsed;
