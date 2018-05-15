@@ -41,3 +41,10 @@ export function isDeclareModuleStatement(statement: ts.Statement): statement is 
 export function isDeclareGlobalStatement(statement: ts.Statement): statement is ts.ModuleDeclaration {
 	return ts.isModuleDeclaration(statement) && Boolean(statement.flags & ts.NodeFlags.GlobalAugmentation);
 }
+
+/**
+ * Returns whether node is `namespace` ModuleDeclaration
+ */
+export function isNamespaceStatement(node: ts.Node): node is ts.ModuleDeclaration {
+	return ts.isModuleDeclaration(node) && Boolean(node.flags & ts.NodeFlags.Namespace);
+}

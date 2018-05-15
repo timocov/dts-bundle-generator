@@ -8,6 +8,7 @@ import {
 	hasNodeModifier,
 	isDeclareGlobalStatement,
 	isDeclareModuleStatement,
+	isNamespaceStatement,
 	isNodeNamedDeclaration,
 } from './typescript-helpers';
 
@@ -90,6 +91,15 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				isStatementUsed: (statement: ts.Statement) => isNodeUsed(statement, rootFileExports, typesUsageEvaluator, typeChecker),
 				shouldStatementBeImported: (statement: ts.DeclarationStatement) => shouldNodeBeImported(statement, rootFileExports, typesUsageEvaluator),
 				getModuleInfo: (fileName: string) => getModuleInfo(fileName, criteria),
+				getDeclarationsForExportedAssignment: (exportAssignment: ts.ExportAssignment) => {
+					const symbolForExpression = typeChecker.getSymbolAtLocation(exportAssignment.expression);
+					if (symbolForExpression === undefined) {
+						return [];
+					}
+
+					const symbol = getActualSymbol(symbolForExpression, typeChecker);
+					return getDeclarationsForSymbol(symbol);
+				},
 			},
 			collectionResult
 		);
@@ -153,8 +163,10 @@ interface UpdateParams {
 	isStatementUsed(statement: ts.Statement): boolean;
 	shouldStatementBeImported(statement: ts.DeclarationStatement): boolean;
 	getModuleInfo(fileName: string): ModuleInfo;
+	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
 }
 
+// tslint:disable-next-line:cyclomatic-complexity
 function updateResult(params: UpdateParams, result: CollectingResult): void {
 	if (params.currentModule.type === ModuleType.ShouldNotBeUsed) {
 		return;
@@ -180,6 +192,11 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 			continue;
 		}
 
+		if (ts.isExportAssignment(statement) && statement.isExportEquals && params.currentModule.type === ModuleType.ShouldBeImported) {
+			updateResultForImportedEqExportAssignment(statement, params, result);
+			continue;
+		}
+
 		if (!params.isStatementUsed(statement)) {
 			verboseLog(`Skip file member: ${statement.getText().replace(/(\n|\r)/g, '').slice(0, 50)}...`);
 			continue;
@@ -195,6 +212,29 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 		} else if (params.currentModule.type === ModuleType.ShouldBeInlined) {
 			result.statements.push(statement);
 		}
+	}
+}
+
+function updateResultForImportedEqExportAssignment(exportAssignment: ts.ExportAssignment, params: UpdateParams, result: CollectingResult): void {
+	const moduleDeclarations = params.getDeclarationsForExportedAssignment(exportAssignment)
+		.filter(isNamespaceStatement)
+		.filter((s: ts.ModuleDeclaration) => s.getSourceFile() === exportAssignment.getSourceFile());
+
+	// if we have `export =` somewhere so we can decide that every declaration of exported symbol in this way
+	// is "part of the exported module" and we need to update result according every member of each declaration
+	// but treat they as current module (we do not need to update module info)
+	for (const moduleDeclaration of moduleDeclarations) {
+		if (moduleDeclaration.body === undefined || !ts.isModuleBlock(moduleDeclaration.body)) {
+			continue;
+		}
+
+		updateResult(
+			{
+				...params,
+				statements: moduleDeclaration.body.statements,
+			},
+			result
+		);
 	}
 }
 
