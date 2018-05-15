@@ -310,16 +310,26 @@ function shouldNodeBeImported(node: ts.NamedDeclaration, rootFileExports: Readon
 
 	// we should import only symbols which are used in types directly
 	return Array.from(symbolsUsingNode).some((symbol: ts.Symbol) => {
-		if (symbol.valueDeclaration === undefined && symbol.declarations === undefined) {
-			return false;
-		} else if (symbol.valueDeclaration !== undefined && isDeclarationFromExternalModule(symbol.valueDeclaration)) {
-			return false;
-		} else if (symbol.declarations !== undefined && symbol.declarations.every(isDeclarationFromExternalModule)) {
+		const symbolsDeclarations = getDeclarationsForSymbol(symbol);
+		if (symbolsDeclarations.length === 0 || symbolsDeclarations.every(isDeclarationFromExternalModule)) {
 			return false;
 		}
 
 		return rootFileExports.some((rootSymbol: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(symbol, rootSymbol));
 	});
+}
+
+function getDeclarationsForSymbol(symbol: ts.Symbol): ts.Declaration[] {
+	const result: ts.Declaration[] = [];
+	if (symbol.valueDeclaration !== undefined) {
+		result.push(symbol.valueDeclaration);
+	}
+
+	if (symbol.declarations !== undefined) {
+		result.push(...symbol.declarations);
+	}
+
+	return result;
 }
 
 function isDeclarationFromExternalModule(node: ts.Declaration): boolean {
