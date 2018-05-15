@@ -2,6 +2,7 @@
 **/*.js.map
 dist/
 node_modules/
+!tests/test-cases/node_modules/
 package-lock.json
 package-lock.json.*
 src/**/*.js
