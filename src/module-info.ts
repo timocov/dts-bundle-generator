@@ -1,3 +1,5 @@
+import * as path from 'path';
+
 import {
 	getLibraryName,
 	getTypesLibraryName,
@@ -48,32 +50,53 @@ export interface ModuleCriteria {
 	inlinedLibraries: string[];
 	importedLibraries: string[] | undefined;
 	allowedTypesLibraries: string[] | undefined;
+	typeRoots?: string[];
 }
 
 export function getModuleInfo(fileName: string, criteria: ModuleCriteria): ModuleInfo {
-	const npmLibraryName = getLibraryName(fileName);
+	return getModuleInfoImpl(fileName, fileName, criteria);
+}
+
+/**
+ * @param currentFilePath Current file path - can be used to override actual path of module (e.g. with `typeRoots`)
+ * @param originalFileName Original file name of the module
+ * @param criteria Criteria of module info
+ */
+function getModuleInfoImpl(currentFilePath: string, originalFileName: string, criteria: ModuleCriteria): ModuleInfo {
+	const npmLibraryName = getLibraryName(currentFilePath);
 	if (npmLibraryName === null) {
-		return { type: ModuleType.ShouldBeInlined, fileName: fileName, isExternal: false };
+		if (criteria.typeRoots !== undefined) {
+			for (const root of criteria.typeRoots) {
+				const relativePath = path.relative(root, originalFileName).replace(/\\/g, '/');
+				if (!relativePath.startsWith('../')) {
+					// relativePath is path relative to type root
+					// so we should treat it as "library from node_modules/@types/"
+					return getModuleInfoImpl(remapToTypesFromNodeModules(relativePath), originalFileName, criteria);
+				}
+			}
+		}
+
+		return { type: ModuleType.ShouldBeInlined, fileName: originalFileName, isExternal: false };
 	}
 
-	if (isTypescriptLibFile(fileName)) {
+	if (isTypescriptLibFile(currentFilePath)) {
 		return { type: ModuleType.ShouldNotBeUsed };
 	}
 
-	const typesLibraryName = getTypesLibraryName(fileName);
+	const typesLibraryName = getTypesLibraryName(currentFilePath);
 	if (shouldLibraryBeInlined(npmLibraryName, typesLibraryName, criteria.inlinedLibraries)) {
-		return { type: ModuleType.ShouldBeInlined, fileName: fileName, isExternal: true };
+		return { type: ModuleType.ShouldBeInlined, fileName: originalFileName, isExternal: true };
 	}
 
 	if (shouldLibraryBeImported(npmLibraryName, typesLibraryName, criteria.importedLibraries)) {
-		return { type: ModuleType.ShouldBeImported, fileName: fileName, libraryName: npmLibraryName, isExternal: true };
+		return { type: ModuleType.ShouldBeImported, fileName: originalFileName, libraryName: npmLibraryName, isExternal: true };
 	}
 
 	if (typesLibraryName !== null && isLibraryAllowed(typesLibraryName, criteria.allowedTypesLibraries)) {
-		return { type: ModuleType.ShouldBeReferencedAsTypes, fileName: fileName, typesLibraryName: typesLibraryName, isExternal: true };
+		return { type: ModuleType.ShouldBeReferencedAsTypes, fileName: originalFileName, typesLibraryName: typesLibraryName, isExternal: true };
 	}
 
-	return { type: ModuleType.ShouldBeUsedForModulesOnly, fileName: fileName, isExternal: true };
+	return { type: ModuleType.ShouldBeUsedForModulesOnly, fileName: originalFileName, isExternal: true };
 }
 
 function shouldLibraryBeInlined(npmLibraryName: string, typesLibraryName: string | null, inlinedLibraries: string[]): boolean {
@@ -92,4 +115,8 @@ function shouldLibraryBeImported(npmLibraryName: string, typesLibraryName: strin
 
 function isLibraryAllowed(libraryName: string, allowedArray?: string[]): boolean {
 	return allowedArray === undefined || allowedArray.indexOf(libraryName) !== -1;
+}
+
+function remapToTypesFromNodeModules(pathRelativeToTypesRoot: string): string {
+	return `node_modules/@types/${pathRelativeToTypesRoot}`;
 }
