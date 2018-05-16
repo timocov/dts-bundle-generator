@@ -1,27 +1,22 @@
 import * as ts from 'typescript';
 import { errorLog } from './logger';
 
+const formatDiagnosticsHost: ts.FormatDiagnosticsHost = {
+	getCanonicalFileName: (fileName: string) => ts.sys.useCaseSensitiveFileNames ? fileName : fileName.toLowerCase(),
+	getCurrentDirectory: ts.sys.getCurrentDirectory,
+	getNewLine: () => ts.sys.newLine,
+};
+
 export function checkProgramDiagnosticsErrors(program: ts.Program): void {
-	checkDiagnosticsErrors(ts.getPreEmitDiagnostics(program));
-	checkDiagnosticsErrors(program.getDeclarationDiagnostics());
+	checkDiagnosticsErrors(ts.getPreEmitDiagnostics(program), 'Compiled with errors');
+	checkDiagnosticsErrors(program.getDeclarationDiagnostics(), 'Compiled with errors');
 }
 
-function checkDiagnosticsErrors(diagnostics: ReadonlyArray<ts.Diagnostic>): void {
-	const errors: string[] = [];
-	diagnostics.forEach((diagnostic: ts.Diagnostic) => {
-		if (diagnostic.file === undefined || diagnostic.start === undefined) {
-			return;
-		}
-
-		const { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
-		const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-		errors.push(`${diagnostic.file.fileName}(${line + 1},${character + 1}): TS${diagnostic.code}: ${message}`);
-	});
-
-	if (errors.length === 0) {
+export function checkDiagnosticsErrors(diagnostics: ReadonlyArray<ts.Diagnostic>, failMessage: string): void {
+	if (diagnostics.length === 0) {
 		return;
 	}
 
-	errorLog(errors.join('\n'));
-	throw new Error('Compiled with errors');
+	errorLog(ts.formatDiagnostics(diagnostics, formatDiagnosticsHost).trim());
+	throw new Error(failMessage);
 }

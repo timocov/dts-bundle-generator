@@ -1,7 +1,15 @@
 import * as ts from 'typescript';
 import * as path from 'path';
 
+import { checkDiagnosticsErrors } from './check-diagnostics-errors';
 import { verboseLog } from './logger';
+
+const parseConfigHost: ts.ParseConfigHost = {
+	useCaseSensitiveFileNames: ts.sys.useCaseSensitiveFileNames,
+	readDirectory: ts.sys.readDirectory,
+	fileExists: ts.sys.fileExists,
+	readFile: ts.sys.readFile,
+};
 
 export function getCompilerOptions(inputFileName: string, preferredConfigPath?: string): ts.CompilerOptions {
 	const configFileName = preferredConfigPath !== undefined ? preferredConfigPath : findConfig(inputFileName);
@@ -9,21 +17,10 @@ export function getCompilerOptions(inputFileName: string, preferredConfigPath?: 
 	verboseLog(`Using config: ${configFileName}`);
 
 	const configParseResult = ts.readConfigFile(configFileName, ts.sys.readFile);
-	if (configParseResult.error) {
-		throw new Error(`Error while processing tsconfig file: ${JSON.stringify(configParseResult.error)}`);
-	}
-
-	const parseConfigHost: ts.ParseConfigHost = {
-		useCaseSensitiveFileNames: ts.sys.useCaseSensitiveFileNames,
-		readDirectory: ts.sys.readDirectory,
-		fileExists: ts.sys.fileExists,
-		readFile: ts.sys.readFile,
-	};
+	checkDiagnosticsErrors(configParseResult.error !== undefined ? [configParseResult.error] : [], 'Error while processing tsconfig file');
 
 	const compilerOptionsParseResult = ts.parseJsonConfigFileContent(configParseResult.config, parseConfigHost, path.join(configFileName, '..'));
-	if (compilerOptionsParseResult.errors.length !== 0) {
-		throw new Error(`Error while processing tsconfig compiler options: ${JSON.stringify(compilerOptionsParseResult.errors)}`);
-	}
+	checkDiagnosticsErrors(compilerOptionsParseResult.errors, 'Error while processing tsconfig compiler options');
 
 	return compilerOptionsParseResult.options;
 }
