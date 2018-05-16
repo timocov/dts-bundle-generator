@@ -4,7 +4,7 @@ import * as ts from 'typescript';
 import { verboseLog, normalLog } from './logger';
 
 import { getCompilerOptions } from './get-compiler-options';
-import { checkProgramDiagnosticsErrors } from './check-diagnostics-errors';
+import { checkProgramDiagnosticsErrors, checkDiagnosticsErrors } from './check-diagnostics-errors';
 
 interface DeclarationFiles {
 	[filePath: string]: string;
@@ -79,11 +79,15 @@ function getAbsolutePath(fileName: string): string {
  * @description Compiles source files into d.ts files and returns map of absolute path to file content
  */
 function getDeclarationFiles(rootFile: string, compilerOptions: ts.CompilerOptions): DeclarationFiles {
+	if (!compilerOptions.declaration) {
+		throw new Error(`Cannot bundle dts without specifying option 'declaration'`);
+	}
+
 	const program = ts.createProgram([rootFile], compilerOptions);
 	checkProgramDiagnosticsErrors(program);
 
 	const declarations: DeclarationFiles = {};
-	program.emit(
+	const emitResult = program.emit(
 		undefined,
 		(fileName: string, data: string) => {
 			declarations[getAbsolutePath(fileName)] = data;
@@ -91,6 +95,8 @@ function getDeclarationFiles(rootFile: string, compilerOptions: ts.CompilerOptio
 		undefined,
 		true
 	);
+
+	checkDiagnosticsErrors(emitResult.diagnostics, 'Errors while emitting declarations');
 
 	return declarations;
 }
