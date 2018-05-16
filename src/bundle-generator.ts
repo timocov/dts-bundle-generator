@@ -31,6 +31,7 @@ import {
 export interface GenerationOptions {
 	failOnClass?: boolean;
 	sortNodes?: boolean;
+	inlineDeclareGlobals?: boolean;
 	inlinedLibraries?: string[];
 	importedLibraries?: string[];
 	allowedTypesLibraries?: string[];
@@ -81,26 +82,31 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		statements: [],
 	};
 
+	const updateResultCommonParams = {
+		isStatementUsed: (statement: ts.Statement) => isNodeUsed(statement, rootFileExports, typesUsageEvaluator, typeChecker),
+		shouldStatementBeImported: (statement: ts.DeclarationStatement) => shouldNodeBeImported(statement, rootFileExports, typesUsageEvaluator),
+		shouldDeclareGlobalBeInlined: (currentModule: ModuleInfo) => Boolean(options.inlineDeclareGlobals) && currentModule.type === ModuleType.ShouldBeInlined,
+		getModuleInfo: (fileName: string) => getModuleInfo(fileName, criteria),
+		getDeclarationsForExportedAssignment: (exportAssignment: ts.ExportAssignment) => {
+			const symbolForExpression = typeChecker.getSymbolAtLocation(exportAssignment.expression);
+			if (symbolForExpression === undefined) {
+				return [];
+			}
+
+			const symbol = getActualSymbol(symbolForExpression, typeChecker);
+			return getDeclarationsForSymbol(symbol);
+		},
+	};
+
 	for (const sourceFile of sourceFiles) {
 		verboseLog(`\n\n======= Preparing file: ${sourceFile.fileName} =======`);
 
 		const prevStatementsCount = collectionResult.statements.length;
 		updateResult(
 			{
+				...updateResultCommonParams,
 				currentModule: getModuleInfo(sourceFile.fileName, criteria),
 				statements: sourceFile.statements,
-				isStatementUsed: (statement: ts.Statement) => isNodeUsed(statement, rootFileExports, typesUsageEvaluator, typeChecker),
-				shouldStatementBeImported: (statement: ts.DeclarationStatement) => shouldNodeBeImported(statement, rootFileExports, typesUsageEvaluator),
-				getModuleInfo: (fileName: string) => getModuleInfo(fileName, criteria),
-				getDeclarationsForExportedAssignment: (exportAssignment: ts.ExportAssignment) => {
-					const symbolForExpression = typeChecker.getSymbolAtLocation(exportAssignment.expression);
-					if (symbolForExpression === undefined) {
-						return [];
-					}
-
-					const symbol = getActualSymbol(symbolForExpression, typeChecker);
-					return getDeclarationsForSymbol(symbol);
-				},
 			},
 			collectionResult
 		);
@@ -163,6 +169,7 @@ interface UpdateParams {
 	statements: ReadonlyArray<ts.Statement>;
 	isStatementUsed(statement: ts.Statement): boolean;
 	shouldStatementBeImported(statement: ts.DeclarationStatement): boolean;
+	shouldDeclareGlobalBeInlined(currentModule: ModuleInfo, statement: ts.ModuleDeclaration): boolean;
 	getModuleInfo(fileName: string): ModuleInfo;
 	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
 }
@@ -188,7 +195,7 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 			continue;
 		}
 
-		if (isDeclareGlobalStatement(statement) && params.currentModule.type === ModuleType.ShouldBeInlined) {
+		if (isDeclareGlobalStatement(statement) && params.shouldDeclareGlobalBeInlined(params.currentModule, statement)) {
 			result.statements.push(statement);
 			continue;
 		}

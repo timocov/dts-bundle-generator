@@ -27,6 +27,7 @@ interface ParsedArgs extends yargs.Arguments {
 	verbose: boolean;
 	'no-check': boolean;
 	'fail-on-class': boolean;
+	'inline-declare-global': boolean;
 
 	'out-file': string | undefined;
 	'umd-module-name': string | undefined;
@@ -92,6 +93,11 @@ const args = yargs
 		default: false,
 		description: 'Sort output nodes',
 	})
+	.option('inline-declare-global', {
+		type: 'boolean',
+		default: false,
+		description: 'Enables inlining of `declare global` statements contained in files which should be inlined (all local files and packages from `--external-inlines`)',
+	})
 	.config('config', 'File path to generator config file')
 	.version()
 	.strict()
@@ -113,6 +119,7 @@ try {
 		umdModuleName: args['umd-module-name'],
 		preferredConfigPath: args.project,
 		sortNodes: args.sort,
+		inlineDeclareGlobals: args['inline-declare-global'],
 	});
 
 	let outFile = args['out-file'];

@@ -16,4 +16,3 @@ Each test case must have at least 3 files:
 npm run compile-tests
 npm run test
 ```
-	
