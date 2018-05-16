@@ -4,7 +4,7 @@ import * as ts from 'typescript';
 import { verboseLog, normalLog } from './logger';
 
 import { getCompilerOptions } from './get-compiler-options';
-import { checkProgramDiagnosticsErrors } from './check-diagnostics-errors';
+import { checkProgramDiagnosticsErrors, checkDiagnosticsErrors } from './check-diagnostics-errors';
 
 interface DeclarationFiles {
 	[filePath: string]: string;
@@ -83,7 +83,7 @@ function getDeclarationFiles(rootFile: string, compilerOptions: ts.CompilerOptio
 	checkProgramDiagnosticsErrors(program);
 
 	const declarations: DeclarationFiles = {};
-	program.emit(
+	const emitResult = program.emit(
 		undefined,
 		(fileName: string, data: string) => {
 			declarations[getAbsolutePath(fileName)] = data;
@@ -91,6 +91,8 @@ function getDeclarationFiles(rootFile: string, compilerOptions: ts.CompilerOptio
 		undefined,
 		true
 	);
+
+	checkDiagnosticsErrors(emitResult.diagnostics, 'Errors while emitting declarations');
 
 	return declarations;
 }
