@@ -1,11 +1,24 @@
 language: node_js
 
-cache:
-  directories:
-    - "node_modules"
+sudo: false
+
+matrix:
+  fast_finish: true
 
 node_js:
   - "8"
+  - "10"
+
+branches:
+  only:
+  - master
+
+git:
+  depth: 1
+
+cache:
+  directories:
+    - "node_modules"
 
 script:
   - npm run compile
