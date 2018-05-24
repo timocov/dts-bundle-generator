@@ -210,15 +210,20 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 			continue;
 		}
 
-		if (params.currentModule.type === ModuleType.ShouldBeReferencedAsTypes) {
-			addTypesReference(params.currentModule.typesLibraryName, result.typesReferences);
-			break;
-		} else if (params.currentModule.type === ModuleType.ShouldBeImported) {
-			if (params.shouldStatementBeImported(statement as ts.DeclarationStatement)) {
-				addImport(statement as ts.DeclarationStatement, params.currentModule.libraryName, result.imports);
-			}
-		} else if (params.currentModule.type === ModuleType.ShouldBeInlined) {
-			result.statements.push(statement);
+		switch (params.currentModule.type) {
+			case ModuleType.ShouldBeReferencedAsTypes:
+				addTypesReference(params.currentModule.typesLibraryName, result.typesReferences);
+				break;
+
+			case ModuleType.ShouldBeImported:
+				if (params.shouldStatementBeImported(statement as ts.DeclarationStatement)) {
+					addImport(statement as ts.DeclarationStatement, params.currentModule.libraryName, result.imports);
+				}
+				break;
+
+			case ModuleType.ShouldBeInlined:
+				result.statements.push(statement);
+				break;
 		}
 	}
 }

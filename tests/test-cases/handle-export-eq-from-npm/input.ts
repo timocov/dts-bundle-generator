@@ -3,7 +3,7 @@ import { NamedDeclaration } from 'typescript';
 import { EventEmitter } from 'events';
 
 export class StoppableEventEmitter extends EventEmitter {
-	public emitStoppableEvent(): this {
+	public emitStoppableEvent(error: Error): this {
 		return this;
 	}
 }

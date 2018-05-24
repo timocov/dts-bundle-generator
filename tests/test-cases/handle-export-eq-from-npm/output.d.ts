@@ -3,6 +3,6 @@ import { SomeCoolInterface } from 'package-with-export-eq';
 import { NamedDeclaration } from 'typescript';
 
 export declare class StoppableEventEmitter extends EventEmitter {
-	emitStoppableEvent(): this;
+	emitStoppableEvent(error: Error): this;
 }
 export declare type ExportType = SomeCoolInterface | NamedDeclaration | string;
