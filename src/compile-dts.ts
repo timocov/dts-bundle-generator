@@ -79,10 +79,6 @@ function getAbsolutePath(fileName: string): string {
  * @description Compiles source files into d.ts files and returns map of absolute path to file content
  */
 function getDeclarationFiles(rootFile: string, compilerOptions: ts.CompilerOptions): DeclarationFiles {
-	if (!compilerOptions.declaration) {
-		throw new Error(`Cannot bundle dts without specifying option 'declaration'`);
-	}
-
 	const program = ts.createProgram([rootFile], compilerOptions);
 	checkProgramDiagnosticsErrors(program);
 
