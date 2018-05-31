@@ -89,7 +89,7 @@ function getModuleInfoImpl(currentFilePath: string, originalFileName: string, cr
 	}
 
 	if (shouldLibraryBeImported(npmLibraryName, typesLibraryName, criteria.importedLibraries)) {
-		return { type: ModuleType.ShouldBeImported, fileName: originalFileName, libraryName: npmLibraryName, isExternal: true };
+		return { type: ModuleType.ShouldBeImported, fileName: originalFileName, libraryName: typesLibraryName || npmLibraryName, isExternal: true };
 	}
 
 	if (typesLibraryName !== null && isLibraryAllowed(typesLibraryName, criteria.allowedTypesLibraries)) {
