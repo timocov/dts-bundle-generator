@@ -73,7 +73,7 @@ Options:
                            Used types will be imported by "import { First,
                            Second } from 'library-name';".
                            By default all libraries will be imported (except
-                           inlined)                                      [array]
+                           inlined and libraries from @types)            [array]
   --external-types         Array of the package names from @types to import
                            typings from it via triple-slash reference directive.
                            By default all packages are allowed and will be used
