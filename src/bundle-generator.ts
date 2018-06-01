@@ -102,7 +102,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		verboseLog(`\n\n======= Preparing file: ${sourceFile.fileName} =======`);
 
 		const prevStatementsCount = collectionResult.statements.length;
-		updateResult(
+		const updateFn = sourceFile === rootSourceFile ? updateResultForRootSourceFile : updateResult;
+		updateFn(
 			{
 				...updateResultCommonParams,
 				currentModule: getModuleInfo(sourceFile.fileName, criteria),
@@ -123,13 +124,6 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		}
 	}
 
-	for (const statement of rootSourceFile.statements) {
-		// add skipped by `updateResult` `export default` from root file if present
-		if (ts.isExportAssignment(statement) && !statement.isExportEquals) {
-			collectionResult.statements.push(statement);
-		}
-	}
-
 	return generateOutput(
 		{
 			...collectionResult,
@@ -144,7 +138,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 						// const enum always can be exported
 						result = result || hasNodeModifier(statement, ts.SyntaxKind.ConstKeyword);
 					}
-				} else if (isDeclareGlobalStatement(statement)) {
+				} else if (isDeclareGlobalStatement(statement) || ts.isExportDeclaration(statement)) {
 					result = false;
 				}
 
@@ -224,6 +218,29 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 			case ModuleType.ShouldBeInlined:
 				result.statements.push(statement);
 				break;
+		}
+	}
+}
+
+function updateResultForRootSourceFile(params: UpdateParams, result: CollectingResult): void {
+	function isReExportFromImportableModule(statement: ts.Statement): boolean {
+		if (!ts.isExportDeclaration(statement) || statement.moduleSpecifier === undefined || !ts.isStringLiteral(statement.moduleSpecifier)) {
+			return false;
+		}
+
+		const moduleFileName = resolveModuleFileName(statement.getSourceFile().fileName, statement.moduleSpecifier.text);
+		return params.getModuleInfo(moduleFileName).type === ModuleType.ShouldBeImported;
+	}
+
+	updateResult(params, result);
+
+	// add skipped by `updateResult` exports
+	for (const statement of params.statements) {
+		const isExportDefault = ts.isExportAssignment(statement) && !statement.isExportEquals;
+		const isReExportFromImportable = isReExportFromImportableModule(statement);
+
+		if (isExportDefault || isReExportFromImportable) {
+			result.statements.push(statement);
 		}
 	}
 }
