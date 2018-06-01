@@ -71,7 +71,7 @@ const args = yargs
 		type: 'array',
 		description: 'Array of the package names from node_modules to import typings from it.\n' +
 			'Used types will be imported by "import { First, Second } from \'library-name\';".\n' +
-			'By default all libraries will be imported (except inlined)',
+			'By default all libraries will be imported (except inlined and libraries from @types)',
 		coerce: toStringsArray,
 	})
 	.option('external-types', {
