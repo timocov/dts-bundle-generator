@@ -37,6 +37,7 @@ export interface GenerationOptions {
 	allowedTypesLibraries?: string[];
 	umdModuleName?: string;
 	preferredConfigPath?: string;
+	followSymlinks?: boolean;
 }
 
 const skippedNodes = [
@@ -50,7 +51,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		throw new Error(`File "${filePath}" does not exist`);
 	}
 
-	const program = compileDts(filePath, options.preferredConfigPath);
+	const program = compileDts(filePath, options.preferredConfigPath, options.followSymlinks);
 	const typeChecker = program.getTypeChecker();
 
 	const criteria: ModuleCriteria = {
