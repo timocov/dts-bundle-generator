@@ -28,6 +28,7 @@ interface ParsedArgs extends yargs.Arguments {
 	'no-check': boolean;
 	'fail-on-class': boolean;
 	'inline-declare-global': boolean;
+	'disable-symlinks-following': boolean;
 
 	'out-file': string | undefined;
 	'umd-module-name': string | undefined;
@@ -98,11 +99,17 @@ const args = yargs
 		default: false,
 		description: 'Enables inlining of `declare global` statements contained in files which should be inlined (all local files and packages from `--external-inlines`)',
 	})
+	.option('disable-symlinks-following', {
+		type: 'boolean',
+		default: false,
+		description: '(EXPERIMENTAL) Disables resolving symlinks to original path. See https://github.com/timocov/dts-bundle-generator/issues/39 to more information',
+	})
 	.config('config', 'File path to generator config file')
 	.version()
 	.strict()
 	.example('$0 path/to/your/entry-file.ts', '')
 	.example('$0 --external-types jquery react -- entry-file.ts', '')
+	.wrap(Math.min(100, yargs.terminalWidth()))
 	.argv as ParsedArgs;
 
 if (args.verbose) {
@@ -120,6 +127,7 @@ try {
 		preferredConfigPath: args.project,
 		sortNodes: args.sort,
 		inlineDeclareGlobals: args['inline-declare-global'],
+		followSymlinks: !args['disable-symlinks-following'],
 	});
 
 	let outFile = args['out-file'];

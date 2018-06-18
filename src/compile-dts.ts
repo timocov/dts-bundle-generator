@@ -10,7 +10,7 @@ interface DeclarationFiles {
 	[filePath: string]: string;
 }
 
-export function compileDts(rootFile: string, preferredConfigPath?: string): ts.Program {
+export function compileDts(rootFile: string, preferredConfigPath?: string, followSymlinks: boolean = true): ts.Program {
 	const compilerOptions = getCompilerOptions(rootFile, preferredConfigPath);
 	if (compilerOptions.outDir !== undefined) {
 		normalLog('Compiler option `outDir` is not supported and will be removed while generating dts');
@@ -22,6 +22,10 @@ export function compileDts(rootFile: string, preferredConfigPath?: string): ts.P
 	verboseLog(`dts cache:\n  ${Object.keys(dtsFiles).join('\n  ')}\n`);
 
 	const host = ts.createCompilerHost(compilerOptions);
+
+	if (!followSymlinks) {
+		host.realpath = (path: string) => path;
+	}
 
 	host.resolveModuleNames = (moduleNames: string[], containingFile: string) => {
 		return moduleNames.map((moduleName: string) => {
