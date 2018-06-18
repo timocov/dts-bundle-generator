@@ -1,8 +1,8 @@
 declare enum NonExportedEnum {
-	First = 0,
+	First = 0
 }
 export declare const enum NonExportedConstEnum {
-	First = 0,
+	First = 0
 }
 declare class NonExportedClass {
 	method(): NonExportedEnum;

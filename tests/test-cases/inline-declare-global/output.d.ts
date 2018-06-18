@@ -1,4 +1,4 @@
-declare global  {
+declare global {
 	interface SymbolConstructor {
 		observable: symbol;
 	}

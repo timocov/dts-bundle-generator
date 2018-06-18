@@ -1,11 +1,11 @@
 declare enum NonExportedEnum {
-	First = 0,
+	First = 0
 }
 /**
  * NonExportedConstEnum JSDoc
  */
 export declare const enum NonExportedConstEnum {
-	First = 0,
+	First = 0
 }
 declare class NonExportedClass {
 	method(): NonExportedEnum;
@@ -24,13 +24,13 @@ export declare type ExportedType = string | number;
  * ExportedConstEnum JSDoc
  */
 export declare const enum ExportedConstEnum {
-	Item = 0,
+	Item = 0
 }
 /**
  * ExportedEnum JSDoc
  */
 export declare enum ExportedEnum {
-	Item = 0,
+	Item = 0
 }
 /**
  * const JSDoc
