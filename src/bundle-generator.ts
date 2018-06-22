@@ -211,9 +211,7 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 				break;
 
 			case ModuleType.ShouldBeImported:
-				if (params.shouldStatementBeImported(statement as ts.DeclarationStatement)) {
-					addImport(statement as ts.DeclarationStatement, params.currentModule.libraryName, result.imports);
-				}
+				updateImportsForStatement(statement, params, result);
 				break;
 
 			case ModuleType.ShouldBeInlined:
@@ -314,6 +312,19 @@ function addTypesReference(library: string, typesReferences: Set<string>): void 
 	}
 }
 
+function updateImportsForStatement(statement: ts.Statement, params: UpdateParams, result: CollectingResult): void {
+	if (params.currentModule.type !== ModuleType.ShouldBeImported) {
+		return;
+	}
+
+	const statementsToImport = ts.isVariableStatement(statement) ? statement.declarationList.declarations : [statement];
+	for (const statementToImport of statementsToImport) {
+		if (params.shouldStatementBeImported(statementToImport as ts.DeclarationStatement)) {
+			addImport(statementToImport as ts.DeclarationStatement, params.currentModule.libraryName, result.imports);
+		}
+	}
+}
+
 function addImport(statement: ts.DeclarationStatement, library: string, imports: Map<string, Set<string>>): void {
 	if (statement.name === undefined) {
 		throw new Error(`Import/usage unnamed declaration: ${statement.getText()}`);
@@ -367,7 +378,7 @@ function isNodeUsed(
 		return rootFileExports.some((rootExport: ts.Symbol) => typesUsageEvaluator.isTypeUsedBySymbol(node, rootExport));
 	} else if (ts.isVariableStatement(node)) {
 		return node.declarationList.declarations.some((declaration: ts.VariableDeclaration) => {
-			return isDeclarationExported(rootFileExports, typeChecker, declaration);
+			return isNodeUsed(declaration, rootFileExports, typesUsageEvaluator, typeChecker);
 		});
 	}
 
