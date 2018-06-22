@@ -72,6 +72,12 @@ function getStatementText(statement: ts.Statement, shouldStatementHasExportKeywo
 		nodeText = nodeText.replace(/\bdefault\s/, ts.isClassDeclaration(statement) ? 'declare ' : '');
 	}
 
+	// for some reason TypeScript allows to do not write `declare` keyword for ClassDeclaration
+	// if it already has `export` keyword - so we need to add it
+	if (ts.isClassDeclaration(statement) && /^class\b/.test(nodeText)) {
+		nodeText = `declare ${nodeText}`;
+	}
+
 	// add jsdoc for exported nodes only
 	if (shouldStatementHasExportKeyword) {
 		const start = statement.getStart();
