@@ -10,7 +10,7 @@
     "url": "https://github.com/timocov/dts-bundle-generator/issues"
   },
   "dependencies": {
-    "typescript": "^2.5.1",
+    "typescript": "^2.6.1",
     "yargs": "~11.0.0"
   },
   "devDependencies": {
