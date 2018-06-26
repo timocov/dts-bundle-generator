@@ -64,30 +64,30 @@ const args = yargs
 	})
 	.option('external-inlines', {
 		type: 'array',
-		description: 'Array of the package names from node_modules to inline typings from it.\n' +
-			'Used types will just be inlined into output file',
+		description: 'Array of package names from node_modules to inline typings from.\n' +
+			'Used types will be inlined into the output file',
 		coerce: toStringsArray,
 	})
 	.option('external-imports', {
 		type: 'array',
-		description: 'Array of the package names from node_modules to import typings from it.\n' +
-			'Used types will be imported by "import { First, Second } from \'library-name\';".\n' +
-			'By default all libraries will be imported (except inlined and libraries from @types)',
+		description: 'Array of package names from node_modules to import typings from.\n' +
+			'Used types will be imported using "import { First, Second } from \'library-name\';".\n' +
+			'By default all libraries will be imported (except inlined libraries and libraries from @types)',
 		coerce: toStringsArray,
 	})
 	.option('external-types', {
 		type: 'array',
-		description: 'Array of the package names from @types to import typings from it via triple-slash reference directive.\n' +
-			'By default all packages are allowed and will be used according their usages',
+		description: 'Array of package names from @types to import typings from via the triple-slash reference directive.\n' +
+			'By default all packages are allowed and will be used according to their usages',
 		coerce: toStringsArray,
 	})
 	.option('umd-module-name', {
 		type: 'string',
-		description: 'The name of UMD module. If specified `export as namespace ModuleName;` will be emitted',
+		description: 'Name of the UMD module. If specified then `export as namespace ModuleName;` will be emitted',
 	})
 	.option('project', {
 		type: 'string',
-		description: 'The path to a tsconfig.json file that will be used to compile files',
+		description: 'Path to the tsconfig.json file that will be used for the compilation',
 	})
 	.option('sort', {
 		type: 'boolean',
@@ -102,9 +102,9 @@ const args = yargs
 	.option('disable-symlinks-following', {
 		type: 'boolean',
 		default: false,
-		description: '(EXPERIMENTAL) Disables resolving symlinks to original path. See https://github.com/timocov/dts-bundle-generator/issues/39 to more information',
+		description: '(EXPERIMENTAL) Disables resolving of symlinks to the original path. See https://github.com/timocov/dts-bundle-generator/issues/39 for more information',
 	})
-	.config('config', 'File path to generator config file')
+	.config('config', 'File path to the generator config file')
 	.version()
 	.strict()
 	.example('$0 path/to/your/entry-file.ts', '')
