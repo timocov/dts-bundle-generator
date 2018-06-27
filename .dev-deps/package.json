@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "scripts": {
+    "lint": "tslint --config ../tslint.json --project ../tsconfig.json",
+    "compile": "tsc --version && tsc --project ../tsconfig.json",
+    "compile-tests": "tsc --project ../tsconfig.tests.json"
+  },
+  "devDependencies": {
+    "tslint": "~5.10.0",
+    "typescript": "~2.9.2"
+  }
+}

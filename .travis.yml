@@ -24,6 +24,7 @@ git:
 cache:
   directories:
     - "node_modules"
+    - ".dev-deps/node_modules"
 
 script:
   - sh ./travis-script.sh

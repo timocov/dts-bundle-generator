@@ -5,4 +5,6 @@
         "**/*.js.map": true,
         "tests/**/*.js": true,
     },
+    "typescript.tsdk": ".dev-deps/node_modules/typescript/lib",
+    "tslint.nodePath": ".dev-deps/",
 }

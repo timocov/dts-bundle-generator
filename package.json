@@ -17,8 +17,7 @@
     "@types/jasmine": "~2.8.7",
     "@types/node": "7.0.8",
     "@types/yargs": "~10.0.1",
-    "jasmine": "~2.9.0",
-    "tslint": "~5.10.0"
+    "jasmine": "~2.9.0"
   },
   "license": "MIT",
   "readme": "README.md",
@@ -27,10 +26,11 @@
     "url": "git+https://github.com/timocov/dts-bundle-generator.git"
   },
   "scripts": {
-    "lint": "tslint --config tslint.json --project tsconfig.json",
-    "compile": "tsc",
-    "compile-tests": "tsc --project tsconfig.tests.json",
+    "lint": "cd .dev-deps/ && npm run lint",
+    "compile": "cd .dev-deps/ && npm run compile",
+    "compile-tests": "cd .dev-deps/ && npm run compile-tests",
     "prepare-release": "npm run compile && node build/index.js && npm run lint && npm run compile-tests && npm run test && node build/prod-ready",
+    "postinstall": "cd .dev-deps/ && npm install",
     "test": "jasmine tests/all-test-cases.js"
   },
   "yargs": {
