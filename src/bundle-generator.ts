@@ -62,7 +62,20 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 	};
 
 	const sourceFiles = program.getSourceFiles().filter((file: ts.SourceFile) => {
-		return getModuleInfo(file.fileName, criteria).type !== ModuleType.ShouldNotBeUsed;
+		interface CompatibilityProgramPart {
+			// this method was introduced in TypeScript 2.6
+			// but to the public API it was added only in TypeScript 3.0
+			// so, to be compiled with TypeScript < 3.0 we need to have this hack
+			isSourceFileDefaultLibrary(file: ts.SourceFile): boolean;
+		}
+
+		type CommonKeys = keyof (CompatibilityProgramPart | ts.Program);
+
+		// if current ts.Program has isSourceFileDefaultLibrary method - then use it
+		// if it does not have it yet - use fallback
+		type CompatibleProgram = CommonKeys extends never ? ts.Program & CompatibilityProgramPart : ts.Program;
+
+		return !(program as CompatibleProgram).isSourceFileDefaultLibrary(file);
 	});
 
 	verboseLog(`Input source files:\n  ${sourceFiles.map((file: ts.SourceFile) => file.fileName).join('\n  ')}`);
@@ -171,10 +184,6 @@ interface UpdateParams {
 
 // tslint:disable-next-line:cyclomatic-complexity
 function updateResult(params: UpdateParams, result: CollectingResult): void {
-	if (params.currentModule.type === ModuleType.ShouldNotBeUsed) {
-		return;
-	}
-
 	for (const statement of params.statements) {
 		// we should skip import and exports statements
 		if (skippedNodes.indexOf(statement.kind) !== -1) {
@@ -268,10 +277,6 @@ function updateResultForImportedEqExportAssignment(exportAssignment: ts.ExportAs
 }
 
 function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, params: UpdateParams, result: CollectingResult): void {
-	if (params.currentModule.type === ModuleType.ShouldNotBeUsed) {
-		return;
-	}
-
 	if (moduleDecl.body === undefined || !ts.isModuleBlock(moduleDecl.body)) {
 		return;
 	}
@@ -279,10 +284,6 @@ function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, para
 	const moduleName = moduleDecl.name.text;
 	const moduleFileName = resolveModuleFileName(params.currentModule.fileName, moduleName);
 	const moduleInfo = params.getModuleInfo(moduleFileName);
-
-	if (moduleInfo.type === ModuleType.ShouldNotBeUsed) {
-		return;
-	}
 
 	// if we have declaration of external module inside internal one
 	// we need to just add it to result without any processing

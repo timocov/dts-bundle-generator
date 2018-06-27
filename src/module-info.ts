@@ -3,11 +3,9 @@ import * as path from 'path';
 import {
 	getLibraryName,
 	getTypesLibraryName,
-	isTypescriptLibFile,
 } from './node-modules-helpers';
 
 export const enum ModuleType {
-	ShouldNotBeUsed,
 	ShouldBeInlined,
 	ShouldBeImported,
 	ShouldBeReferencedAsTypes,
@@ -40,11 +38,7 @@ export interface UsedForModulesModuleInfo extends UsedModuleInfoCommon {
 	isExternal: true;
 }
 
-export interface NotUsedModuleInfo {
-	type: ModuleType.ShouldNotBeUsed;
-}
-
-export type ModuleInfo = NotUsedModuleInfo | InlinedModuleInfo | ImportedModuleInfo | ReferencedModuleInfo | UsedForModulesModuleInfo;
+export type ModuleInfo = InlinedModuleInfo | ImportedModuleInfo | ReferencedModuleInfo | UsedForModulesModuleInfo;
 
 export interface ModuleCriteria {
 	inlinedLibraries: string[];
@@ -77,10 +71,6 @@ function getModuleInfoImpl(currentFilePath: string, originalFileName: string, cr
 		}
 
 		return { type: ModuleType.ShouldBeInlined, fileName: originalFileName, isExternal: false };
-	}
-
-	if (isTypescriptLibFile(currentFilePath)) {
-		return { type: ModuleType.ShouldNotBeUsed };
 	}
 
 	const typesLibraryName = getTypesLibraryName(currentFilePath);
