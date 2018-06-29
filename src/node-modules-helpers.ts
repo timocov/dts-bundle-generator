@@ -28,7 +28,3 @@ export function getTypesLibraryName(path: string): string | null {
 
 	return libraryName.substring(typesFolderPrefix.length);
 }
-
-export function isTypescriptLibFile(fileName: string): boolean {
-	return /node_modules[\\\/]typescript[\\\/]lib[\\\/]lib(\..+)?\.d\.ts$/i.test(fileName);
-}

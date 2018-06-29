@@ -17,7 +17,6 @@ export function checkDiagnosticsErrors(diagnostics: ReadonlyArray<ts.Diagnostic>
 		return;
 	}
 
-	// `as ts.Diagnostic[]` we need to correct compile with TypeScript 2.5.1
-	errorLog(ts.formatDiagnostics(diagnostics as ts.Diagnostic[], formatDiagnosticsHost).trim());
+	errorLog(ts.formatDiagnostics(diagnostics, formatDiagnosticsHost).trim());
 	throw new Error(failMessage);
 }
