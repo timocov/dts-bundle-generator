@@ -3,6 +3,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { enableErrorsOnly } from '../src/logger';
 import { generateDtsBundle } from '../src/bundle-generator';
 
 import { TestCaseConfig } from './test-cases/test-case-config';
@@ -43,6 +44,8 @@ function getTestCases(): TestCase[] {
 			return result;
 		});
 }
+
+enableErrorsOnly();
 
 for (const testCase of getTestCases()) {
 	it(testCase.name, () => {

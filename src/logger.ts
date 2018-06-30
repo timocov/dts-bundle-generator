@@ -23,6 +23,10 @@ export function enableVerbose(): void {
 	normalLog('Verbose log enabled');
 }
 
+export function enableErrorsOnly(): void {
+	currentLogLevel = LogLevel.Error;
+}
+
 function logMessage(message: string, level: LogLevel = LogLevel.Verbose): void {
 	if (level < currentLogLevel) {
 		return;
