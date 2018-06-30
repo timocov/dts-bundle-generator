@@ -11,6 +11,7 @@ import { getCompilerOptions } from '../get-compiler-options';
 import {
 	enableVerbose,
 	normalLog,
+	warnLog,
 } from '../logger';
 
 // tslint:disable-next-line:no-any
@@ -145,7 +146,12 @@ try {
 	}
 
 	normalLog('Checking the generated file...');
-	const program = ts.createProgram([outFile], getCompilerOptions(inputFilePath, args.project));
+	const compilerOptions = getCompilerOptions(inputFilePath, args.project);
+	if (compilerOptions.skipLibCheck) {
+		warnLog('BEWARE: The generated file could not be properly checked due enabled "skipLibCheck" compiler option');
+	}
+
+	const program = ts.createProgram([outFile], compilerOptions);
 	checkProgramDiagnosticsErrors(program);
 	normalLog('Done.');
 } catch (ex) {

@@ -1,6 +1,7 @@
 const enum LogLevel {
 	Verbose,
 	Normal,
+	Warning,
 	Error,
 }
 
@@ -10,6 +11,10 @@ export function verboseLog(message: string): void {
 
 export function normalLog(message: string): void {
 	logMessage(message, LogLevel.Normal);
+}
+
+export function warnLog(message: string): void {
+	logMessage(message, LogLevel.Warning);
 }
 
 export function errorLog(message: string): void {
@@ -35,6 +40,10 @@ function logMessage(message: string, level: LogLevel = LogLevel.Verbose): void {
 	switch (level) {
 		case LogLevel.Error:
 			console.error(message);
+			break;
+
+		case LogLevel.Warning:
+			console.warn(message);
 			break;
 
 		case LogLevel.Normal:
