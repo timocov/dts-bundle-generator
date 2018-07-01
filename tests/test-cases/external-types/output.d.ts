@@ -1,5 +1,5 @@
-/// <reference types="jasmine" />
+/// <reference types="mocha" />
 
 export interface InterfaceName {
-	prop: jasmine.CustomMatcherResult;
+	prop: BrowserMocha;
 }

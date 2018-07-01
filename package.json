@@ -14,10 +14,10 @@
     "yargs": "~11.0.0"
   },
   "devDependencies": {
-    "@types/jasmine": "~2.8.7",
+    "@types/mocha": "~5.2.4",
     "@types/node": "7.0.8",
     "@types/yargs": "~10.0.1",
-    "jasmine": "~2.9.0"
+    "mocha": "~5.2.0"
   },
   "license": "MIT",
   "readme": "README.md",
@@ -31,7 +31,7 @@
     "compile-tests": "cd .dev-deps/ && npm run compile-tests",
     "prepare-release": "npm run compile && node build/index.js && npm run lint && npm run compile-tests && npm run test && node build/prod-ready",
     "postinstall": "cd .dev-deps/ && npm install",
-    "test": "jasmine tests/all-test-cases.js"
+    "test": "mocha -t 10000 tests/all-test-cases.js"
   },
   "yargs": {
     "boolean-negation": false,

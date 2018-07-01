@@ -1,5 +1,5 @@
-import 'jasmine';
+import 'mocha';
 
 export interface InterfaceName {
-	prop: jasmine.CustomMatcherResult;
+	prop: BrowserMocha;
 }

@@ -1,7 +1,8 @@
-/// <reference types="jasmine"/>
-
 import * as fs from 'fs';
 import * as path from 'path';
+import * as assert from 'assert';
+
+import { it } from 'mocha';
 
 import { enableErrorsOnly } from '../src/logger';
 import { generateDtsBundle } from '../src/bundle-generator';
@@ -50,6 +51,6 @@ enableErrorsOnly();
 for (const testCase of getTestCases()) {
 	it(testCase.name, () => {
 		const result = prepareString(generateDtsBundle(testCase.inputFileName, testCase.config.generatorOptions));
-		expect(result).toEqual(testCase.outputFileContent, 'Output should be the same as expected');
+		assert.strictEqual(result, testCase.outputFileContent, 'Output should be the same as expected');
 	});
 }
