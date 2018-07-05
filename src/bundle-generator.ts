@@ -75,6 +75,7 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		// if it does not have it yet - use fallback
 		type CompatibleProgram = CommonKeys extends never ? ts.Program & CompatibilityProgramPart : ts.Program;
 
+		// tslint:disable-next-line:no-unnecessary-type-assertion
 		return !(program as CompatibleProgram).isSourceFileDefaultLibrary(file);
 	});
 
@@ -405,10 +406,15 @@ function shouldNodeBeImported(node: ts.NamedDeclaration, rootFileExports: Readon
 
 function getDeclarationsForSymbol(symbol: ts.Symbol): ts.Declaration[] {
 	const result: ts.Declaration[] = [];
+
+	// Disabling tslint is for backward compat with TypeScript < 3
+	// tslint:disable-next-line:strict-type-predicates
 	if (symbol.valueDeclaration !== undefined) {
 		result.push(symbol.valueDeclaration);
 	}
 
+	// Disabling tslint is for backward compat with TypeScript < 3
+	// tslint:disable-next-line:strict-type-predicates
 	if (symbol.declarations !== undefined) {
 		result.push(...symbol.declarations);
 	}
