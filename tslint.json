@@ -38,6 +38,7 @@
         "encoding": true,
         "eofline": true,
         "file-header": false,
+        "file-name-casing": [true, "kebab-case"],
         "forin": true,
         "import-blacklist": [true, "rxjs", "lodash", "blocks/keyboard-listener/keycode"],
         "import-spacing": true,
