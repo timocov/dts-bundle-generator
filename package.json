@@ -11,7 +11,7 @@
   },
   "homepage": "https://github.com/timocov/dts-bundle-generator",
   "dependencies": {
-    "typescript": "^2.6.1",
+    "typescript": ">=2.6.1",
     "yargs": "~11.0.0"
   },
   "devDependencies": {
