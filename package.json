@@ -5,7 +5,7 @@
   "description": "DTS Bundle Generator",
   "main": "bundle-generator.js",
   "bin": "bin/dts-bundle-generator.js",
-  "author": "Eugene Timokhov",
+  "author": "Evgeniy Timokhov",
   "bugs": {
     "url": "https://github.com/timocov/dts-bundle-generator/issues"
   },
