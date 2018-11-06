@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as ts from 'typescript';
 
-import { verboseLog, normalLog } from './logger';
+import { verboseLog, normalLog, warnLog } from './logger';
 
 import { getCompilerOptions } from './get-compiler-options';
 import { checkProgramDiagnosticsErrors, checkDiagnosticsErrors } from './check-diagnostics-errors';
@@ -56,6 +56,7 @@ export function compileDts(rootFile: string, preferredConfigPath?: string, follo
 
 	const program = ts.createProgram([changeExtensionToDts(rootFile)], compilerOptions, host);
 	checkProgramDiagnosticsErrors(program);
+	warnAboutTypeScriptFilesInProgram(program);
 
 	return program;
 }
@@ -99,4 +100,15 @@ function getDeclarationFiles(rootFile: string, compilerOptions: ts.CompilerOptio
 	checkDiagnosticsErrors(emitResult.diagnostics, 'Errors while emitting declarations');
 
 	return declarations;
+}
+
+function warnAboutTypeScriptFilesInProgram(program: ts.Program): void {
+	const nonDeclarationFiles = program.getSourceFiles().filter((file: ts.SourceFile) => !file.isDeclarationFile);
+	if (nonDeclarationFiles.length !== 0) {
+		warnLog(`WARNING: It seems that some files in the compilation still are not declaration files.
+For more information see https://github.com/timocov/dts-bundle-generator/issues/53.
+If you think this is a mistake, feel free to open new issue or just ignore this warning.
+  ${nonDeclarationFiles.map((file: ts.SourceFile) => file.fileName).join('\n  ')}
+`);
+	}
 }
