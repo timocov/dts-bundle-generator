@@ -6,10 +6,6 @@ import { verboseLog, normalLog, warnLog } from './logger';
 import { getCompilerOptions } from './get-compiler-options';
 import { checkProgramDiagnosticsErrors, checkDiagnosticsErrors } from './check-diagnostics-errors';
 
-interface DeclarationFiles {
-	[filePath: string]: string;
-}
-
 export function compileDts(rootFile: string, preferredConfigPath?: string, followSymlinks: boolean = true): ts.Program {
 	const compilerOptions = getCompilerOptions(rootFile, preferredConfigPath);
 	if (compilerOptions.outDir !== undefined) {
@@ -45,9 +41,10 @@ export function compileDts(rootFile: string, preferredConfigPath?: string, follo
 	const originalGetSourceFile = host.getSourceFile;
 	host.getSourceFile = (fileName: string, languageVersion: ts.ScriptTarget, onError?: (message: string) => void) => {
 		const absolutePath = getAbsolutePath(fileName);
-		if (dtsFiles[absolutePath]) {
+		const storedValue = dtsFiles.get(absolutePath);
+		if (storedValue !== undefined) {
 			verboseLog(`dts cache match: ${absolutePath}`);
-			return ts.createSourceFile(fileName, dtsFiles[absolutePath], languageVersion);
+			return ts.createSourceFile(fileName, storedValue, languageVersion);
 		}
 
 		verboseLog(`dts cache mismatch: ${absolutePath} (${fileName})`);
@@ -83,16 +80,14 @@ function getAbsolutePath(fileName: string): string {
 /**
  * @description Compiles source files into d.ts files and returns map of absolute path to file content
  */
-function getDeclarationFiles(rootFile: string, compilerOptions: ts.CompilerOptions): DeclarationFiles {
+function getDeclarationFiles(rootFile: string, compilerOptions: ts.CompilerOptions): Map<string, string> {
 	const program = ts.createProgram([rootFile], compilerOptions);
 	checkProgramDiagnosticsErrors(program);
 
-	const declarations: DeclarationFiles = {};
+	const declarations = new Map<string, string>();
 	const emitResult = program.emit(
 		undefined,
-		(fileName: string, data: string) => {
-			declarations[getAbsolutePath(fileName)] = data;
-		},
+		(fileName: string, data: string) => declarations.set(getAbsolutePath(fileName), data),
 		undefined,
 		true
 	);
