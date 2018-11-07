@@ -40,12 +40,6 @@ export interface GenerationOptions {
 	followSymlinks?: boolean;
 }
 
-const skippedNodes = [
-	ts.SyntaxKind.ExportDeclaration,
-	ts.SyntaxKind.ImportDeclaration,
-	ts.SyntaxKind.ImportEqualsDeclaration,
-];
-
 export function generateDtsBundle(filePath: string, options: GenerationOptions = {}): string {
 	if (!ts.sys.fileExists(filePath)) {
 		throw new Error(`File "${filePath}" does not exist`);
@@ -182,6 +176,12 @@ interface UpdateParams {
 	getModuleInfo(fileName: string): ModuleInfo;
 	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
 }
+
+const skippedNodes = [
+	ts.SyntaxKind.ExportDeclaration,
+	ts.SyntaxKind.ImportDeclaration,
+	ts.SyntaxKind.ImportEqualsDeclaration,
+];
 
 // tslint:disable-next-line:cyclomatic-complexity
 function updateResult(params: UpdateParams, result: CollectingResult): void {
