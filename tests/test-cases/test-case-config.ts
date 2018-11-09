@@ -1,5 +1,8 @@
-import { GenerationOptions } from '../../src/bundle-generator';
+import { EntryPointConfig } from '../../src/bundle-generator';
 
-export interface TestCaseConfig {
-	generatorOptions?: GenerationOptions;
-}
+export type TestCaseConfig = Pick<
+	EntryPointConfig,
+	| 'libraries'
+	| 'failOnClass'
+	| 'output'
+>;

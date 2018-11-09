@@ -7,14 +7,19 @@ import { getCompilerOptions } from './get-compiler-options';
 import { getAbsolutePath } from './helpers/get-absolute-path';
 import { checkProgramDiagnosticsErrors, checkDiagnosticsErrors } from './helpers/check-diagnostics-errors';
 
-export function compileDts(rootFile: string, preferredConfigPath?: string, followSymlinks: boolean = true): ts.Program {
-	const compilerOptions = getCompilerOptions(rootFile, preferredConfigPath);
+export interface CompileDtsResult {
+	program: ts.Program;
+	rootFilesRemapping: Map<string, string>;
+}
+
+export function compileDts(rootFiles: ReadonlyArray<string>, preferredConfigPath?: string, followSymlinks: boolean = true): CompileDtsResult {
+	const compilerOptions = getCompilerOptions(rootFiles, preferredConfigPath);
 	if (compilerOptions.outDir !== undefined) {
 		normalLog('Compiler option `outDir` is not supported and will be removed while generating dts');
 		compilerOptions.outDir = undefined;
 	}
 
-	const dtsFiles = getDeclarationFiles(rootFile, compilerOptions);
+	const dtsFiles = getDeclarationFiles(rootFiles, compilerOptions);
 
 	verboseLog(`dts cache:\n  ${Object.keys(dtsFiles).join('\n  ')}\n`);
 
@@ -52,11 +57,18 @@ export function compileDts(rootFile: string, preferredConfigPath?: string, follo
 		return originalGetSourceFile(fileName, languageVersion, onError);
 	};
 
-	const program = ts.createProgram([changeExtensionToDts(rootFile)], compilerOptions, host);
+	const rootFilesRemapping = new Map<string, string>();
+	const inputFiles = rootFiles.map((rootFile: string) => {
+		const rootDtsFile = changeExtensionToDts(rootFile);
+		rootFilesRemapping.set(rootFile, rootDtsFile);
+		return rootDtsFile;
+	});
+
+	const program = ts.createProgram(inputFiles, compilerOptions, host);
 	checkProgramDiagnosticsErrors(program);
 	warnAboutTypeScriptFilesInProgram(program);
 
-	return program;
+	return { program, rootFilesRemapping };
 }
 
 function changeExtensionToDts(fileName: string): string {
@@ -72,8 +84,8 @@ function changeExtensionToDts(fileName: string): string {
 /**
  * @description Compiles source files into d.ts files and returns map of absolute path to file content
  */
-function getDeclarationFiles(rootFile: string, compilerOptions: ts.CompilerOptions): Map<string, string> {
-	const program = ts.createProgram([rootFile], compilerOptions);
+function getDeclarationFiles(rootFiles: ReadonlyArray<string>, compilerOptions: ts.CompilerOptions): Map<string, string> {
+	const program = ts.createProgram(rootFiles, compilerOptions);
 	checkProgramDiagnosticsErrors(program);
 
 	const declarations = new Map<string, string>();

@@ -49,7 +49,15 @@ enableErrorsOnly();
 describe('Functional tests', () => {
 	for (const testCase of getTestCases()) {
 		it(testCase.name, () => {
-			const result = prepareString(generateDtsBundle(testCase.inputFileName, testCase.config.generatorOptions));
+			const dtsResult = generateDtsBundle(
+				[
+					{
+						...testCase.config,
+						filePath: testCase.inputFileName,
+					},
+				]
+			)[0];
+			const result = prepareString(dtsResult);
 			assert.strictEqual(result, testCase.outputFileContent, 'Output should be the same as expected');
 		});
 	}
