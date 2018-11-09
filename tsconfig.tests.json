@@ -5,6 +5,7 @@
 	},
 	"include": [
 		"tests/functional-test-cases.ts",
-		"tests/test-cases/**/config.ts"
+		"tests/test-cases/**/config.ts",
+		"tests/unittests/**/*.ts"
 	]
 }
