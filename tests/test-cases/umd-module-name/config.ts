@@ -1,7 +1,7 @@
 import { TestCaseConfig } from '../test-case-config';
 
 const config: TestCaseConfig = {
-	generatorOptions: {
+	output: {
 		umdModuleName: 'MyUmdModule',
 	},
 };

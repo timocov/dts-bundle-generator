@@ -119,17 +119,28 @@ if (args.verbose) {
 
 try {
 	const inputFilePath = args._[0];
-	const generatedDts = generateDtsBundle(inputFilePath, {
-		failOnClass: args['fail-on-class'],
-		inlinedLibraries: args['external-inlines'],
-		importedLibraries: args['external-imports'],
-		allowedTypesLibraries: args['external-types'],
-		umdModuleName: args['umd-module-name'],
-		preferredConfigPath: args.project,
-		sortNodes: args.sort,
-		inlineDeclareGlobals: args['inline-declare-global'],
-		followSymlinks: !args['disable-symlinks-following'],
-	});
+	const generatedDts = generateDtsBundle(
+		[
+			{
+				filePath: inputFilePath,
+				libraries: {
+					allowedTypesLibraries: args['external-types'],
+					importedLibraries: args['external-imports'],
+					inlinedLibraries: args['external-inlines'],
+				},
+				output: {
+					inlineDeclareGlobals: args['inline-declare-global'],
+					umdModuleName: args['umd-module-name'],
+					sortNodes: args.sort,
+				},
+				failOnClass: args['fail-on-class'],
+			},
+		],
+		{
+			preferredConfigPath: args.project,
+			followSymlinks: !args['disable-symlinks-following'],
+		}
+	);
 
 	let outFile = args['out-file'];
 	if (outFile === undefined) {
@@ -138,7 +149,7 @@ try {
 	}
 
 	normalLog(`Writing generated file to ${outFile}...`);
-	ts.sys.writeFile(outFile, generatedDts);
+	ts.sys.writeFile(outFile, generatedDts[0]);
 
 	if (args['no-check']) {
 		normalLog('File checking is skipped due to "no-check" flag');
@@ -146,7 +157,7 @@ try {
 	}
 
 	normalLog('Checking the generated file...');
-	const compilerOptions = getCompilerOptions(inputFilePath, args.project);
+	const compilerOptions = getCompilerOptions([inputFilePath], args.project);
 	if (compilerOptions.skipLibCheck) {
 		warnLog('BEWARE: The generated file could not be properly checked due enabled "skipLibCheck" compiler option');
 	}

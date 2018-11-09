@@ -1,9 +1,7 @@
 import { TestCaseConfig } from '../test-cases/test-case-config';
 
 const config: TestCaseConfig = {
-	generatorOptions: {
-		failOnClass: true,
-	},
+	failOnClass: true,
 };
 
 export = config;
