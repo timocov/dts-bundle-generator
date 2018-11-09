@@ -2,7 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as assert from 'assert';
 
-import { it } from 'mocha';
 
 import { enableErrorsOnly } from '../src/logger';
 import { generateDtsBundle } from '../src/bundle-generator';
@@ -48,9 +47,11 @@ function getTestCases(): TestCase[] {
 
 enableErrorsOnly();
 
-for (const testCase of getTestCases()) {
-	it(testCase.name, () => {
-		const result = prepareString(generateDtsBundle(testCase.inputFileName, testCase.config.generatorOptions));
-		assert.strictEqual(result, testCase.outputFileContent, 'Output should be the same as expected');
-	});
-}
+describe('Functional tests', () => {
+	for (const testCase of getTestCases()) {
+		it(testCase.name, () => {
+			const result = prepareString(generateDtsBundle(testCase.inputFileName, testCase.config.generatorOptions));
+			assert.strictEqual(result, testCase.outputFileContent, 'Output should be the same as expected');
+		});
+	}
+});

@@ -32,7 +32,7 @@
     "compile-tests": "cd .dev-deps/ && npm run compile-tests",
     "prepare-release": "npm run compile && node build/index.js && npm run lint && npm run compile-tests && npm run test && node build/prod-ready",
     "postinstall": "cd .dev-deps/ && npm install",
-    "test": "mocha --timeout 10000 --slow 2500 tests/all-test-cases.js"
+    "test": "mocha --timeout 10000 --slow 2500 tests/functional-test-cases.js"
   },
   "yargs": {
     "boolean-negation": false,
