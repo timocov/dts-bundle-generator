@@ -1,6 +1,6 @@
 import * as ts from 'typescript';
 
-import { hasNodeModifier } from './typescript-helpers';
+import { hasNodeModifier } from './helpers/typescript';
 
 export interface OutputParams {
 	typesReferences: Set<string>;

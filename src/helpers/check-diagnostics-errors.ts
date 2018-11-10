@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { errorLog } from './logger';
+import { errorLog } from '../logger';
 
 const formatDiagnosticsHost: ts.FormatDiagnosticsHost = {
 	getCanonicalFileName: (fileName: string) => ts.sys.useCaseSensitiveFileNames ? fileName : fileName.toLowerCase(),

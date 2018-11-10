@@ -1,5 +1,7 @@
 import * as ts from 'typescript';
 
+import { getLibraryName } from './node-modules';
+
 const namedDeclarationKinds = [
 	ts.SyntaxKind.InterfaceDeclaration,
 	ts.SyntaxKind.ClassDeclaration,
@@ -47,4 +49,26 @@ export function isDeclareGlobalStatement(statement: ts.Statement): statement is 
  */
 export function isNamespaceStatement(node: ts.Node): node is ts.ModuleDeclaration {
 	return ts.isModuleDeclaration(node) && Boolean(node.flags & ts.NodeFlags.Namespace);
+}
+
+export function getDeclarationsForSymbol(symbol: ts.Symbol): ts.Declaration[] {
+	const result: ts.Declaration[] = [];
+
+	// Disabling tslint is for backward compat with TypeScript < 3
+	// tslint:disable-next-line:strict-type-predicates
+	if (symbol.valueDeclaration !== undefined) {
+		result.push(symbol.valueDeclaration);
+	}
+
+	// Disabling tslint is for backward compat with TypeScript < 3
+	// tslint:disable-next-line:strict-type-predicates
+	if (symbol.declarations !== undefined) {
+		result.push(...symbol.declarations);
+	}
+
+	return result;
+}
+
+export function isDeclarationFromExternalModule(node: ts.Declaration): boolean {
+	return getLibraryName(node.getSourceFile().fileName) !== null;
 }

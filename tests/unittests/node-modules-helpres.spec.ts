@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { getTypesLibraryName, getLibraryName } from '../../src/node-modules-helpers';
+import { getTypesLibraryName, getLibraryName } from '../../src/helpers/node-modules';
 
 describe('getLibraryName', () => {
 	it('should return correct library name', () => {

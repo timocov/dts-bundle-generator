@@ -3,7 +3,7 @@ import * as path from 'path';
 import {
 	getLibraryName,
 	getTypesLibraryName,
-} from './node-modules-helpers';
+} from './helpers/node-modules';
 
 export const enum ModuleType {
 	ShouldBeInlined,

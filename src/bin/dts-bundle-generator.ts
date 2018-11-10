@@ -5,7 +5,7 @@ import * as ts from 'typescript';
 import * as yargs from 'yargs';
 
 import { generateDtsBundle } from '../bundle-generator';
-import { checkProgramDiagnosticsErrors } from '../check-diagnostics-errors';
+import { checkProgramDiagnosticsErrors } from '../helpers/check-diagnostics-errors';
 import { getCompilerOptions } from '../get-compiler-options';
 
 import {

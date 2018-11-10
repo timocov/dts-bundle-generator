@@ -2,7 +2,7 @@ import * as ts from 'typescript';
 import {
 	getActualSymbol,
 	isNodeNamedDeclaration,
-} from './typescript-helpers';
+} from './helpers/typescript';
 
 export type NodesParents = Map<ts.Symbol, Set<ts.Symbol>>;
 

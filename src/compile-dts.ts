@@ -4,7 +4,8 @@ import * as ts from 'typescript';
 import { verboseLog, normalLog, warnLog } from './logger';
 
 import { getCompilerOptions } from './get-compiler-options';
-import { checkProgramDiagnosticsErrors, checkDiagnosticsErrors } from './check-diagnostics-errors';
+import { getAbsolutePath } from './helpers/get-absolute-path';
+import { checkProgramDiagnosticsErrors, checkDiagnosticsErrors } from './helpers/check-diagnostics-errors';
 
 export function compileDts(rootFile: string, preferredConfigPath?: string, followSymlinks: boolean = true): ts.Program {
 	const compilerOptions = getCompilerOptions(rootFile, preferredConfigPath);
@@ -66,15 +67,6 @@ function changeExtensionToDts(fileName: string): string {
 	// .ts, .tsx
 	const ext = path.extname(fileName);
 	return fileName.slice(0, -ext.length) + '.d.ts';
-}
-
-function getAbsolutePath(fileName: string): string {
-	if (!path.isAbsolute(fileName)) {
-		fileName = path.join(ts.sys.getCurrentDirectory(), fileName);
-	}
-
-	fileName = fileName.replace(/\\/g, '/');
-	return fileName;
 }
 
 /**

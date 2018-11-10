@@ -5,14 +5,14 @@ import { compileDts } from './compile-dts';
 import { TypesUsageEvaluator } from './types-usage-evaluator';
 import {
 	getActualSymbol,
+	getDeclarationsForSymbol,
 	hasNodeModifier,
+	isDeclarationFromExternalModule,
 	isDeclareGlobalStatement,
 	isDeclareModuleStatement,
 	isNamespaceStatement,
 	isNodeNamedDeclaration,
-} from './typescript-helpers';
-
-import { getLibraryName } from './node-modules-helpers';
+} from './helpers/typescript';
 
 import {
 	getModuleInfo,
@@ -402,26 +402,4 @@ function shouldNodeBeImported(node: ts.NamedDeclaration, rootFileExports: Readon
 
 		return rootFileExports.some((rootSymbol: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(symbol, rootSymbol));
 	});
-}
-
-function getDeclarationsForSymbol(symbol: ts.Symbol): ts.Declaration[] {
-	const result: ts.Declaration[] = [];
-
-	// Disabling tslint is for backward compat with TypeScript < 3
-	// tslint:disable-next-line:strict-type-predicates
-	if (symbol.valueDeclaration !== undefined) {
-		result.push(symbol.valueDeclaration);
-	}
-
-	// Disabling tslint is for backward compat with TypeScript < 3
-	// tslint:disable-next-line:strict-type-predicates
-	if (symbol.declarations !== undefined) {
-		result.push(...symbol.declarations);
-	}
-
-	return result;
-}
-
-function isDeclarationFromExternalModule(node: ts.Declaration): boolean {
-	return getLibraryName(node.getSourceFile().fileName) !== null;
 }

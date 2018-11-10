@@ -1,7 +1,7 @@
 import * as ts from 'typescript';
 import * as path from 'path';
 
-import { checkDiagnosticsErrors } from './check-diagnostics-errors';
+import { checkDiagnosticsErrors } from './helpers/check-diagnostics-errors';
 import { verboseLog } from './logger';
 
 const parseConfigHost: ts.ParseConfigHost = {
