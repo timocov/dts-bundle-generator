@@ -179,3 +179,26 @@ but:
     So please **make sure** that your `* as name`-import has right `name`.
 
 1. All your types should have different names inside a bundle. If you have 2 `interface Options {}` they will be merged by `TypeScript` and you will get wrong definitions.
+
+1. Don't re-export default exports as default export in entry files.
+
+    `class.ts`:
+
+    ```ts
+    export default class MyClass {}
+    ```
+
+    `index.ts`:
+
+    ```ts
+    export { default } from './class';
+    ```
+
+    This can be simply "fixed" via importing and then exporting as default:
+
+    `index.ts`:
+
+    ```ts
+    import MyClass from './class';
+    export default MyClass;
+    ```
