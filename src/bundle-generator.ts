@@ -4,14 +4,18 @@ import * as path from 'path';
 import { compileDts } from './compile-dts';
 import { TypesUsageEvaluator } from './types-usage-evaluator';
 import {
+	ExportType,
 	getActualSymbol,
 	getDeclarationsForSymbol,
+	getExportsForSourceFile,
+	getExportTypeForDeclaration,
 	hasNodeModifier,
 	isDeclarationFromExternalModule,
 	isDeclareGlobalStatement,
 	isDeclareModuleStatement,
 	isNamespaceStatement,
 	isNodeNamedDeclaration,
+	SourceFileExport,
 } from './helpers/typescript';
 
 import {
@@ -83,7 +87,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 		throw new Error('Symbol for root source file not found');
 	}
 
-	const rootFileExports = typeChecker.getExportsOfModule(rootSourceFileSymbol).map((symbol: ts.Symbol) => getActualSymbol(symbol, typeChecker));
+	const rootFileExports = getExportsForSourceFile(typeChecker, rootSourceFileSymbol);
+	const rootFileExportSymbols = rootFileExports.map((exp: SourceFileExport) => exp.symbol);
 
 	const collectionResult: CollectingResult = {
 		typesReferences: new Set<string>(),
@@ -92,8 +97,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 	};
 
 	const updateResultCommonParams = {
-		isStatementUsed: (statement: ts.Statement) => isNodeUsed(statement, rootFileExports, typesUsageEvaluator, typeChecker),
-		shouldStatementBeImported: (statement: ts.DeclarationStatement) => shouldNodeBeImported(statement, rootFileExports, typesUsageEvaluator),
+		isStatementUsed: (statement: ts.Statement) => isNodeUsed(statement, rootFileExportSymbols, typesUsageEvaluator, typeChecker),
+		shouldStatementBeImported: (statement: ts.DeclarationStatement) => shouldNodeBeImported(statement, rootFileExportSymbols, typesUsageEvaluator),
 		shouldDeclareGlobalBeInlined: (currentModule: ModuleInfo) => Boolean(options.inlineDeclareGlobals) && currentModule.type === ModuleType.ShouldBeInlined,
 		getModuleInfo: (fileName: string) => getModuleInfo(fileName, criteria),
 		getDeclarationsForExportedAssignment: (exportAssignment: ts.ExportAssignment) => {
@@ -141,8 +146,8 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				let result = true;
 
 				if (ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement) || ts.isFunctionDeclaration(statement)) {
-					// not every class, enum and function can be exported (only exported from root file can)
-					result = isDeclarationExported(rootFileExports, typeChecker, statement);
+					// not every class, enum and function can be exported (only exported as es6 export from root file)
+					result = getExportTypeForDeclaration(rootFileExports, typeChecker, statement) === ExportType.ES6Named;
 					if (ts.isEnumDeclaration(statement)) {
 						// const enum always can be exported
 						result = result || hasNodeModifier(statement, ts.SyntaxKind.ConstKeyword);
@@ -245,10 +250,11 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 
 	// add skipped by `updateResult` exports
 	for (const statement of params.statements) {
-		const isExportDefault = ts.isExportAssignment(statement) && !statement.isExportEquals;
+		// "export default" or "export ="
+		const isExportAssignment = ts.isExportAssignment(statement);
 		const isReExportFromImportable = isReExportFromImportableModule(statement);
 
-		if (isExportDefault || isReExportFromImportable) {
+		if (isExportAssignment || isReExportFromImportable) {
 			result.statements.push(statement);
 		}
 	}
@@ -359,15 +365,6 @@ function getRootSourceFile(program: ts.Program): ts.SourceFile {
 	}
 
 	return sourceFile;
-}
-
-function isDeclarationExported(exportedSymbols: ReadonlyArray<ts.Symbol>, typeChecker: ts.TypeChecker, declaration: ts.NamedDeclaration): boolean {
-	if (declaration.name === undefined) {
-		return false;
-	}
-
-	const declarationSymbol = typeChecker.getSymbolAtLocation(declaration.name);
-	return exportedSymbols.some((rootExport: ts.Symbol) => rootExport === declarationSymbol);
 }
 
 function isNodeUsed(

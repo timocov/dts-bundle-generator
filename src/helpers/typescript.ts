@@ -72,3 +72,51 @@ export function getDeclarationsForSymbol(symbol: ts.Symbol): ts.Declaration[] {
 export function isDeclarationFromExternalModule(node: ts.Declaration): boolean {
 	return getLibraryName(node.getSourceFile().fileName) !== null;
 }
+
+export const enum ExportType {
+	CommonJS,
+	ES6Named,
+}
+
+export interface SourceFileExport {
+	symbol: ts.Symbol;
+	type: ExportType;
+}
+
+export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileSymbol: ts.Symbol): SourceFileExport[] {
+	if (sourceFileSymbol.exports !== undefined) {
+		const commonJsExport = sourceFileSymbol.exports.get(ts.InternalSymbolName.ExportEquals);
+		if (commonJsExport !== undefined) {
+			return [
+				{
+					symbol: getActualSymbol(commonJsExport, typeChecker),
+					type: ExportType.CommonJS,
+				},
+			];
+		}
+	}
+
+	const result: SourceFileExport[] = typeChecker
+		.getExportsOfModule(sourceFileSymbol)
+		.map((symbol: ts.Symbol) => ({ symbol, type: ExportType.ES6Named }));
+
+	result.forEach((symbol: SourceFileExport) => {
+		symbol.symbol = getActualSymbol(symbol.symbol, typeChecker);
+	});
+
+	return result;
+}
+
+export function getExportTypeForDeclaration(exportedSymbols: ReadonlyArray<SourceFileExport>, typeChecker: ts.TypeChecker, declaration: ts.NamedDeclaration): ExportType | null {
+	if (declaration.name === undefined) {
+		return null;
+	}
+
+	const declarationSymbol = typeChecker.getSymbolAtLocation(declaration.name);
+	const exportedSymbol = exportedSymbols.find((rootExport: SourceFileExport) => rootExport.symbol === declarationSymbol);
+	if (exportedSymbol === undefined) {
+		return null;
+	}
+
+	return exportedSymbol.type;
+}
