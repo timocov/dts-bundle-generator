@@ -134,7 +134,7 @@ declare module "entry" {
 
 but:
 
-1. `A' is not used at all and most probably you do not want to export it.
+1. `A` is not used at all and most probably you do not want to export it.
 1. If you bundle your code in a way when all modules are merged (like when using Webpack or Rollup) then there should be no such modules as `a` or `b` (actually `entry` too) in the resulting file.
 
 ## Known limitations
