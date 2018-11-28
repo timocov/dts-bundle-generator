@@ -5,6 +5,8 @@ import {
 	getTypesLibraryName,
 } from './helpers/node-modules';
 
+import { fixPath } from './helpers/fix-path';
+
 export const enum ModuleType {
 	ShouldBeInlined,
 	ShouldBeImported,
@@ -61,7 +63,7 @@ function getModuleInfoImpl(currentFilePath: string, originalFileName: string, cr
 	if (npmLibraryName === null) {
 		if (criteria.typeRoots !== undefined) {
 			for (const root of criteria.typeRoots) {
-				const relativePath = path.relative(root, originalFileName).replace(/\\/g, '/');
+				const relativePath = fixPath(path.relative(root, originalFileName));
 				if (!relativePath.startsWith('../')) {
 					// relativePath is path relative to type root
 					// so we should treat it as "library from node_modules/@types/"

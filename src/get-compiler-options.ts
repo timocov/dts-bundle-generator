@@ -1,6 +1,7 @@
 import * as ts from 'typescript';
 import * as path from 'path';
 
+import { fixPath } from './helpers/fix-path';
 import { checkDiagnosticsErrors } from './helpers/check-diagnostics-errors';
 import { verboseLog } from './logger';
 
@@ -30,8 +31,7 @@ function findConfig(inputFiles: ReadonlyArray<string>): string {
 		throw new Error('Cannot find tsconfig for multiple files. Please specify preferred tsconfig file');
 	}
 
-	// special case for windows
-	const searchPath = inputFiles[0].replace(/\\/g, '/');
+	const searchPath = fixPath(inputFiles[0]);
 
 	const configFileName = ts.findConfigFile(searchPath, ts.sys.fileExists);
 
