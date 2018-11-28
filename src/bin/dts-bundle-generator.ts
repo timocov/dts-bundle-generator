@@ -9,6 +9,7 @@ import { loadConfigFile, BundlerConfig } from '../config-file/load-config-file';
 import { generateDtsBundle } from '../bundle-generator';
 import { checkProgramDiagnosticsErrors } from '../helpers/check-diagnostics-errors';
 import { getCompilerOptions } from '../get-compiler-options';
+import { fixPath } from '../helpers/fix-path';
 
 import {
 	enableVerbose,
@@ -125,7 +126,7 @@ function parseArgs(): ParsedArgs {
 
 function generateOutFileName(inputFilePath: string): string {
 	const inputFileName = path.parse(inputFilePath).name;
-	return path.join(inputFilePath, '..', inputFileName + '.d.ts');
+	return fixPath(path.join(inputFilePath, '..', inputFileName + '.d.ts'));
 }
 
 function main(): void {
