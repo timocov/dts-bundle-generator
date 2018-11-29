@@ -23,6 +23,9 @@ export interface BundlerConfig {
 	compilationOptions?: CompilationOptions;
 }
 
+/**
+ * @internal Do not output this function in generated dts for the npm package
+ */
 export function loadConfigFile(configPath: string): BundlerConfig {
 	const possibleConfig = require(getAbsolutePath(configPath));
 
