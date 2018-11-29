@@ -63,7 +63,7 @@ export declare function makeB(): B;
 ## Usage
 
 ```
-Usage: dts-bundle-generator.js [options] <file>
+Usage: dts-bundle-generator.js [options] <file(s)>
 
 Options:
   --help                        Show help                                                  [boolean]
@@ -94,7 +94,7 @@ Options:
   --disable-symlinks-following  (EXPERIMENTAL) Disables resolving of symlinks to the original path.
                                 See https://github.com/timocov/dts-bundle-generator/issues/39 for
                                 more information                          [boolean] [default: false]
-  --config                      File path to the generator config file
+  --config                      File path to the generator config file                      [string]
   --version                     Show version number                                        [boolean]
 ```
 
@@ -105,12 +105,20 @@ Examples:
 ```
 
 ```bash
+./node_modules/.bin/dts-bundle-generator path/to/your/entry-file.ts path/to/your/entry-file-2.ts
+```
+
+```bash
 ./node_modules/.bin/dts-bundle-generator --external-inlines=@mycompany/internal-project --external-imports=@angular/core,rxjs path/to/your/entry-file.ts
 ```
 
 ```bash
 ./node_modules/.bin/dts-bundle-generator --external-types=jquery path/to/your/entry-file.ts
 ```
+
+## Config file
+
+It is unnecessary, but you can use config file for the tool. See [config documentation](src/config-file/README.md) for more information.
 
 ## Why
 
