@@ -146,8 +146,19 @@ export function generateDtsBundle(filePath: string, options: GenerationOptions =
 				let result = true;
 
 				if (ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement) || ts.isFunctionDeclaration(statement)) {
+					const isStatementFromRootFile = statement.getSourceFile() === rootSourceFile;
+					const exportType = getExportTypeForDeclaration(rootFileExports, typeChecker, statement);
+
+					const isExportedAsES6NamedExport = exportType === ExportType.ES6Named;
+					// the node should have `export` keyword if it is exported directly from root file (not transitive from other module)
+					const isExportedAsES6DefaultExport =
+						exportType === ExportType.ES6Default
+						&& isStatementFromRootFile
+						&& hasNodeModifier(statement, ts.SyntaxKind.ExportKeyword);
+
 					// not every class, enum and function can be exported (only exported as es6 export from root file)
-					result = getExportTypeForDeclaration(rootFileExports, typeChecker, statement) === ExportType.ES6Named;
+					result = isExportedAsES6NamedExport || isExportedAsES6DefaultExport;
+
 					if (ts.isEnumDeclaration(statement)) {
 						// const enum always can be exported
 						result = result || hasNodeModifier(statement, ts.SyntaxKind.ConstKeyword);

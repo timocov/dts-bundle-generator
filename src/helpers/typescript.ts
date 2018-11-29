@@ -76,6 +76,7 @@ export function isDeclarationFromExternalModule(node: ts.Declaration): boolean {
 export const enum ExportType {
 	CommonJS,
 	ES6Named,
+	ES6Default,
 }
 
 export interface SourceFileExport {
@@ -99,6 +100,23 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 	const result: SourceFileExport[] = typeChecker
 		.getExportsOfModule(sourceFileSymbol)
 		.map((symbol: ts.Symbol) => ({ symbol, type: ExportType.ES6Named }));
+
+	if (sourceFileSymbol.exports !== undefined) {
+		const defaultExportSymbol = sourceFileSymbol.exports.get(ts.InternalSymbolName.Default);
+		if (defaultExportSymbol !== undefined) {
+			const defaultExport = result.find((exp: SourceFileExport) => exp.symbol === defaultExportSymbol);
+			if (defaultExport !== undefined) {
+				defaultExport.type = ExportType.ES6Default;
+			} else {
+				// it seems that default export is always returned by getExportsOfModule
+				// but let's add it to be sure add if there is no such export
+				result.push({
+					symbol: defaultExportSymbol,
+					type: ExportType.ES6Default,
+				});
+			}
+		}
+	}
 
 	result.forEach((symbol: SourceFileExport) => {
 		symbol.symbol = getActualSymbol(symbol.symbol, typeChecker);
