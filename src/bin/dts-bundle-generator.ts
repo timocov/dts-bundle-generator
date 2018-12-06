@@ -212,7 +212,7 @@ function main(): void {
 		return;
 	}
 
-	normalLog('Checking the generated files...');
+	normalLog('Checking generated files...');
 	const preferredConfigFile = bundlerConfig.compilationOptions !== undefined ? bundlerConfig.compilationOptions.preferredConfigPath : undefined;
 	const compilerOptions = getCompilerOptions(outFilesToCheck, preferredConfigFile);
 	if (compilerOptions.skipLibCheck) {
@@ -225,7 +225,7 @@ function main(): void {
 
 try {
 	const executionTime = measureTime(main);
-	normalLog(`Done in ${(executionTime / 1000).toFixed(2)}s.`);
+	normalLog(`Done in ${(executionTime / 1000).toFixed(2)}s`);
 } catch (ex) {
 	errorLog(`Error: ${ex.message}`);
 	process.exit(1);

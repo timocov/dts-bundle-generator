@@ -103,6 +103,8 @@ export interface EntryPointConfig {
 }
 
 export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, options: CompilationOptions = {}): string[] {
+	normalLog('Compiling input files...');
+
 	const { program, rootFilesRemapping } = compileDts(entries.map((entry: EntryPointConfig) => entry.filePath), options.preferredConfigPath, options.followSymlinks);
 	const typeChecker = program.getTypeChecker();
 
@@ -131,7 +133,7 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker);
 
 	return entries.map((entry: EntryPointConfig) => {
-		normalLog(`Processing ${entry.filePath} entry...`);
+		normalLog(`Processing ${entry.filePath}`);
 
 		const newRootFilePath = rootFilesRemapping.get(entry.filePath);
 		if (newRootFilePath === undefined) {
