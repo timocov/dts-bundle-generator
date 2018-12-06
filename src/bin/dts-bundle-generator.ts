@@ -10,6 +10,7 @@ import { generateDtsBundle } from '../bundle-generator';
 import { checkProgramDiagnosticsErrors } from '../helpers/check-diagnostics-errors';
 import { getCompilerOptions } from '../get-compiler-options';
 import { fixPath } from '../helpers/fix-path';
+import { measureTime } from '../helpers/measure-time';
 
 import {
 	enableVerbose,
@@ -207,12 +208,11 @@ function main(): void {
 
 	const program = ts.createProgram(outFilesToCheck, compilerOptions);
 	checkProgramDiagnosticsErrors(program);
-
-	normalLog('Done.');
 }
 
 try {
-	main();
+	const executionTime = measureTime(main);
+	normalLog(`Done in ${(executionTime / 1000).toFixed(2)}s.`);
 } catch (ex) {
 	console.error(`Error: ${ex.message}`);
 	process.exit(1);
