@@ -31,6 +31,7 @@ function toStringsArray(data: any): string[] {
 
 interface ParsedArgs extends yargs.Arguments {
 	sort: boolean;
+	silent: boolean;
 	verbose: boolean;
 	'no-check': boolean;
 	'fail-on-class': boolean;
@@ -60,6 +61,11 @@ function parseArgs(): ParsedArgs {
 			type: 'boolean',
 			default: false,
 			description: 'Enable verbose logging',
+		})
+		.option('silent', {
+			type: 'boolean',
+			default: false,
+			description: 'Disable any logging except errors',
 		})
 		.option('no-check', {
 			type: 'boolean',
@@ -131,12 +137,15 @@ function generateOutFileName(inputFilePath: string): string {
 	return fixPath(path.join(inputFilePath, '..', inputFileName + '.d.ts'));
 }
 
+// tslint:disable-next-line:cyclomatic-complexity
 function main(): void {
 	const args = parseArgs();
 
-	if (args.verbose) {
+	if (args.silent && args.verbose) {
+		throw new Error('Cannot use both silent and verbose options at the same time');
+	} else if (args.verbose) {
 		enableVerbose();
-	} else {
+	} else if (!args.silent) {
 		enableNormalLog();
 	}
 

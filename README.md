@@ -69,6 +69,7 @@ Options:
   --help                        Show help                                                  [boolean]
   --out-file, -o                File name of generated d.ts                                 [string]
   --verbose                     Enable verbose logging                    [boolean] [default: false]
+  --silent                      Disable any logging except errors         [boolean] [default: false]
   --no-check                    Skip validation of generated d.ts file    [boolean] [default: false]
   --fail-on-class               Fail if generated dts contains class declaration
                                                                           [boolean] [default: false]
