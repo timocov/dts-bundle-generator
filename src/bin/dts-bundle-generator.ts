@@ -15,6 +15,7 @@ import { measureTime } from '../helpers/measure-time';
 import {
 	enableNormalLog,
 	enableVerbose,
+	errorLog,
 	normalLog,
 	verboseLog,
 	warnLog,
@@ -226,6 +227,6 @@ try {
 	const executionTime = measureTime(main);
 	normalLog(`Done in ${(executionTime / 1000).toFixed(2)}s.`);
 } catch (ex) {
-	console.error(`Error: ${ex.message}`);
+	errorLog(`Error: ${ex.message}`);
 	process.exit(1);
 }
