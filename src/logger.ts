@@ -21,15 +21,15 @@ export function errorLog(message: string): void {
 	logMessage(message, LogLevel.Error);
 }
 
-let currentLogLevel = LogLevel.Normal;
+let currentLogLevel = LogLevel.Error;
 
 export function enableVerbose(): void {
 	currentLogLevel = LogLevel.Verbose;
 	normalLog('Verbose log enabled');
 }
 
-export function enableErrorsOnly(): void {
-	currentLogLevel = LogLevel.Error;
+export function enableNormalLog(): void {
+	currentLogLevel = LogLevel.Normal;
 }
 
 function logMessage(message: string, level: LogLevel = LogLevel.Verbose): void {

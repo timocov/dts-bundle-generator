@@ -13,6 +13,7 @@ import { fixPath } from '../helpers/fix-path';
 import { measureTime } from '../helpers/measure-time';
 
 import {
+	enableNormalLog,
 	enableVerbose,
 	normalLog,
 	verboseLog,
@@ -135,6 +136,8 @@ function main(): void {
 
 	if (args.verbose) {
 		enableVerbose();
+	} else {
+		enableNormalLog();
 	}
 
 	let bundlerConfig: BundlerConfig;
