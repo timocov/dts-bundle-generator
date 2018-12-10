@@ -29,6 +29,7 @@ var whiteListProdKeys = [
 	'peerDependencies',
 	'readme',
 	'repository',
+	'typings',
 	'version',
 	'yargs',
 ];

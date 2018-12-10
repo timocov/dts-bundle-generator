@@ -4,6 +4,7 @@
   "version": "1.6.1",
   "description": "DTS Bundle Generator",
   "main": "bundle-generator.js",
+  "typings": "bundle-generator.d.ts",
   "bin": "bin/dts-bundle-generator.js",
   "author": "Evgeniy Timokhov",
   "bugs": {
