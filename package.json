@@ -13,12 +13,12 @@
   "homepage": "https://github.com/timocov/dts-bundle-generator",
   "dependencies": {
     "typescript": ">=2.6.1",
-    "yargs": "~11.0.0"
+    "yargs": "~11.1.0"
   },
   "devDependencies": {
     "@types/mocha": "~5.2.4",
     "@types/node": "7.0.8",
-    "@types/yargs": "~10.0.1",
+    "@types/yargs": "~11.1.2",
     "mocha": "~5.2.0"
   },
   "license": "MIT",
