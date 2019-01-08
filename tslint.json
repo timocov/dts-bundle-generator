@@ -17,6 +17,7 @@
       "options": ["array"]
     },
     "arrow-return-shorthand": { "severity": "off" },
+    "ban-ts-ignore": {},
     "cyclomatic-complexity": {
       "options": [13]
     },
@@ -138,6 +139,7 @@
       ]
     },
     "unified-signatures": { "severity": "off" },
+    "unnecessary-constructor": {},
     "variable-name": {
       "options": [
         "ban-keywords",
