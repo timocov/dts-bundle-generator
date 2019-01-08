@@ -154,7 +154,7 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 			allowedTypesLibraries: librariesOptions.allowedTypesLibraries,
 			importedLibraries: librariesOptions.importedLibraries,
 			inlinedLibraries: librariesOptions.inlinedLibraries || [],
-			typeRoots: typeRoots,
+			typeRoots,
 		};
 
 		const rootFileExports = getExportsForSourceFile(typeChecker, rootSourceFileSymbol);

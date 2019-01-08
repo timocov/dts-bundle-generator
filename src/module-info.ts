@@ -85,7 +85,7 @@ function getModuleInfoImpl(currentFilePath: string, originalFileName: string, cr
 	}
 
 	if (typesLibraryName !== null && isLibraryAllowed(typesLibraryName, criteria.allowedTypesLibraries)) {
-		return { type: ModuleType.ShouldBeReferencedAsTypes, fileName: originalFileName, typesLibraryName: typesLibraryName, isExternal: true };
+		return { type: ModuleType.ShouldBeReferencedAsTypes, fileName: originalFileName, typesLibraryName, isExternal: true };
 	}
 
 	return { type: ModuleType.ShouldBeUsedForModulesOnly, fileName: originalFileName, isExternal: true };

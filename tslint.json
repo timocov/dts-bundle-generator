@@ -94,7 +94,6 @@
     "object-literal-key-quotes": {
       "options": ["as-needed"]
     },
-    "object-literal-shorthand": { "severity": "off" },
     "object-literal-sort-keys": { "severity": "off" },
     "one-variable-per-declaration": {},
     "only-arrow-functions": {
