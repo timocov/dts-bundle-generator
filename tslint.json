@@ -68,13 +68,7 @@
       "options": ["kebab-case"]
     },
     "forin": {},
-    "import-blacklist": {
-      "options": [
-        "rxjs",
-        "lodash",
-        "blocks/keyboard-listener/keycode"
-      ]
-    },
+    "import-blacklist": { "severity": "off" },
     "import-spacing": {},
     "indent": {
       "options": ["tabs"]
