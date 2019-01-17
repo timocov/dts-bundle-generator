@@ -1,8 +1,15 @@
 **/*.js.map
+
+**/*.d.ts
+!tests/test-cases/**/output.d.ts
+
 dist/
+
 node_modules/
 !tests/test-cases/node_modules/
+
 package-lock.json
 package-lock.json.*
+
 src/**/*.js
 tests/**/*.js
