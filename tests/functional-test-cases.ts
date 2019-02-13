@@ -31,10 +31,14 @@ function getTestCases(): TestCase[] {
 		.map((directoryName: string) => {
 			const testCaseDir = path.resolve(testCasesDir, directoryName);
 			const outputFileName = path.resolve(testCaseDir, 'output.d.ts');
+			const inputFileName = path.relative(process.cwd(), path.resolve(testCaseDir, 'input.ts'));
+
+			assert(fs.existsSync(inputFileName), `Input file doesn't exist for ${directoryName}`);
+			assert(fs.existsSync(outputFileName), `Output file doesn't exist for ${directoryName}`);
 
 			const result: TestCase = {
 				name: directoryName,
-				inputFileName: path.relative(process.cwd(), path.resolve(testCaseDir, 'input.ts')),
+				inputFileName,
 				config: require(path.resolve(testCaseDir, 'config.js')) as TestCaseConfig,
 				outputFileContent: prepareString(fs.readFileSync(outputFileName, 'utf-8')),
 			};
