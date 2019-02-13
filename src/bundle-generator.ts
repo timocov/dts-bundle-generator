@@ -441,7 +441,12 @@ function isNodeUsed(
 	typeChecker: ts.TypeChecker
 ): boolean {
 	if (isNodeNamedDeclaration(node)) {
-		return rootFileExports.some((rootExport: ts.Symbol) => typesUsageEvaluator.isTypeUsedBySymbol(node, rootExport));
+		const nodeSymbol = getNodeSymbol(node, typeChecker);
+		if (nodeSymbol === null) {
+			return false;
+		}
+
+		return rootFileExports.some((rootExport: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(nodeSymbol, rootExport));
 	} else if (ts.isVariableStatement(node)) {
 		return node.declarationList.declarations.some((declaration: ts.VariableDeclaration) => {
 			return isNodeUsed(declaration, rootFileExports, typesUsageEvaluator, typeChecker);
@@ -484,4 +489,17 @@ function isSourceFileDefaultLibrary(program: ts.Program, file: ts.SourceFile): b
 
 	// tslint:disable-next-line:no-unnecessary-type-assertion
 	return (program as CompatibleProgram).isSourceFileDefaultLibrary(file);
+}
+
+function getNodeSymbol(node: ts.NamedDeclaration, typeChecker: ts.TypeChecker): ts.Symbol | null {
+	if (node.name === undefined) {
+		return null;
+	}
+
+	const symbol = typeChecker.getSymbolAtLocation(node.name);
+	if (symbol === undefined) {
+		return null;
+	}
+
+	return getActualSymbol(symbol, typeChecker);
 }
