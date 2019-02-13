@@ -113,21 +113,7 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 	const typeRoots = ts.getEffectiveTypeRoots(program.getCompilerOptions(), {});
 
 	const sourceFiles = program.getSourceFiles().filter((file: ts.SourceFile) => {
-		interface CompatibilityProgramPart {
-			// this method was introduced in TypeScript 2.6
-			// but to the public API it was added only in TypeScript 3.0
-			// so, to be compiled with TypeScript < 3.0 we need to have this hack
-			isSourceFileDefaultLibrary(file: ts.SourceFile): boolean;
-		}
-
-		type CommonKeys = keyof (CompatibilityProgramPart | ts.Program);
-
-		// if current ts.Program has isSourceFileDefaultLibrary method - then use it
-		// if it does not have it yet - use fallback
-		type CompatibleProgram = CommonKeys extends never ? ts.Program & CompatibilityProgramPart : ts.Program;
-
-		// tslint:disable-next-line:no-unnecessary-type-assertion
-		return !(program as CompatibleProgram).isSourceFileDefaultLibrary(file);
+		return !isSourceFileDefaultLibrary(program, file);
 	});
 
 	verboseLog(`Input source files:\n  ${sourceFiles.map((file: ts.SourceFile) => file.fileName).join('\n  ')}`);
@@ -480,4 +466,22 @@ function shouldNodeBeImported(node: ts.NamedDeclaration, rootFileExports: Readon
 
 		return rootFileExports.some((rootSymbol: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(symbol, rootSymbol));
 	});
+}
+
+function isSourceFileDefaultLibrary(program: ts.Program, file: ts.SourceFile): boolean {
+	interface CompatibilityProgramPart {
+		// this method was introduced in TypeScript 2.6
+		// but to the public API it was added only in TypeScript 3.0
+		// so, to be compiled with TypeScript < 3.0 we need to have this hack
+		isSourceFileDefaultLibrary(file: ts.SourceFile): boolean;
+	}
+
+	type CommonKeys = keyof (CompatibilityProgramPart | ts.Program);
+
+	// if current ts.Program has isSourceFileDefaultLibrary method - then use it
+	// if it does not have it yet - use fallback
+	type CompatibleProgram = CommonKeys extends never ? ts.Program & CompatibilityProgramPart : ts.Program;
+
+	// tslint:disable-next-line:no-unnecessary-type-assertion
+	return (program as CompatibleProgram).isSourceFileDefaultLibrary(file);
 }
