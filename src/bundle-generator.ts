@@ -156,7 +156,15 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 
 		const updateResultCommonParams = {
 			isStatementUsed: (statement: ts.Statement) => isNodeUsed(statement, rootFileExportSymbols, typesUsageEvaluator, typeChecker),
-			shouldStatementBeImported: (statement: ts.DeclarationStatement) => shouldNodeBeImported(statement, rootFileExportSymbols, typesUsageEvaluator),
+			shouldStatementBeImported: (statement: ts.DeclarationStatement) => {
+				return shouldNodeBeImported(
+					statement,
+					rootFileExportSymbols,
+					typesUsageEvaluator,
+					typeChecker,
+					isSourceFileDefaultLibrary.bind(null, program)
+				);
+			},
 			shouldDeclareGlobalBeInlined: (currentModule: ModuleInfo) => Boolean(outputOptions.inlineDeclareGlobals) && currentModule.type === ModuleType.ShouldBeInlined,
 			getModuleInfo: (fileName: string) => getModuleInfo(fileName, criteria),
 			getDeclarationsForExportedAssignment: (exportAssignment: ts.ExportAssignment) => {
@@ -456,8 +464,39 @@ function isNodeUsed(
 	return false;
 }
 
-function shouldNodeBeImported(node: ts.NamedDeclaration, rootFileExports: ReadonlyArray<ts.Symbol>, typesUsageEvaluator: TypesUsageEvaluator): boolean {
-	const symbolsUsingNode = typesUsageEvaluator.getSymbolsUsingNode(node);
+function shouldNodeBeImported(
+	node: ts.NamedDeclaration,
+	rootFileExports: ReadonlyArray<ts.Symbol>,
+	typesUsageEvaluator: TypesUsageEvaluator,
+	typeChecker: ts.TypeChecker,
+	isDefaultLibrary: (sourceFile: ts.SourceFile) => boolean
+): boolean {
+	const nodeSymbol = getNodeSymbol(node, typeChecker);
+	if (nodeSymbol === null) {
+		return false;
+	}
+
+	const symbolDeclarations = getDeclarationsForSymbol(nodeSymbol);
+	const isSymbolDeclaredInDefaultLibrary = symbolDeclarations.some(
+		(declaration: ts.Declaration) => isDefaultLibrary(declaration.getSourceFile())
+	);
+	if (isSymbolDeclaredInDefaultLibrary) {
+		// we shouldn't import a node declared in the default library (such dom, es2015)
+		// yeah, actually we should check that node is declared only in the default lib
+		// but it seems we can check that at least one declaration is from default lib
+		// to treat the node as un-importable
+		// because we can't re-export declared somewhere else node with declaration merging
+
+		// also, if some lib file will not be added to the project
+		// for example like it is described in the react declaration file (e.g. React Native)
+		// then here we still have a bug with "importing global declaration from a package"
+		// (see https://github.com/timocov/dts-bundle-generator/issues/71)
+		// but I don't think it is a big problem for now
+		// and it's possible that it will be fixed in https://github.com/timocov/dts-bundle-generator/issues/59
+		return false;
+	}
+
+	const symbolsUsingNode = typesUsageEvaluator.getSymbolsUsingSymbol(nodeSymbol);
 	if (symbolsUsingNode === null) {
 		throw new Error('Something went wrong - value cannot be null');
 	}
