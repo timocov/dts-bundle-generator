@@ -452,7 +452,7 @@ function isNodeUsed(
 }
 
 function shouldNodeBeImported(node: ts.NamedDeclaration, rootFileExports: ReadonlyArray<ts.Symbol>, typesUsageEvaluator: TypesUsageEvaluator): boolean {
-	const symbolsUsingNode = typesUsageEvaluator.getSymbolsUsingNode(node as ts.DeclarationStatement);
+	const symbolsUsingNode = typesUsageEvaluator.getSymbolsUsingNode(node);
 	if (symbolsUsingNode === null) {
 		throw new Error('Something went wrong - value cannot be null');
 	}
