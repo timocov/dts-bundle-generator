@@ -216,7 +216,8 @@ function main(): void {
 	const preferredConfigFile = bundlerConfig.compilationOptions !== undefined ? bundlerConfig.compilationOptions.preferredConfigPath : undefined;
 	const compilerOptions = getCompilerOptions(outFilesToCheck, preferredConfigFile);
 	if (compilerOptions.skipLibCheck) {
-		warnLog('BEWARE: The generated file could not be properly checked due enabled "skipLibCheck" compiler option');
+		compilerOptions.skipLibCheck = false;
+		warnLog('Compiler option "skipLibCheck" is disabled to properly check generated output');
 	}
 
 	const program = ts.createProgram(outFilesToCheck, compilerOptions);
