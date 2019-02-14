@@ -29,19 +29,26 @@ export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker):
 }
 
 /**
+ * @see https://github.com/Microsoft/TypeScript/blob/f7c4fefeb62416c311077a699cc15beb211c25c9/src/compiler/utilities.ts#L626-L628
+ */
+function isGlobalScopeAugmentation(module: ts.ModuleDeclaration): boolean {
+	return Boolean(module.flags & ts.NodeFlags.GlobalAugmentation);
+}
+
+/**
  * Returns whether statement is `declare module` ModuleDeclaration (not `declare global` or `namespace`)
  */
 export function isDeclareModuleStatement(statement: ts.Statement): statement is ts.ModuleDeclaration {
 	// `declare module ""`, `declare global` and `namespace {}` are ModuleDeclaration
 	// but here we need to check only `declare module` statements
-	return ts.isModuleDeclaration(statement) && !(statement.flags & ts.NodeFlags.Namespace) && !(statement.flags & ts.NodeFlags.GlobalAugmentation);
+	return ts.isModuleDeclaration(statement) && !(statement.flags & ts.NodeFlags.Namespace) && !isGlobalScopeAugmentation(statement);
 }
 
 /**
  * Returns whether statement is `declare global` ModuleDeclaration
  */
 export function isDeclareGlobalStatement(statement: ts.Statement): statement is ts.ModuleDeclaration {
-	return ts.isModuleDeclaration(statement) && Boolean(statement.flags & ts.NodeFlags.GlobalAugmentation);
+	return ts.isModuleDeclaration(statement) && isGlobalScopeAugmentation(statement);
 }
 
 /**
