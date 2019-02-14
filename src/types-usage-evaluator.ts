@@ -15,25 +15,12 @@ export class TypesUsageEvaluator {
 		this.computeUsages(files);
 	}
 
-	public isTypeUsedBySymbol(typeNode: ts.NamedDeclaration, by: ts.Symbol): boolean {
-		if (typeNode.name === undefined) {
-			// anon?
-			return false;
-		}
-
-		return this.isSymbolUsedBySymbol(this.getSymbol(typeNode.name), by);
-	}
-
 	public isSymbolUsedBySymbol(symbol: ts.Symbol, by: ts.Symbol): boolean {
 		return this.isSymbolUsedBySymbolImpl(this.getActualSymbol(symbol), this.getActualSymbol(by), new Set<ts.Symbol>());
 	}
 
-	public getSymbolsUsingNode(typeNode: ts.NamedDeclaration): Set<ts.Symbol> | null {
-		if (typeNode.name === undefined) {
-			return null;
-		}
-
-		return this.nodesParentsMap.get(this.getSymbol(typeNode.name)) || null;
+	public getSymbolsUsingSymbol(symbol: ts.Symbol): Set<ts.Symbol> | null {
+		return this.nodesParentsMap.get(this.getActualSymbol(symbol)) || null;
 	}
 
 	private isSymbolUsedBySymbolImpl(fromSymbol: ts.Symbol, toSymbol: ts.Symbol, visitedSymbols: Set<ts.Symbol>): boolean {

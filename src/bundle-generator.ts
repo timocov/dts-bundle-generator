@@ -113,21 +113,7 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 	const typeRoots = ts.getEffectiveTypeRoots(program.getCompilerOptions(), {});
 
 	const sourceFiles = program.getSourceFiles().filter((file: ts.SourceFile) => {
-		interface CompatibilityProgramPart {
-			// this method was introduced in TypeScript 2.6
-			// but to the public API it was added only in TypeScript 3.0
-			// so, to be compiled with TypeScript < 3.0 we need to have this hack
-			isSourceFileDefaultLibrary(file: ts.SourceFile): boolean;
-		}
-
-		type CommonKeys = keyof (CompatibilityProgramPart | ts.Program);
-
-		// if current ts.Program has isSourceFileDefaultLibrary method - then use it
-		// if it does not have it yet - use fallback
-		type CompatibleProgram = CommonKeys extends never ? ts.Program & CompatibilityProgramPart : ts.Program;
-
-		// tslint:disable-next-line:no-unnecessary-type-assertion
-		return !(program as CompatibleProgram).isSourceFileDefaultLibrary(file);
+		return !isSourceFileDefaultLibrary(program, file);
 	});
 
 	verboseLog(`Input source files:\n  ${sourceFiles.map((file: ts.SourceFile) => file.fileName).join('\n  ')}`);
@@ -170,7 +156,15 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 
 		const updateResultCommonParams = {
 			isStatementUsed: (statement: ts.Statement) => isNodeUsed(statement, rootFileExportSymbols, typesUsageEvaluator, typeChecker),
-			shouldStatementBeImported: (statement: ts.DeclarationStatement) => shouldNodeBeImported(statement, rootFileExportSymbols, typesUsageEvaluator),
+			shouldStatementBeImported: (statement: ts.DeclarationStatement) => {
+				return shouldNodeBeImported(
+					statement,
+					rootFileExportSymbols,
+					typesUsageEvaluator,
+					typeChecker,
+					isSourceFileDefaultLibrary.bind(null, program)
+				);
+			},
 			shouldDeclareGlobalBeInlined: (currentModule: ModuleInfo) => Boolean(outputOptions.inlineDeclareGlobals) && currentModule.type === ModuleType.ShouldBeInlined,
 			getModuleInfo: (fileName: string) => getModuleInfo(fileName, criteria),
 			getDeclarationsForExportedAssignment: (exportAssignment: ts.ExportAssignment) => {
@@ -455,7 +449,12 @@ function isNodeUsed(
 	typeChecker: ts.TypeChecker
 ): boolean {
 	if (isNodeNamedDeclaration(node)) {
-		return rootFileExports.some((rootExport: ts.Symbol) => typesUsageEvaluator.isTypeUsedBySymbol(node, rootExport));
+		const nodeSymbol = getNodeSymbol(node, typeChecker);
+		if (nodeSymbol === null) {
+			return false;
+		}
+
+		return rootFileExports.some((rootExport: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(nodeSymbol, rootExport));
 	} else if (ts.isVariableStatement(node)) {
 		return node.declarationList.declarations.some((declaration: ts.VariableDeclaration) => {
 			return isNodeUsed(declaration, rootFileExports, typesUsageEvaluator, typeChecker);
@@ -465,8 +464,39 @@ function isNodeUsed(
 	return false;
 }
 
-function shouldNodeBeImported(node: ts.NamedDeclaration, rootFileExports: ReadonlyArray<ts.Symbol>, typesUsageEvaluator: TypesUsageEvaluator): boolean {
-	const symbolsUsingNode = typesUsageEvaluator.getSymbolsUsingNode(node as ts.DeclarationStatement);
+function shouldNodeBeImported(
+	node: ts.NamedDeclaration,
+	rootFileExports: ReadonlyArray<ts.Symbol>,
+	typesUsageEvaluator: TypesUsageEvaluator,
+	typeChecker: ts.TypeChecker,
+	isDefaultLibrary: (sourceFile: ts.SourceFile) => boolean
+): boolean {
+	const nodeSymbol = getNodeSymbol(node, typeChecker);
+	if (nodeSymbol === null) {
+		return false;
+	}
+
+	const symbolDeclarations = getDeclarationsForSymbol(nodeSymbol);
+	const isSymbolDeclaredInDefaultLibrary = symbolDeclarations.some(
+		(declaration: ts.Declaration) => isDefaultLibrary(declaration.getSourceFile())
+	);
+	if (isSymbolDeclaredInDefaultLibrary) {
+		// we shouldn't import a node declared in the default library (such dom, es2015)
+		// yeah, actually we should check that node is declared only in the default lib
+		// but it seems we can check that at least one declaration is from default lib
+		// to treat the node as un-importable
+		// because we can't re-export declared somewhere else node with declaration merging
+
+		// also, if some lib file will not be added to the project
+		// for example like it is described in the react declaration file (e.g. React Native)
+		// then here we still have a bug with "importing global declaration from a package"
+		// (see https://github.com/timocov/dts-bundle-generator/issues/71)
+		// but I don't think it is a big problem for now
+		// and it's possible that it will be fixed in https://github.com/timocov/dts-bundle-generator/issues/59
+		return false;
+	}
+
+	const symbolsUsingNode = typesUsageEvaluator.getSymbolsUsingSymbol(nodeSymbol);
 	if (symbolsUsingNode === null) {
 		throw new Error('Something went wrong - value cannot be null');
 	}
@@ -480,4 +510,35 @@ function shouldNodeBeImported(node: ts.NamedDeclaration, rootFileExports: Readon
 
 		return rootFileExports.some((rootSymbol: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(symbol, rootSymbol));
 	});
+}
+
+function isSourceFileDefaultLibrary(program: ts.Program, file: ts.SourceFile): boolean {
+	interface CompatibilityProgramPart {
+		// this method was introduced in TypeScript 2.6
+		// but to the public API it was added only in TypeScript 3.0
+		// so, to be compiled with TypeScript < 3.0 we need to have this hack
+		isSourceFileDefaultLibrary(file: ts.SourceFile): boolean;
+	}
+
+	type CommonKeys = keyof (CompatibilityProgramPart | ts.Program);
+
+	// if current ts.Program has isSourceFileDefaultLibrary method - then use it
+	// if it does not have it yet - use fallback
+	type CompatibleProgram = CommonKeys extends never ? ts.Program & CompatibilityProgramPart : ts.Program;
+
+	// tslint:disable-next-line:no-unnecessary-type-assertion
+	return (program as CompatibleProgram).isSourceFileDefaultLibrary(file);
+}
+
+function getNodeSymbol(node: ts.NamedDeclaration, typeChecker: ts.TypeChecker): ts.Symbol | null {
+	if (node.name === undefined) {
+		return null;
+	}
+
+	const symbol = typeChecker.getSymbolAtLocation(node.name);
+	if (symbol === undefined) {
+		return null;
+	}
+
+	return getActualSymbol(symbol, typeChecker);
 }
