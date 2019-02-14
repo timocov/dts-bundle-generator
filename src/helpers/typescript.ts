@@ -36,6 +36,14 @@ function isGlobalScopeAugmentation(module: ts.ModuleDeclaration): boolean {
 }
 
 /**
+ * Returns whether node is ambient module declaration (declare module "name" or declare global)
+ * @see https://github.com/Microsoft/TypeScript/blob/f7c4fefeb62416c311077a699cc15beb211c25c9/src/compiler/utilities.ts#L588-L590
+ */
+export function isAmbientModule(node: ts.Node): boolean {
+	return ts.isModuleDeclaration(node) && (node.name.kind === ts.SyntaxKind.StringLiteral || isGlobalScopeAugmentation(node));
+}
+
+/**
  * Returns whether statement is `declare module` ModuleDeclaration (not `declare global` or `namespace`)
  */
 export function isDeclareModuleStatement(statement: ts.Statement): statement is ts.ModuleDeclaration {

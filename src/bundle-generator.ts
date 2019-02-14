@@ -10,6 +10,7 @@ import {
 	getExportsForSourceFile,
 	getExportTypeForDeclaration,
 	hasNodeModifier,
+	isAmbientModule,
 	isDeclarationFromExternalModule,
 	isDeclareGlobalStatement,
 	isDeclareModuleStatement,
@@ -229,7 +230,7 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 							// const enum always can be exported
 							result = result || hasNodeModifier(statement, ts.SyntaxKind.ConstKeyword);
 						}
-					} else if (isDeclareGlobalStatement(statement) || ts.isExportDeclaration(statement)) {
+					} else if (isAmbientModule(statement) || ts.isExportDeclaration(statement)) {
 						result = false;
 					}
 
