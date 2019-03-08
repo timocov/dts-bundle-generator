@@ -66,6 +66,13 @@ export interface OutputOptions {
 	 * Enables inlining of `declare global` statements contained in files which should be inlined (all local files and packages from inlined libraries).
 	 */
 	inlineDeclareGlobals?: boolean;
+
+	/**
+	 * Enables inlining of `declare module` statements of the global modules
+	 * (e.g. `declare module 'external-module' {}`, but NOT `declare module './internal-module' {}`)
+	 * contained in files which should be inlined (all local files and packages from inlined libraries)
+	 */
+	inlineDeclareExternals?: boolean;
 }
 
 export interface LibrariesOptions {
@@ -167,6 +174,7 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 				);
 			},
 			shouldDeclareGlobalBeInlined: (currentModule: ModuleInfo) => Boolean(outputOptions.inlineDeclareGlobals) && currentModule.type === ModuleType.ShouldBeInlined,
+			shouldDeclareExternalModuleBeInlined: () => Boolean(outputOptions.inlineDeclareExternals),
 			getModuleInfo: (fileName: string) => getModuleInfo(fileName, criteria),
 			getDeclarationsForExportedAssignment: (exportAssignment: ts.ExportAssignment) => {
 				const symbolForExpression = typeChecker.getSymbolAtLocation(exportAssignment.expression);
@@ -257,6 +265,7 @@ interface UpdateParams {
 	isStatementUsed(statement: ts.Statement): boolean;
 	shouldStatementBeImported(statement: ts.DeclarationStatement): boolean;
 	shouldDeclareGlobalBeInlined(currentModule: ModuleInfo, statement: ts.ModuleDeclaration): boolean;
+	shouldDeclareExternalModuleBeInlined(): boolean;
 	getModuleInfo(fileName: string): ModuleInfo;
 	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
 }
@@ -372,9 +381,12 @@ function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, para
 	const moduleInfo = params.getModuleInfo(moduleFileName);
 
 	// if we have declaration of external module inside internal one
-	// we need to just add it to result without any processing
 	if (!params.currentModule.isExternal && moduleInfo.isExternal) {
-		result.statements.push(moduleDecl);
+		// if it's allowed - we need to just add it to result without any processing
+		if (params.shouldDeclareExternalModuleBeInlined()) {
+			result.statements.push(moduleDecl);
+		}
+
 		return;
 	}
 
