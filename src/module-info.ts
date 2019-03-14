@@ -5,6 +5,8 @@ import {
 	getTypesLibraryName,
 } from './helpers/node-modules';
 
+import { getPathsLibraryName } from './helpers/paths';
+
 import { fixPath } from './helpers/fix-path';
 
 export const enum ModuleType {
@@ -47,6 +49,12 @@ export interface ModuleCriteria {
 	importedLibraries: string[] | undefined;
 	allowedTypesLibraries: string[] | undefined;
 	typeRoots?: string[];
+	paths?: PathInfo[];
+}
+
+export interface PathInfo {
+	moduleName: string;
+	modulePath: string;
 }
 
 export function getModuleInfo(fileName: string, criteria: ModuleCriteria): ModuleInfo {
@@ -69,6 +77,12 @@ function getModuleInfoImpl(currentFilePath: string, originalFileName: string, cr
 					// so we should treat it as "library from node_modules/@types/"
 					return getModuleInfoImpl(remapToTypesFromNodeModules(relativePath), originalFileName, criteria);
 				}
+			}
+		}
+		if (criteria.paths !== undefined) {
+			const pathsLibraryName = getPathsLibraryName(originalFileName, criteria.paths);
+			if (pathsLibraryName !== null && isLibraryAllowed(pathsLibraryName, criteria.importedLibraries)) {
+				return { type: ModuleType.ShouldBeImported, fileName: originalFileName, libraryName: pathsLibraryName, isExternal: true };
 			}
 		}
 
