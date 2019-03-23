@@ -469,7 +469,7 @@ function isNodeUsed(
 		}
 
 		return rootFileExports.some((rootExport: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(nodeSymbol, rootExport));
-	} else if (ts.isVariableStatement(node)) {
+	} else if (ts.isVariableStatement(node)) { // tslint:disable-line:unnecessary-else
 		return node.declarationList.declarations.some((declaration: ts.VariableDeclaration) => {
 			return isNodeUsed(declaration, rootFileExports, typesUsageEvaluator, typeChecker);
 		});
