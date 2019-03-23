@@ -92,6 +92,11 @@ Options:
   --inline-declare-global       Enables inlining of `declare global` statements contained in files
                                 which should be inlined (all local files and packages from
                                 `--external-inlines`)                     [boolean] [default: false]
+  --inline-declare-externals    Enables inlining of `declare module` statements of the global
+                                modules (e.g. `declare module 'external-module' {}`, but NOT
+                                `declare module './internal-module' {}`) contained in files which
+                                should be inlined (all local files and packages from inlined
+                                libraries)                                [boolean] [default: false]
   --disable-symlinks-following  (EXPERIMENTAL) Disables resolving of symlinks to the original path.
                                 See https://github.com/timocov/dts-bundle-generator/issues/39 for
                                 more information                          [boolean] [default: false]

@@ -67,6 +67,13 @@ export interface OutputOptions {
 	 * Enables inlining of `declare global` statements contained in files which should be inlined (all local files and packages from inlined libraries).
 	 */
 	inlineDeclareGlobals?: boolean;
+
+	/**
+	 * Enables inlining of `declare module` statements of the global modules
+	 * (e.g. `declare module 'external-module' {}`, but NOT `declare module './internal-module' {}`)
+	 * contained in files which should be inlined (all local files and packages from inlined libraries)
+	 */
+	inlineDeclareExternals?: boolean;
 }
 
 export interface LibrariesOptions {
@@ -170,6 +177,7 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 				);
 			},
 			shouldDeclareGlobalBeInlined: (currentModule: ModuleInfo) => Boolean(outputOptions.inlineDeclareGlobals) && currentModule.type === ModuleType.ShouldBeInlined,
+			shouldDeclareExternalModuleBeInlined: () => Boolean(outputOptions.inlineDeclareExternals),
 			getModuleInfo: (fileName: string) => getModuleInfo(fileName, criteria),
 			getDeclarationsForExportedAssignment: (exportAssignment: ts.ExportAssignment) => {
 				const symbolForExpression = typeChecker.getSymbolAtLocation(exportAssignment.expression);
@@ -202,9 +210,10 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 		}
 
 		if (entry.failOnClass) {
-			const isClassStatementFound = collectionResult.statements.some((statement: ts.Statement) => ts.isClassDeclaration(statement));
-			if (isClassStatementFound) {
-				throw new Error('At least 1 class statement is found in generated dts.');
+			const classes = collectionResult.statements.filter(ts.isClassDeclaration);
+			if (classes.length !== 0) {
+				const classesNames = classes.map((c: ts.ClassDeclaration) => c.name === undefined ? 'anonymous class' : c.name.text);
+				throw new Error(`${classes.length} class statement(s) are found in generated dts: ${classesNames.join(', ')}`);
 			}
 		}
 
@@ -260,6 +269,7 @@ interface UpdateParams {
 	isStatementUsed(statement: ts.Statement): boolean;
 	shouldStatementBeImported(statement: ts.DeclarationStatement): boolean;
 	shouldDeclareGlobalBeInlined(currentModule: ModuleInfo, statement: ts.ModuleDeclaration): boolean;
+	shouldDeclareExternalModuleBeInlined(): boolean;
 	getModuleInfo(fileName: string): ModuleInfo;
 	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
 }
@@ -375,9 +385,12 @@ function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, para
 	const moduleInfo = params.getModuleInfo(moduleFileName);
 
 	// if we have declaration of external module inside internal one
-	// we need to just add it to result without any processing
 	if (!params.currentModule.isExternal && moduleInfo.isExternal) {
-		result.statements.push(moduleDecl);
+		// if it's allowed - we need to just add it to result without any processing
+		if (params.shouldDeclareExternalModuleBeInlined()) {
+			result.statements.push(moduleDecl);
+		}
+
 		return;
 	}
 
@@ -459,7 +472,7 @@ function isNodeUsed(
 		}
 
 		return rootFileExports.some((rootExport: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(nodeSymbol, rootExport));
-	} else if (ts.isVariableStatement(node)) {
+	} else if (ts.isVariableStatement(node)) { // tslint:disable-line:unnecessary-else
 		return node.declarationList.declarations.some((declaration: ts.VariableDeclaration) => {
 			return isNodeUsed(declaration, rootFileExports, typesUsageEvaluator, typeChecker);
 		});

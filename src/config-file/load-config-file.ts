@@ -72,6 +72,7 @@ const configScheme: SchemeDescriptor<BundlerConfig> = {
 			},
 			output: {
 				inlineDeclareGlobals: schemaPrimitiveValues.boolean,
+				inlineDeclareExternals: schemaPrimitiveValues.boolean,
 				sortNodes: schemaPrimitiveValues.boolean,
 				umdModuleName: schemaPrimitiveValues.string,
 			},

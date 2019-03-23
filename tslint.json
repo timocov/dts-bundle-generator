@@ -1,6 +1,7 @@
 {
   "extends": "tslint:latest",
   "linterOptions": {
+    "format": "verbose",
     "exclude": [
       "tests/test-cases/**/*.ts"
     ]
@@ -87,6 +88,7 @@
     "no-reference": { "severity": "off" },
     "no-shadowed-variable": { "severity": "off" },
     "no-switch-case-fall-through": {},
+    "no-tautology-expression": {},
     "no-unnecessary-class": {},
     "no-unnecessary-qualifier": {},
     "no-unnecessary-type-assertion": {},
@@ -140,6 +142,7 @@
     },
     "unified-signatures": { "severity": "off" },
     "unnecessary-constructor": {},
+    "unnecessary-else": {},
     "variable-name": {
       "options": [
         "ban-keywords",

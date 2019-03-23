@@ -105,7 +105,7 @@ function generateReferenceTypesDirective(libraries: string[]): string {
 function getTextAccordingExport(nodeText: string, isNodeExported: boolean, shouldNodeBeExported: boolean): string {
 	if (shouldNodeBeExported && !isNodeExported) {
 		return 'export ' + nodeText;
-	} else if (isNodeExported && !shouldNodeBeExported) {
+	} else if (isNodeExported && !shouldNodeBeExported) { // tslint:disable-line:unnecessary-else
 		return nodeText.slice('export '.length);
 	}
 
