@@ -207,9 +207,10 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 		}
 
 		if (entry.failOnClass) {
-			const isClassStatementFound = collectionResult.statements.some((statement: ts.Statement) => ts.isClassDeclaration(statement));
-			if (isClassStatementFound) {
-				throw new Error('At least 1 class statement is found in generated dts.');
+			const classes = collectionResult.statements.filter(ts.isClassDeclaration);
+			if (classes.length !== 0) {
+				const classesNames = classes.map((c: ts.ClassDeclaration) => c.name === undefined ? 'anonymous class' : c.name.text);
+				throw new Error(`${classes.length} class statement(s) are found in generated dts: ${classesNames.join(', ')}`);
 			}
 		}
 
