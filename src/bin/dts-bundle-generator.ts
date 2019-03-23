@@ -37,6 +37,7 @@ interface ParsedArgs extends yargs.Arguments {
 	'no-check': boolean;
 	'fail-on-class': boolean;
 	'inline-declare-global': boolean;
+	'inline-declare-externals': boolean;
 	'disable-symlinks-following': boolean;
 
 	'out-file': string | undefined;
@@ -115,6 +116,11 @@ function parseArgs(): ParsedArgs {
 			default: false,
 			description: 'Enables inlining of `declare global` statements contained in files which should be inlined (all local files and packages from `--external-inlines`)',
 		})
+		.option('inline-declare-externals', {
+			type: 'boolean',
+			default: false,
+			description: 'Enables inlining of `declare module` statements of the global modules (e.g. `declare module \'external-module\' {}`, but NOT `declare module \'./internal-module\' {}`) contained in files which should be inlined (all local files and packages from inlined libraries)',
+		})
 		.option('disable-symlinks-following', {
 			type: 'boolean',
 			default: false,
@@ -176,6 +182,7 @@ function main(): void {
 						inlinedLibraries: args['external-inlines'],
 					},
 					output: {
+						inlineDeclareExternals: args['inline-declare-externals'],
 						inlineDeclareGlobals: args['inline-declare-global'],
 						umdModuleName: args['umd-module-name'],
 						sortNodes: args.sort,
