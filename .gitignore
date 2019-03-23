@@ -1,3 +1,5 @@
+.vscode/launch.json
+
 **/*.js.map
 
 **/*.d.ts
