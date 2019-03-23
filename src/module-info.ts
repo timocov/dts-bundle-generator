@@ -79,6 +79,7 @@ function getModuleInfoImpl(currentFilePath: string, originalFileName: string, cr
 				}
 			}
 		}
+
 		if (criteria.paths !== undefined) {
 			const pathsLibraryName = getPathsLibraryName(originalFileName, criteria.paths);
 			if (pathsLibraryName !== null && isLibraryAllowed(pathsLibraryName, criteria.importedLibraries)) {
