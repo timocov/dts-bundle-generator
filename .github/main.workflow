@@ -7,6 +7,9 @@ action "install" {
   uses = "actions/npm@v2.0.0"
   runs = "npm"
   args = "install"
+  env = {
+    NPM_CONFIG_USERCONFIG = ".github/.npmrc"
+  }
 }
 
 action "compile" {
