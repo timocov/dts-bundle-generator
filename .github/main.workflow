@@ -15,12 +15,18 @@ action "install min TS" {
   uses = "actions/npm@v2.0.0"
   needs = ["install"]
   args = "install typescript@2.6.1"
+  env = {
+    NPM_CONFIG_USERCONFIG = ".github/.npmrc"
+  }
 }
 
 action "install latest TS" {
   uses = "actions/npm@v2.0.0"
   needs = ["install"]
   args = "install typescript@3.3.4000"
+  env = {
+    NPM_CONFIG_USERCONFIG = ".github/.npmrc"
+  }
 }
 
 action "compile with min TS" {
