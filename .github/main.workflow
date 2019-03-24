@@ -69,5 +69,4 @@ action "publish" {
   uses = "actions/npm@v2.0.0"
   needs = ["tag"]
   args = "publish --access public"
-  secrets = ["NPM_AUTH_TOKEN"]
 }
