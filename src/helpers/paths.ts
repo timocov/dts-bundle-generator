@@ -16,7 +16,10 @@ export function getEffectivePaths(compilerOptions: ts.CompilerOptions): PathInfo
 
 	for (const moduleName in paths) {
 		if (paths[moduleName]) {
-			paths[moduleName].forEach((modulePath: string) => effectivePaths.push({
+			effectivePaths.push(...paths[moduleName].map((modulePath: string) => ({
+				moduleName,
+				modulePath: fixPath(path.normalize(path.join(baseUrl, modulePath))),
+			})));
 				moduleName,
 				modulePath: fixPath(path.normalize(path.join(baseUrl, modulePath))),
 			}));
