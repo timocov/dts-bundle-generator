@@ -48,10 +48,10 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 	);
 
 	if (options.sortStatements) {
-		statements.sort();
+		statements.sort(compareStatementText);
 	}
 
-	resultOutput += statements.join('\n');
+	resultOutput += statements.map(statementTextToString).join('\n');
 
 	if (options.umdModuleName !== undefined) {
 		resultOutput += `\n\nexport as namespace ${options.umdModuleName};\n`;
@@ -60,7 +60,30 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 	return resultOutput;
 }
 
-function getStatementText(statement: ts.Statement, shouldStatementHasExportKeyword: boolean, needStripDefaultKeyword: boolean): string {
+interface StatementText {
+	leadingComment?: string;
+	text: string;
+}
+
+function statementTextToString(s: StatementText): string {
+	if (s.leadingComment === undefined) {
+		return s.text;
+	}
+
+	return `${s.leadingComment}\n${s.text}`;
+}
+
+function compareStatementText(a: StatementText, b: StatementText): number {
+	if (a.text > b.text) {
+		return 1;
+	} else if (a.text < b.text) { // tslint:disable-line:unnecessary-else
+		return -1;
+	}
+
+	return 0;
+}
+
+function getStatementText(statement: ts.Statement, shouldStatementHasExportKeyword: boolean, needStripDefaultKeyword: boolean): StatementText {
 	const hasStatementExportKeyword = ts.isExportAssignment(statement) || hasNodeModifier(statement, ts.SyntaxKind.ExportKeyword);
 
 	let nodeText = getTextAccordingExport(statement.getText(), hasStatementExportKeyword, shouldStatementHasExportKeyword);
@@ -78,17 +101,21 @@ function getStatementText(statement: ts.Statement, shouldStatementHasExportKeywo
 		nodeText = `declare ${nodeText}`;
 	}
 
+	const result: StatementText = {
+		text: spacesToTabs(nodeText),
+	};
+
 	// add jsdoc for exported nodes only
 	if (shouldStatementHasExportKeyword) {
 		const start = statement.getStart();
 		const jsDocStart = statement.getStart(undefined, true);
 		const nodeJSDoc = statement.getSourceFile().getFullText().substring(jsDocStart, start).trim();
 		if (nodeJSDoc.length !== 0) {
-			nodeText = `${nodeJSDoc}\n${nodeText}`;
+			result.leadingComment = spacesToTabs(nodeJSDoc);
 		}
 	}
 
-	return spacesToTabs(nodeText);
+	return result;
 }
 
 function generateImport(libraryName: string, imports: string[]): string {

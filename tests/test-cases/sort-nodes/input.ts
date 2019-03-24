@@ -7,3 +7,8 @@ export interface BInterfaceName {
 
 export type BType = number;
 export type ATypeName = string | number;
+
+/**
+ * Some description
+ */
+export type ZTypeName = string | null;
