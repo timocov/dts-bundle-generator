@@ -1,4 +1,4 @@
-declare function getRandom(): number;
+export declare function getRandom(): number;
 export interface SomeInterface {
 	field: typeof getRandom;
 }

@@ -21,6 +21,8 @@ import {
 
 import { fixPath } from './helpers/fix-path';
 
+import { checkNonExportedEmittedInJsStatements } from './helpers/check-non-exported-emitted-in-js-statements';
+
 import {
 	getModuleInfo,
 	ModuleCriteria,
@@ -213,6 +215,8 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 				throw new Error(`${classes.length} class statement(s) are found in generated dts: ${classesNames.join(', ')}`);
 			}
 		}
+
+		checkNonExportedEmittedInJsStatements(collectionResult.statements, rootFileExports, typeChecker);
 
 		return generateOutput(
 			{

@@ -1,8 +1,8 @@
 export interface MyInterface {
 }
-declare class MyClass {
+export declare class MyClass {
 }
-declare class MyAnotherClass {
+export declare class MyAnotherClass {
 }
 export default class MyNewClass extends MyClass implements MyInterface {
 }

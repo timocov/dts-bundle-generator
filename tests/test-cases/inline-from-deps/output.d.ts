@@ -1,6 +1,6 @@
 export interface Interface {}
 export type Type = number | string;
-declare class SomeClass {
+export class SomeClass {
 	private x;
 	public constructor();
 }
