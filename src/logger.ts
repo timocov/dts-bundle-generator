@@ -39,7 +39,8 @@ function logMessage(message: string, level: LogLevel = LogLevel.Verbose): void {
 
 	switch (level) {
 		case LogLevel.Error:
-			console.error(message);
+			// print red
+			console.error(`\x1b[31m${message}\x1b[0m`);
 			break;
 
 		case LogLevel.Warning:
