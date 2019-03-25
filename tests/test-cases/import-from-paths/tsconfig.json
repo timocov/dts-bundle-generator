@@ -3,7 +3,9 @@
 	"compilerOptions": {
 		"baseUrl": "./",
 		"paths": {
-			"fake-module": ["modules/fake-module"]
+			"module-1": ["import-modules/module-1"],
+			"module-2/*": ["inline-modules-1/module-2"],
+			"*": ["inline-modules-2/*"]
 		}
 	}
 }

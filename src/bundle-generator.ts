@@ -20,7 +20,7 @@ import {
 } from './helpers/typescript';
 
 import { fixPath } from './helpers/fix-path';
-import { getEffectivePaths } from './helpers/paths';
+import { getLibraryPaths } from './helpers/paths';
 
 import {
 	getModuleInfo,
@@ -120,7 +120,7 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 	const typeChecker = program.getTypeChecker();
 
 	const typeRoots = ts.getEffectiveTypeRoots(program.getCompilerOptions(), {});
-	const paths = getEffectivePaths(program.getCompilerOptions());
+	const paths = getLibraryPaths(program.getCompilerOptions());
 
 	const sourceFiles = program.getSourceFiles().filter((file: ts.SourceFile) => {
 		return !isSourceFileDefaultLibrary(program, file);

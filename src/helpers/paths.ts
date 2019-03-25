@@ -4,7 +4,7 @@ import * as path from 'path';
 import { PathInfo } from '../module-info';
 import { fixPath } from './fix-path';
 
-export function getEffectivePaths(compilerOptions: ts.CompilerOptions): PathInfo[] | undefined {
+export function getLibraryPaths(compilerOptions: ts.CompilerOptions): PathInfo[] | undefined {
 	const baseUrl = compilerOptions.baseUrl;
 	const paths = compilerOptions.paths;
 
@@ -12,27 +12,28 @@ export function getEffectivePaths(compilerOptions: ts.CompilerOptions): PathInfo
 		return undefined;
 	}
 
-	const effectivePaths: PathInfo[] = [];
+	const libraryPaths: PathInfo[] = [];
 
-	for (const moduleName in paths) {
-		if (paths[moduleName]) {
-			effectivePaths.push(...paths[moduleName].map((modulePath: string) => ({
-				moduleName,
-				modulePath: fixPath(path.normalize(path.join(baseUrl, modulePath))),
+	for (const pathName in paths) {
+		if (paths[pathName] && isLibraryName(pathName)) {
+			libraryPaths.push(...paths[pathName].map((libraryPath: string) => ({
+				libraryName: pathName,
+				libraryPath: fixPath(path.normalize(path.join(baseUrl, libraryPath))),
 			})));
-				moduleName,
-				modulePath: fixPath(path.normalize(path.join(baseUrl, modulePath))),
-			}));
 		}
 	}
 
-	return effectivePaths;
+	return libraryPaths;
+}
+
+function isLibraryName(pathName: string): boolean {
+	return (/[^\*\\\/]+/.test(pathName));
 }
 
 export function getPathsLibraryName(fileName: string, paths: PathInfo[]): string | null {
-	for (const { moduleName, modulePath } of paths) {
-		if (fileName.startsWith(modulePath)) {
-			return moduleName;
+	for (const { libraryName, libraryPath } of paths) {
+		if (fileName.startsWith(libraryPath)) {
+			return libraryName;
 		}
 	}
 

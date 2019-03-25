@@ -53,8 +53,8 @@ export interface ModuleCriteria {
 }
 
 export interface PathInfo {
-	moduleName: string;
-	modulePath: string;
+	libraryName: string;
+	libraryPath: string;
 }
 
 export function getModuleInfo(fileName: string, criteria: ModuleCriteria): ModuleInfo {
