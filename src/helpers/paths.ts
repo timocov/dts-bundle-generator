@@ -15,7 +15,7 @@ export function getLibraryPaths(compilerOptions: ts.CompilerOptions): PathInfo[]
 	const libraryPaths: PathInfo[] = [];
 
 	for (const pathName in paths) {
-		if (paths[pathName] && isLibraryName(pathName)) {
+		if (paths[pathName] && isPathsLibraryName(pathName)) {
 			libraryPaths.push(...paths[pathName].map((libraryPath: string) => ({
 				libraryName: pathName,
 				libraryPath: fixPath(path.normalize(path.join(baseUrl, libraryPath))),
@@ -26,13 +26,13 @@ export function getLibraryPaths(compilerOptions: ts.CompilerOptions): PathInfo[]
 	return libraryPaths;
 }
 
-function isLibraryName(pathName: string): boolean {
-	return (/[^\*\\\/]+/.test(pathName));
+export function isPathsLibraryName(pathName: string): boolean {
+	return /^[^\*\\\/]+$/.test(pathName);
 }
 
 export function getPathsLibraryName(fileName: string, paths: PathInfo[]): string | null {
 	for (const { libraryName, libraryPath } of paths) {
-		if (fileName.startsWith(libraryPath)) {
+		if (new RegExp(`^${libraryPath}\.((d\.)?ts|js)$`, 'i').test(fileName)) {
 			return libraryName;
 		}
 	}
