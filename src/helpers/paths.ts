@@ -3,6 +3,7 @@ import * as path from 'path';
 
 import { PathInfo } from '../module-info';
 import { fixPath } from './fix-path';
+import { warnLog } from '../logger';
 
 export function getLibraryPaths(compilerOptions: ts.CompilerOptions): PathInfo[] | undefined {
 	const baseUrl = compilerOptions.baseUrl;
@@ -15,11 +16,15 @@ export function getLibraryPaths(compilerOptions: ts.CompilerOptions): PathInfo[]
 	const libraryPaths: PathInfo[] = [];
 
 	for (const pathName in paths) {
-		if (paths[pathName] && isPathsLibraryName(pathName)) {
-			libraryPaths.push(...paths[pathName].map((libraryPath: string) => ({
-				libraryName: pathName,
-				libraryPath: fixPath(path.normalize(path.join(baseUrl, libraryPath))),
-			})));
+		if (paths[pathName]) {
+			if (isPathsLibraryName(pathName)) {
+				libraryPaths.push(...paths[pathName].map((libraryPath: string) => ({
+					libraryName: pathName,
+					libraryPath: fixPath(path.normalize(path.join(baseUrl, libraryPath))),
+				})));
+			} else {
+				warnLog(`The following paths aren't supported yet and will not be used for detecting libraries: ${paths[pathName].join(', ')}`);
+			}
 		}
 	}
 
