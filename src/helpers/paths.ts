@@ -14,6 +14,7 @@ export function getLibraryPaths(compilerOptions: ts.CompilerOptions): PathInfo[]
 	}
 
 	const libraryPaths: PathInfo[] = [];
+	const ignoredPaths: string[] = [];
 
 	for (const pathName in paths) {
 		if (paths[pathName]) {
@@ -23,9 +24,13 @@ export function getLibraryPaths(compilerOptions: ts.CompilerOptions): PathInfo[]
 					libraryPath: fixPath(path.normalize(path.join(baseUrl, libraryPath))),
 				})));
 			} else {
-				warnLog(`The following paths aren't supported yet and will not be used for detecting libraries: ${paths[pathName].join(', ')}`);
+				ignoredPaths.push(pathName);
 			}
 		}
+	}
+
+	if (ignoredPaths.length > 0) {
+		warnLog(`The following paths aren't supported yet and will not be used for detecting libraries: ${ignoredPaths.join(', ')}`);
 	}
 
 	return libraryPaths;
