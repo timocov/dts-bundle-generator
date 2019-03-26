@@ -3,9 +3,7 @@
 	"compilerOptions": {
 		"baseUrl": "./",
 		"paths": {
-			"module-1": ["import-modules/module-1"],
-			"module-2/*": ["inline-modules-1/module-2"],
-			"*": ["inline-modules-2/*"]
+			"my-library": ["libraries/my-library"]
 		}
 	}
 }
