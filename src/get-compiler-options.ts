@@ -20,7 +20,7 @@ export function getCompilerOptions(inputFileNames: ReadonlyArray<string>, prefer
 	const configParseResult = ts.readConfigFile(configFileName, ts.sys.readFile);
 	checkDiagnosticsErrors(configParseResult.error !== undefined ? [configParseResult.error] : [], 'Error while processing tsconfig file');
 
-	const compilerOptionsParseResult = ts.parseJsonConfigFileContent(configParseResult.config, parseConfigHost, path.join(configFileName, '..'));
+	const compilerOptionsParseResult = ts.parseJsonConfigFileContent(configParseResult.config, parseConfigHost, path.join(process.cwd(), path.dirname(configFileName)));
 	checkDiagnosticsErrors(compilerOptionsParseResult.errors, 'Error while processing tsconfig compiler options');
 
 	return compilerOptionsParseResult.options;
