@@ -1,4 +1,4 @@
-import { SomeInterface, getRandom } from './extendable-module';
+import { SomeInterface } from './extendable-module';
 
 export function justFunction(input: SomeInterface): void {
 	// do nothing
@@ -9,5 +9,3 @@ declare module './extendable-module' {
 		field2: typeof justFunction;
 	}
 }
-
-export { getRandom };

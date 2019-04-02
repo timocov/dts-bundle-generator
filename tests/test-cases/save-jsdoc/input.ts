@@ -1,3 +1,5 @@
+import { NonExportedClass } from './some-class';
+
 /**
  * ExportedInterface JSDoc
  */
@@ -26,4 +28,4 @@ export const constItem = 1;
 /**
  * ExportedClass JSDoc
  */
-export class ExportedClass {}
+export class ExportedClass extends NonExportedClass {}

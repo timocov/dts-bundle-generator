@@ -1,3 +1,16 @@
+declare enum NonExportedEnum {
+	First = 0
+}
+/**
+ * NonExportedConstEnum JSDoc
+ */
+export declare const enum NonExportedConstEnum {
+	First = 0
+}
+declare class NonExportedClass {
+	method(): NonExportedEnum;
+	method2(): NonExportedConstEnum;
+}
 /**
  * ExportedInterface JSDoc
  */
@@ -26,5 +39,5 @@ export declare const constItem = 1;
 /**
  * ExportedClass JSDoc
  */
-export declare class ExportedClass {
+export declare class ExportedClass extends NonExportedClass {
 }
