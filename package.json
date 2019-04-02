@@ -16,10 +16,10 @@
     "yargs": "~11.1.0"
   },
   "devDependencies": {
-    "@types/mocha": "~5.2.4",
+    "@types/mocha": "~5.2.6",
     "@types/node": "7.0.8",
     "@types/yargs": "~11.1.2",
-    "mocha": "~5.2.0"
+    "mocha": "~6.1.2"
   },
   "license": "MIT",
   "readme": "README.md",
@@ -38,7 +38,7 @@
     "compile-tests": "cd .dev-deps/ && npm run compile-tests",
     "prepare-release": "npm run compile && node build/index.js && npm run lint && npm run compile-tests && npm run test && npm run bundle-dts && node build/prod-ready",
     "postinstall": "cd .dev-deps/ && npm install",
-    "test": "mocha --timeout 10000 --slow 2500 tests/unittests/**/*.spec.js tests/functional-test-cases.js"
+    "test": "mocha tests/unittests/**/*.spec.js tests/functional-test-cases.js"
   },
   "yargs": {
     "boolean-negation": false,
