@@ -4,3 +4,5 @@ export interface UsedInterface {
 export interface InterfaceName {
 	prop: UsedInterface;
 }
+
+export {};

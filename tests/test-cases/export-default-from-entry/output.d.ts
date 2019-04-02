@@ -5,3 +5,5 @@ export declare type MyType<T> = {
 };
 export default class NewClass implements MyInterface {
 }
+
+export {};

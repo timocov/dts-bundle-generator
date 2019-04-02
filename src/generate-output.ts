@@ -54,8 +54,12 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 	resultOutput += statements.map(statementTextToString).join('\n');
 
 	if (options.umdModuleName !== undefined) {
-		resultOutput += `\n\nexport as namespace ${options.umdModuleName};\n`;
+		resultOutput += `\n\nexport as namespace ${options.umdModuleName};`;
 	}
+
+	// this is used to prevent importing non-exported nodes
+	// see https://stackoverflow.com/questions/52583603/intentional-that-export-shuts-off-automatic-export-of-all-symbols-from-a-ty
+	resultOutput += `\n\nexport {};\n`;
 
 	return resultOutput;
 }

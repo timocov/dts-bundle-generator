@@ -2,3 +2,5 @@ import { declaredVariable, declaredVariable2, variable, variable2 } from 'packag
 
 export declare const myVar: typeof variable | typeof variable2;
 export declare const myVar2: typeof declaredVariable | typeof declaredVariable2;
+
+export {};

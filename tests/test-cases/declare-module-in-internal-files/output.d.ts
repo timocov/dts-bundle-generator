@@ -12,3 +12,5 @@ export declare module ModuleName {
 export declare var ModuleName: {
 	prototype: Interface;
 };
+
+export {};
