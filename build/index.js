@@ -18,6 +18,7 @@ var whiteListProdKeys = [
 	'cpu',
 	'dependencies',
 	'description',
+	'engines',
 	'files',
 	'homepage',
 	'keywords',
