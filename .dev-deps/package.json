@@ -7,7 +7,7 @@
     "check-dts-config": "tsc --lib es2015 --allowJs --noEmit ../dts-config.js"
   },
   "devDependencies": {
-    "tslint": "~5.14.0",
+    "tslint": "~5.15.0",
     "typescript": "~3.4.1"
   }
 }
