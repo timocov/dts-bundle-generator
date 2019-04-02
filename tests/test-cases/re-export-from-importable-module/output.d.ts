@@ -3,3 +3,5 @@ export interface SomeInterface {
 }
 export { Server } from 'http';
 export * from 'fs';
+
+export {};

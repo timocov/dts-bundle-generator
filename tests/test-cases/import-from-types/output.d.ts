@@ -5,3 +5,5 @@ export interface InterfaceName {
 	prop: Stats;
 	field: InterfaceFromTypesPackage;
 }
+
+export {};
