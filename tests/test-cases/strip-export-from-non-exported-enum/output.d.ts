@@ -10,3 +10,5 @@ declare class NonExportedClass {
 }
 export declare class ExportedClass extends NonExportedClass {
 }
+
+export {};

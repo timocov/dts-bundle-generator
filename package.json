@@ -27,6 +27,9 @@
     "type": "git",
     "url": "git+https://github.com/timocov/dts-bundle-generator.git"
   },
+  "engines": {
+    "node": ">=8.0.0"
+  },
   "scripts": {
     "lint": "cd .dev-deps/ && npm run lint",
     "check-dts-config": "cd .dev-deps/ && npm run check-dts-config",
