@@ -10,3 +10,5 @@ export interface BInterfaceName {
 }
 export interface CInterfaceName {
 }
+
+export {};

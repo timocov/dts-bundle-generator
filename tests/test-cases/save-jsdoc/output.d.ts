@@ -41,3 +41,5 @@ export declare const constItem = 1;
  */
 export declare class ExportedClass extends NonExportedClass {
 }
+
+export {};

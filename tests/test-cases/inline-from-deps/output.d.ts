@@ -7,3 +7,5 @@ declare class SomeClass {
 export declare type TestType = Interface | Type;
 export declare class MyClass extends SomeClass {
 }
+
+export {};
