@@ -1,7 +1,9 @@
 {
 	"extends": "./tsconfig.base.json",
 	"compilerOptions": {
-		"sourceMap": true
+		"incremental": true,
+		"sourceMap": true,
+		"tsBuildInfoFile": ".tsbuildinfo/tests",
 	},
 	"include": [
 		"tests/functional-test-cases.ts",

@@ -1,7 +1,9 @@
 {
 	"extends": "./tsconfig.base.json",
 	"compilerOptions": {
-		"outDir": "dist"
+		"incremental": true,
+		"outDir": "dist",
+		"tsBuildInfoFile": ".tsbuildinfo/sources",
 	},
 	"include": [
 		"src/**/*.ts"

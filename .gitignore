@@ -6,6 +6,7 @@
 !tests/test-cases/**/output.d.ts
 
 dist/
+.tsbuildinfo/
 
 node_modules/
 !tests/test-cases/node_modules/
