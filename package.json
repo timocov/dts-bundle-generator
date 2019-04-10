@@ -13,12 +13,12 @@
   "homepage": "https://github.com/timocov/dts-bundle-generator",
   "dependencies": {
     "typescript": ">=2.6.1",
-    "yargs": "~11.1.0"
+    "yargs": "~13.2.2"
   },
   "devDependencies": {
     "@types/mocha": "~5.2.6",
     "@types/node": "8.10.45",
-    "@types/yargs": "~11.1.2",
+    "@types/yargs": "~13.0.0",
     "mocha": "~6.1.2"
   },
   "license": "MIT",
@@ -39,11 +39,5 @@
     "prepare-release": "npm run compile && node build/index.js && npm run lint && npm run compile-tests && npm run test && npm run bundle-dts && node build/prod-ready",
     "postinstall": "cd .dev-deps/ && npm install",
     "test": "mocha tests/unittests/**/*.spec.js tests/functional-test-cases.js"
-  },
-  "yargs": {
-    "boolean-negation": false,
-    "camel-case-expansion": false,
-    "dot-notation": false,
-    "short-option-groups": false
   }
 }

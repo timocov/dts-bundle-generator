@@ -32,7 +32,6 @@ var whiteListProdKeys = [
 	'repository',
 	'typings',
 	'version',
-	'yargs',
 ];
 
 Object.keys(pkg).forEach(function(key) {
