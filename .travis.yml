@@ -16,7 +16,7 @@ env:
   # minimal supported version - just compile
   - TS_VERSION="2.6.1" COMPILE_ONLY=1
   # current (latest) supported version - compile and run tests
-  - TS_VERSION="3.4.1"
+  - TS_VERSION="3.4.3"
 
 git:
   depth: 1
