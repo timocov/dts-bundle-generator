@@ -52,6 +52,12 @@ interface ParsedArgs extends yargs.Arguments {
 
 function parseArgs(): ParsedArgs {
 	return yargs
+		.parserConfiguration({
+			'boolean-negation': false,
+			'camel-case-expansion': false,
+			'dot-notation': false,
+			'short-option-groups': false,
+		})
 		.usage('Usage: $0 [options] <file(s)>')
 		.demandCommand(0)
 		.option('out-file', {
