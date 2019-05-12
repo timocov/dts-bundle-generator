@@ -140,12 +140,55 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 	return result;
 }
 
-export function getExportTypeForDeclaration(exportedSymbols: ReadonlyArray<SourceFileExport>, typeChecker: ts.TypeChecker, declaration: ts.NamedDeclaration): ExportType | null {
-	if (declaration.name === undefined) {
+export function getExportTypeForDeclaration(
+	exportedSymbols: ReadonlyArray<SourceFileExport>,
+	typeChecker: ts.TypeChecker,
+	declaration: ts.NamedDeclaration | ts.VariableStatement
+): ExportType | null {
+	if (ts.isVariableStatement(declaration)) {
+		if (declaration.declarationList.declarations.length === 0) {
+			return null;
+		}
+
+		const firstDeclarationExportType = getExportTypeForName(
+			exportedSymbols,
+			typeChecker,
+			declaration.declarationList.declarations[0].name
+		);
+
+		const allDeclarationsHaveSameExportType = declaration.declarationList.declarations.every((variableDecl: ts.VariableDeclaration) => {
+			// all declaration should have the same export type
+			// TODO: for now it's not supported to have different type of exports
+			return getExportTypeForName(exportedSymbols, typeChecker, variableDecl.name) === firstDeclarationExportType;
+		});
+
+		if (!allDeclarationsHaveSameExportType) {
+			// log warn?
+			return null;
+		}
+
+		return firstDeclarationExportType;
+	}
+
+	return getExportTypeForName(exportedSymbols, typeChecker, declaration.name);
+}
+
+function getExportTypeForName(
+	exportedSymbols: ReadonlyArray<SourceFileExport>,
+	typeChecker: ts.TypeChecker,
+	name: ts.NamedDeclaration['name']
+): ExportType | null {
+	if (name === undefined) {
 		return null;
 	}
 
-	const declarationSymbol = typeChecker.getSymbolAtLocation(declaration.name);
+	if (ts.isArrayBindingPattern(name) || ts.isObjectBindingPattern(name)) {
+		// TODO: binding patterns in variable declarations are not supported for now
+		// see https://github.com/microsoft/TypeScript/issues/30598 also
+		return null;
+	}
+
+	const declarationSymbol = typeChecker.getSymbolAtLocation(name);
 	const exportedSymbol = exportedSymbols.find((rootExport: SourceFileExport) => rootExport.symbol === declarationSymbol);
 	if (exportedSymbol === undefined) {
 		return null;

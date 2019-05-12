@@ -221,7 +221,11 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 				shouldStatementHasExportKeyword: (statement: ts.Statement) => {
 					let result = true;
 
-					if (ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement) || ts.isFunctionDeclaration(statement)) {
+					if (ts.isClassDeclaration(statement)
+						|| ts.isEnumDeclaration(statement)
+						|| ts.isFunctionDeclaration(statement)
+						|| ts.isVariableStatement(statement)
+					) {
 						const isStatementFromRootFile = statement.getSourceFile() === rootSourceFile;
 						const exportType = getExportTypeForDeclaration(rootFileExports, typeChecker, statement);
 
