@@ -80,7 +80,7 @@ function statementTextToString(s: StatementText): string {
 function compareStatementText(a: StatementText, b: StatementText): number {
 	if (a.text > b.text) {
 		return 1;
-	} else if (a.text < b.text) { // tslint:disable-line:unnecessary-else
+	} else if (a.text < b.text) {
 		return -1;
 	}
 
@@ -136,7 +136,7 @@ function generateReferenceTypesDirective(libraries: string[]): string {
 function getTextAccordingExport(nodeText: string, isNodeExported: boolean, shouldNodeBeExported: boolean): string {
 	if (shouldNodeBeExported && !isNodeExported) {
 		return 'export ' + nodeText;
-	} else if (isNodeExported && !shouldNodeBeExported) { // tslint:disable-line:unnecessary-else
+	} else if (isNodeExported && !shouldNodeBeExported) {
 		return nodeText.slice('export '.length);
 	}
 

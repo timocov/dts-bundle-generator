@@ -156,7 +156,7 @@ function main(): void {
 
 	if (args.silent && args.verbose) {
 		throw new Error('Cannot use both silent and verbose options at the same time');
-	} else if (args.verbose) { // tslint:disable-line:unnecessary-else
+	} else if (args.verbose) {
 		enableVerbose();
 	} else if (!args.silent) {
 		enableNormalLog();

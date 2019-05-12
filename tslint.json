@@ -142,7 +142,11 @@
     },
     "unified-signatures": { "severity": "off" },
     "unnecessary-constructor": {},
-    "unnecessary-else": {},
+    "unnecessary-else": {
+      "options": {
+        "allow-else-if": true
+      }
+    },
     "variable-name": {
       "options": [
         "ban-keywords",
