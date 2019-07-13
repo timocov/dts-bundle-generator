@@ -19,7 +19,11 @@
     "@types/mocha": "~5.2.6",
     "@types/node": "8.10.50",
     "@types/yargs": "~13.0.0",
-    "mocha": "~6.1.4"
+    "clean-publish": "~1.1.2",
+    "mocha": "~6.1.4",
+    "npm-run-all": "~4.1.5",
+    "rimraf": "~2.6.3",
+    "ts-node": "~8.3.0"
   },
   "license": "MIT",
   "readme": "README.md",
@@ -31,13 +35,13 @@
     "node": ">=8.0.0"
   },
   "scripts": {
+    "clean": "rimraf lib/ dist/",
     "lint": "cd .dev-deps/ && npm run lint",
     "check-dts-config": "cd .dev-deps/ && npm run check-dts-config",
-    "bundle-dts": "npm run check-dts-config && node ./dist/bin/dts-bundle-generator.js --config dts-config.js",
+    "bundle-dts": "npm run check-dts-config && ts-node ./src/bin/dts-bundle-generator.ts --config dts-config.js --silent",
     "compile": "cd .dev-deps/ && npm run compile",
-    "compile-tests": "cd .dev-deps/ && npm run compile-tests",
-    "prepare-release": "npm run compile && node build/index.js && npm run lint && npm run compile-tests && npm run test && npm run bundle-dts && node build/prod-ready",
-    "postinstall": "cd .dev-deps/ && npm install",
-    "test": "mocha tests/unittests/**/*.spec.js tests/functional-test-cases.js"
+    "install": "cd .dev-deps/ && npm install",
+    "verify": "npm-run-all clean -p compile lint -p bundle-dts test && bash scripts/make-dist.sh",
+    "test": "mocha tests/unittests/**/*.spec.ts tests/e2e/all-test-cases.ts"
   }
 }

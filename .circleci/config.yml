@@ -35,17 +35,6 @@ commands:
       - checkout
       - restore_cache: *restore-node-modules-cache
 
-  run-tests-for-ts:
-    description: "Run graphics tests with specific devicePixelRatio"
-    parameters:
-      ts_version:
-        type: string
-    steps:
-      - run: npm install typescript<< parameters.ts_version >>
-      - run: npm run compile
-      - run: npm run compile-tests
-      - run: npm run test
-
 
 jobs:
   install_deps:
@@ -72,15 +61,17 @@ jobs:
     executor: node-latest-executor
     steps:
       - checkout-with-deps
-      - run-tests-for-ts:
-          ts_version: "" # just `npm install typescript` means install version from the package.json file
+      - run: npm run compile
+      - run: npm run test
+      - run: npm run bundle-dts
 
   ts_next:
     executor: node-latest-executor
     steps:
       - checkout-with-deps
-      - run-tests-for-ts:
-          ts_version: "@next"
+      - run: npm install typescript@next
+      - run: npm run compile
+      - run: npm run test
 
 
 workflows:

@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as assert from 'assert';
 
-import { generateDtsBundle } from '../src/bundle-generator';
+import { generateDtsBundle } from '../../src/bundle-generator';
 
 import { TestCaseConfig } from './test-cases/test-case-config';
 
@@ -39,7 +39,7 @@ function getTestCases(): TestCase[] {
 			const result: TestCase = {
 				name: directoryName,
 				inputFileName,
-				config: require(path.resolve(testCaseDir, 'config.js')) as TestCaseConfig,
+				config: require(path.resolve(testCaseDir, 'config.ts')) as TestCaseConfig,
 				outputFileContent: prepareString(fs.readFileSync(outputFileName, 'utf-8')),
 			};
 

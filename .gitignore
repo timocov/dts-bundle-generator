@@ -1,19 +1,11 @@
-.vscode/launch.json
+/.vscode/launch.json
 
-**/*.js.map
-
-**/*.d.ts
-!tests/test-cases/**/output.d.ts
-
-dist/
-.tsbuildinfo/
+/lib/
+/dist/
 
 node_modules/
-!tests/test-cases/node_modules/
-!tests/test-cases/node_modules/**
+!tests/e2e/test-cases/node_modules/
+!tests/e2e/test-cases/node_modules/**
 
 package-lock.json
 package-lock.json.*
-
-src/**/*.js
-tests/**/*.js

@@ -2,13 +2,12 @@
 	"extends": "./tsconfig.base.json",
 	"compilerOptions": {
 		"incremental": true,
-		"outDir": "dist",
-		"tsBuildInfoFile": ".tsbuildinfo/sources",
+		"outDir": "lib"
 	},
 	"include": [
-		"src/**/*.ts"
-	],
-	"exclude": [
-		"tests/**"
+		"src/**/*.ts",
+		"tests/e2e/all-test-cases.ts",
+		"tests/e2e/test-cases/**/config.ts",
+		"tests/unittests/**/*.ts"
 	]
 }

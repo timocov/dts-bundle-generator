@@ -3,7 +3,7 @@
   "linterOptions": {
     "format": "verbose",
     "exclude": [
-      "tests/test-cases/**/*.ts"
+      "tests/e2e/test-cases/**/*.ts"
     ]
   },
   "rules": {

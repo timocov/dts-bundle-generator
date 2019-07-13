@@ -3,7 +3,7 @@
 /** @type import('./src/config-file/load-config-file').BundlerConfig */
 const config = {
 	compilationOptions: {
-		preferredConfigPath: './tsconfig.json',
+		preferredConfigPath: './tsconfig.base.json',
 	},
 	entries: [
 		{
