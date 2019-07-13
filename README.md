@@ -2,7 +2,7 @@
 
 <div align="center">
   <a href="https://github.com/timocov/dts-bundle-generator">
-    <img width="250px" height="250px" src=".github/logo.svg">
+    <img width="250px" height="250px" src="https://github.com/timocov/dts-bundle-generator/raw/master/.github/logo.svg?sanitize=true">
   </a>
 </div>
 
@@ -48,6 +48,7 @@ export declare function makeB(): B;
 ## Installation
 
 1. Install the package from `npm`:
+
     ```bash
     npm install --save-dev dts-bundle-generator
     ```
