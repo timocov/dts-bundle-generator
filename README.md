@@ -8,8 +8,9 @@
 
 # DTS Bundle Generator
 
-[![npm version](https://badge.fury.io/js/dts-bundle-generator.svg)](https://badge.fury.io/js/dts-bundle-generator)
-[![CircleCI](https://img.shields.io/circleci/build/github/timocov/dts-bundle-generator.svg)](https://circleci.com/gh/timocov/workflows/dts-bundle-generator)
+[![CircleCI][ci-img]][ci-link]
+[![npm version][npm-version-img]][npm-link]
+[![Downloads][npm-downloads-img]][npm-link]
 
 Small tool to generate a dts bundle from your ts code.
 
@@ -217,3 +218,10 @@ but:
     import MyClass from './class';
     export default MyClass;
     ```
+
+[ci-img]: https://img.shields.io/circleci/build/github/timocov/dts-bundle-generator.svg
+[ci-link]: https://circleci.com/gh/timocov/dts-bundle-generator
+
+[npm-version-img]: https://badge.fury.io/js/dts-bundle-generator.svg
+[npm-downloads-img]: https://img.shields.io/npm/dm/dts-bundle-generator.svg
+[npm-link]: https://www.npmjs.com/package/dts-bundle-generator
