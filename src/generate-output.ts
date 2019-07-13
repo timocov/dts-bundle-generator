@@ -87,6 +87,24 @@ function compareStatementText(a: StatementText, b: StatementText): number {
 	return 0;
 }
 
+function needAddDeclareKeyword(statement: ts.Statement, nodeText: string): boolean {
+	// for some reason TypeScript allows to do not write `declare` keyword for ClassDeclaration, FunctionDeclaration and VariableDeclaration
+	// if it already has `export` keyword - so we need to add it
+	if (ts.isClassDeclaration(statement) && /^class\b/.test(nodeText)) {
+		return true;
+	}
+
+	if (ts.isFunctionDeclaration(statement) && /^function\b/.test(nodeText)) {
+		return true;
+	}
+
+	if (ts.isVariableStatement(statement) && (/^var\b/.test(nodeText) || /^let\b/.test(nodeText) || /^const\b/.test(nodeText))) {
+		return true;
+	}
+
+	return false;
+}
+
 function getStatementText(statement: ts.Statement, shouldStatementHasExportKeyword: boolean, needStripDefaultKeyword: boolean): StatementText {
 	const hasStatementExportKeyword = ts.isExportAssignment(statement) || hasNodeModifier(statement, ts.SyntaxKind.ExportKeyword);
 
@@ -99,9 +117,7 @@ function getStatementText(statement: ts.Statement, shouldStatementHasExportKeywo
 		nodeText = nodeText.replace(/\bdefault\s/, ts.isClassDeclaration(statement) ? 'declare ' : '');
 	}
 
-	// for some reason TypeScript allows to do not write `declare` keyword for ClassDeclaration
-	// if it already has `export` keyword - so we need to add it
-	if (ts.isClassDeclaration(statement) && /^class\b/.test(nodeText)) {
+	if (needAddDeclareKeyword(statement, nodeText)) {
 		nodeText = `declare ${nodeText}`;
 	}
 
