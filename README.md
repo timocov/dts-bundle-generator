@@ -9,7 +9,7 @@
 # DTS Bundle Generator
 
 [![npm version](https://badge.fury.io/js/dts-bundle-generator.svg)](https://badge.fury.io/js/dts-bundle-generator)
-[![Build Status](https://travis-ci.org/timocov/dts-bundle-generator.svg?branch=master)](https://travis-ci.org/timocov/dts-bundle-generator)
+[![CircleCI](https://img.shields.io/circleci/build/github/timocov/dts-bundle-generator.svg)](https://circleci.com/gh/timocov/workflows/dts-bundle-generator)
 
 Small tool to generate a dts bundle from your ts code.
 
