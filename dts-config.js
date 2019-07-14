@@ -7,11 +7,11 @@ const config = {
 	},
 	entries: [
 		{
-			filePath: './lib/src/bundle-generator.ts',
+			filePath: './lib/src/bundle-generator.d.ts',
 			outFile: './dist/bundle-generator.d.ts',
 		},
 		{
-			filePath: './lib/src/config-file/load-config-file.ts',
+			filePath: './lib/src/config-file/load-config-file.d.ts',
 			outFile: './dist/config-schema.d.ts',
 		},
 	],
