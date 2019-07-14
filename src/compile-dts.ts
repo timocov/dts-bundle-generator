@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as ts from 'typescript';
 
-import { verboseLog, normalLog, warnLog } from './logger';
+import { verboseLog, warnLog } from './logger';
 
 import { getCompilerOptions } from './get-compiler-options';
 import { getAbsolutePath } from './helpers/get-absolute-path';
@@ -14,10 +14,13 @@ export interface CompileDtsResult {
 
 export function compileDts(rootFiles: ReadonlyArray<string>, preferredConfigPath?: string, followSymlinks: boolean = true): CompileDtsResult {
 	const compilerOptions = getCompilerOptions(rootFiles, preferredConfigPath);
-	if (compilerOptions.outDir !== undefined) {
-		normalLog('Compiler option `outDir` is not supported and will be removed while generating dts');
-		compilerOptions.outDir = undefined;
-	}
+
+	// currently we don't support these compiler options
+	// and removing them shouldn't affect generated code
+	// so let's just remove them for this run
+	compilerOptions.outDir = undefined;
+	compilerOptions.incremental = undefined;
+	compilerOptions.tsBuildInfoFile = undefined;
 
 	const dtsFiles = getDeclarationFiles(rootFiles, compilerOptions);
 
