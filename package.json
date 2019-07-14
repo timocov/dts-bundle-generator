@@ -38,10 +38,10 @@
     "clean": "rimraf lib/ dist/",
     "lint": "cd .dev-deps/ && npm run lint",
     "check-dts-config": "cd .dev-deps/ && npm run check-dts-config",
-    "bundle-dts": "npm run check-dts-config && ts-node ./src/bin/dts-bundle-generator.ts --config dts-config.js --silent",
+    "bundle-dts": "npm run check-dts-config && node ./lib/src/bin/dts-bundle-generator.js --config dts-config.js --silent",
     "compile": "cd .dev-deps/ && npm run compile",
     "install": "cd .dev-deps/ && npm install",
-    "verify": "npm-run-all clean -p compile lint -p bundle-dts test && bash scripts/make-dist.sh",
+    "verify": "npm-run-all clean -p compile lint -s test && bash scripts/make-dist.sh",
     "test": "mocha tests/unittests/**/*.spec.ts tests/e2e/all-test-cases.ts"
   }
 }
