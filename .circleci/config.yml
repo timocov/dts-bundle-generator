@@ -35,6 +35,19 @@ commands:
       - checkout
       - restore_cache: *restore-node-modules-cache
 
+  compile-and-test:
+    description: "Checkout the code with restore npm dependencies"
+    steps:
+      - run:
+          name: "Setup Environment Variables"
+          command: |
+            echo 'export TESTS_REPORT_FILE="test-results/results.xml"' >> $BASH_ENV
+      - run: npm run compile
+      - run: npm run test
+      - store_test_results:
+          path: test-results/
+      - run: npm run bundle-dts
+
 
 jobs:
   install_deps:
@@ -61,17 +74,14 @@ jobs:
     executor: node-latest-executor
     steps:
       - checkout-with-deps
-      - run: npm run compile
-      - run: npm run test
-      - run: npm run bundle-dts
+      - compile-and-test
 
   ts_next:
     executor: node-latest-executor
     steps:
       - checkout-with-deps
       - run: npm install typescript@next
-      - run: npm run compile
-      - run: npm run test
+      - compile-and-test
 
 
 workflows:
