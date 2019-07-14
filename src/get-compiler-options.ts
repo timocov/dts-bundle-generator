@@ -1,6 +1,7 @@
 import * as ts from 'typescript';
 import * as path from 'path';
 
+import { getAbsolutePath } from './helpers/get-absolute-path';
 import { fixPath } from './helpers/fix-path';
 import { checkDiagnosticsErrors } from './helpers/check-diagnostics-errors';
 import { verboseLog } from './logger';
@@ -20,7 +21,14 @@ export function getCompilerOptions(inputFileNames: ReadonlyArray<string>, prefer
 	const configParseResult = ts.readConfigFile(configFileName, ts.sys.readFile);
 	checkDiagnosticsErrors(configParseResult.error !== undefined ? [configParseResult.error] : [], 'Error while processing tsconfig file');
 
-	const compilerOptionsParseResult = ts.parseJsonConfigFileContent(configParseResult.config, parseConfigHost, path.resolve(path.dirname(configFileName)));
+	const compilerOptionsParseResult = ts.parseJsonConfigFileContent(
+		configParseResult.config,
+		parseConfigHost,
+		path.resolve(path.dirname(configFileName)),
+		undefined,
+		getAbsolutePath(configFileName)
+	);
+
 	checkDiagnosticsErrors(compilerOptionsParseResult.errors, 'Error while processing tsconfig compiler options');
 
 	return compilerOptionsParseResult.options;
