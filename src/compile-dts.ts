@@ -86,9 +86,18 @@ function changeExtensionToDts(fileName: string): string {
  */
 function getDeclarationFiles(rootFiles: ReadonlyArray<string>, compilerOptions: ts.CompilerOptions): Map<string, string> {
 	const program = ts.createProgram(rootFiles, compilerOptions);
-	checkProgramDiagnosticsErrors(program);
+	const allFilesAreDeclarations = program.getSourceFiles().every((s: ts.SourceFile) => s.isDeclarationFile);
 
 	const declarations = new Map<string, string>();
+	if (allFilesAreDeclarations) {
+		// if all files are declarations we don't need to compile the project twice
+		// so let's just return empty map to speed up
+		verboseLog('Skipping compiling the project to generate d.ts because all files in it are d.ts already');
+		return declarations;
+	}
+
+	checkProgramDiagnosticsErrors(program);
+
 	const emitResult = program.emit(
 		undefined,
 		(fileName: string, data: string) => declarations.set(getAbsolutePath(fileName), data),
