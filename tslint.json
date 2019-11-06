@@ -33,6 +33,7 @@
     "interface-name": {
       "options": ["never-prefix"]
     },
+    "invalid-void": {},
     "label-position": { "severity": "off" },
     "match-default-export-name": {},
     "max-line-length": { "severity": "off" },
