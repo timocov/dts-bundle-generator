@@ -1,3 +1,7 @@
 {
-	"extends": "../../tsconfig.base.json"
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		// we especially set it to false to test that the tool set it to true inside and won't fail
+		"declaration": false
+	}
 }

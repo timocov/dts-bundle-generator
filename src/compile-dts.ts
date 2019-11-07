@@ -88,6 +88,10 @@ function changeExtensionToDts(fileName: string): string {
  * @description Compiles source files into d.ts files and returns map of absolute path to file content
  */
 function getDeclarationFiles(rootFiles: ReadonlyArray<string>, compilerOptions: ts.CompilerOptions): Map<string, string> {
+	// we must pass `declaration: true` if we want to generate declaration files
+	// see https://github.com/microsoft/TypeScript/issues/24002#issuecomment-550549393
+	compilerOptions = { ...compilerOptions, declaration: true };
+
 	const program = ts.createProgram(rootFiles, compilerOptions);
 	const allFilesAreDeclarations = program.getSourceFiles().every((s: ts.SourceFile) => s.isDeclarationFile);
 
