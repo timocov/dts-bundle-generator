@@ -40,7 +40,9 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 			importsArray.push(...generateImports(libraryName, libraryImports));
 		}
 
-		resultOutput += `${importsArray.join('\n')}\n\n`;
+		if (importsArray.length !== 0) {
+			resultOutput += `${importsArray.join('\n')}\n\n`;
+		}
 	}
 
 	const statements = params.statements.map(
