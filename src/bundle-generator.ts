@@ -200,6 +200,7 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 				{
 					...updateResultCommonParams,
 					currentModule: getModuleInfo(sourceFile.fileName, criteria),
+					sourceFile,
 					statements: sourceFile.statements,
 				},
 				collectionResult
@@ -270,8 +271,9 @@ interface CollectingResult {
 
 interface UpdateParams {
 	currentModule: ModuleInfo;
+	sourceFile: ts.SourceFile;
 	statements: ReadonlyArray<ts.Statement>;
-	isStatementUsed(statement: ts.Statement): boolean;
+	isStatementUsed(statement: ts.Statement | ts.SourceFile): boolean;
 	shouldStatementBeImported(statement: ts.DeclarationStatement): boolean;
 	shouldDeclareGlobalBeInlined(currentModule: ModuleInfo, statement: ts.ModuleDeclaration): boolean;
 	shouldDeclareExternalModuleBeInlined(): boolean;
@@ -289,6 +291,11 @@ const skippedNodes = [
 
 // tslint:disable-next-line:cyclomatic-complexity
 function updateResult(params: UpdateParams, result: CollectingResult): void {
+	// handle `import * as module` usage if it's used as whole module
+	if (params.currentModule.type === ModuleType.ShouldBeImported && params.isStatementUsed(params.sourceFile)) {
+		updateImportsForStatement(params.sourceFile, params, result);
+	}
+
 	for (const statement of params.statements) {
 		// we should skip import and exports statements
 		if (skippedNodes.indexOf(statement.kind) !== -1) {
@@ -422,7 +429,7 @@ function addTypesReference(library: string, typesReferences: Set<string>): void 
 	}
 }
 
-function updateImportsForStatement(statement: ts.Statement, params: UpdateParams, result: CollectingResult): void {
+function updateImportsForStatement(statement: ts.Statement | ts.SourceFile, params: UpdateParams, result: CollectingResult): void {
 	if (params.currentModule.type !== ModuleType.ShouldBeImported) {
 		return;
 	}
