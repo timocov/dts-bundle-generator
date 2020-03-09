@@ -463,28 +463,6 @@ function addImport(statement: ts.DeclarationStatement, params: UpdateParams, imp
 					return;
 				}
 
-				let items: (ts.Identifier | ts.ImportSpecifier)[] = [];
-				if (importClause.name !== undefined) {
-					// import name from 'module';
-					items.push(importClause.name);
-				}
-
-				if (importClause.namedBindings !== undefined) {
-					if (ts.isNamedImports(importClause.namedBindings)) {
-						// import { El1, El2 } from 'module';
-						items.push(...importClause.namedBindings.elements);
-					} else {
-						// import * as name from 'module';
-						items.push(importClause.namedBindings.name);
-					}
-				}
-
-				items = items.filter((item: ts.Identifier | ts.ImportSpecifier) => params.areDeclarationSame(statement, item));
-
-				if (items.length === 0) {
-					return;
-				}
-
 				const importModuleSpecifier = (importDeclaration.moduleSpecifier as ts.StringLiteral).text;
 
 				let importItem = imports.get(importModuleSpecifier);
@@ -496,11 +474,21 @@ function addImport(statement: ts.DeclarationStatement, params: UpdateParams, imp
 					imports.set(importModuleSpecifier, importItem);
 				}
 
-				for (const item of items) {
-					if (ts.isImportSpecifier(item)) {
-						importItem.namedImports.add(item.getText());
+				if (importClause.name !== undefined && params.areDeclarationSame(statement, importClause)) {
+					// import name from 'module';
+					importItem.defaultImportName = importClause.name.text;
+				}
+
+				if (importClause.namedBindings !== undefined) {
+					if (ts.isNamedImports(importClause.namedBindings)) {
+						// import { El1, El2 } from 'module';
+						importClause.namedBindings.elements
+							.filter(params.areDeclarationSame.bind(params, statement))
+							.forEach((specifier: ts.ImportSpecifier) => (importItem as ModuleImportsSet).namedImports.add(specifier.getText()));
 					} else {
-						// TODO
+						// import * as name from 'module';
+						// TODO: correctly detect whether "name" is used to refer to statement in this file
+						// importItem.defaultImportName = importClause.namedBindings.getText();
 					}
 				}
 			});
