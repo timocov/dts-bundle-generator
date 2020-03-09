@@ -25,7 +25,6 @@ export interface InlinedModuleInfo extends UsedModuleInfoCommon {
 
 export interface ImportedModuleInfo extends UsedModuleInfoCommon {
 	type: ModuleType.ShouldBeImported;
-	libraryName: string;
 	isExternal: true;
 }
 
@@ -81,7 +80,7 @@ function getModuleInfoImpl(currentFilePath: string, originalFileName: string, cr
 	}
 
 	if (shouldLibraryBeImported(npmLibraryName, typesLibraryName, criteria.importedLibraries)) {
-		return { type: ModuleType.ShouldBeImported, fileName: originalFileName, libraryName: typesLibraryName || npmLibraryName, isExternal: true };
+		return { type: ModuleType.ShouldBeImported, fileName: originalFileName, isExternal: true };
 	}
 
 	if (typesLibraryName !== null && isLibraryAllowed(typesLibraryName, criteria.allowedTypesLibraries)) {
