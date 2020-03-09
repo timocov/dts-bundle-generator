@@ -37,7 +37,7 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 		const importsArray = sortedEntries.map((entry: [string, ModuleImportsSet]) => {
 			const [libraryName, libraryImports] = entry;
 			return generateImport(libraryName, libraryImports);
-		});
+		}).filter((str: string) => str.length !== 0);
 
 		resultOutput += `${importsArray.join('\n')}\n\n`;
 	}
@@ -136,6 +136,10 @@ function generateImport(libraryName: string, imports: ModuleImportsSet): string 
 	if (imports.namedImports.size !== 0) {
 		// sort to make output more "stable"
 		importClauseParts.push(`{ ${Array.from(imports.namedImports).sort().join(', ')} }`);
+	}
+
+	if (importClauseParts.length === 0) {
+		return '';
 	}
 
 	return `import ${importClauseParts.join(', ')} from '${libraryName}';`;
