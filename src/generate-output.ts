@@ -3,7 +3,8 @@ import * as ts from 'typescript';
 import { hasNodeModifier } from './helpers/typescript';
 
 export interface ModuleImportsSet {
-	defaultImportName?: string;
+	defaultImports: Set<string>;
+	starImports: Set<string>;
 	namedImports: Set<string>;
 }
 
@@ -34,10 +35,10 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 			return firstEntry[0].localeCompare(secondEntry[0]);
 		});
 
-		const importsArray = sortedEntries.map((entry: [string, ModuleImportsSet]) => {
-			const [libraryName, libraryImports] = entry;
-			return generateImport(libraryName, libraryImports);
-		}).filter((str: string) => str.length !== 0);
+		const importsArray: string[] = [];
+		for (const [libraryName, libraryImports] of sortedEntries) {
+			importsArray.push(...generateImports(libraryName, libraryImports));
+		}
 
 		resultOutput += `${importsArray.join('\n')}\n\n`;
 	}
@@ -127,22 +128,20 @@ function getStatementText(statement: ts.Statement, shouldStatementHasExportKeywo
 	return result;
 }
 
-function generateImport(libraryName: string, imports: ModuleImportsSet): string {
-	const importClauseParts = [];
-	if (imports.defaultImportName !== undefined) {
-		importClauseParts.push(imports.defaultImportName);
-	}
+function generateImports(libraryName: string, imports: ModuleImportsSet): string[] {
+	const fromEnding = `from '${libraryName}';`;
+
+	const result: string[] = [];
+
+	// sort to make output more "stable"
+	Array.from(imports.starImports).sort().forEach((importName: string) => result.push(`import * as ${importName} ${fromEnding}`));
+	Array.from(imports.defaultImports).sort().forEach((importName: string) => result.push(`import ${importName} ${fromEnding}`));
 
 	if (imports.namedImports.size !== 0) {
-		// sort to make output more "stable"
-		importClauseParts.push(`{ ${Array.from(imports.namedImports).sort().join(', ')} }`);
+		result.push(`import { ${Array.from(imports.namedImports).sort().join(', ')} } ${fromEnding}`);
 	}
 
-	if (importClauseParts.length === 0) {
-		return '';
-	}
-
-	return `import ${importClauseParts.join(', ')} from '${libraryName}';`;
+	return result;
 }
 
 function generateReferenceTypesDirective(libraries: string[]): string {

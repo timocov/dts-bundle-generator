@@ -468,7 +468,9 @@ function addImport(statement: ts.DeclarationStatement, params: UpdateParams, imp
 				let importItem = imports.get(importModuleSpecifier);
 				if (importItem === undefined) {
 					importItem = {
+						defaultImports: new Set<string>(),
 						namedImports: new Set<string>(),
+						starImports: new Set<string>(),
 					};
 
 					imports.set(importModuleSpecifier, importItem);
@@ -476,7 +478,7 @@ function addImport(statement: ts.DeclarationStatement, params: UpdateParams, imp
 
 				if (importClause.name !== undefined && params.areDeclarationSame(statement, importClause)) {
 					// import name from 'module';
-					importItem.defaultImportName = importClause.name.text;
+					importItem.defaultImports.add(importClause.name.text);
 				}
 
 				if (importClause.namedBindings !== undefined) {
@@ -487,8 +489,7 @@ function addImport(statement: ts.DeclarationStatement, params: UpdateParams, imp
 							.forEach((specifier: ts.ImportSpecifier) => (importItem as ModuleImportsSet).namedImports.add(specifier.getText()));
 					} else {
 						// import * as name from 'module';
-						// TODO: correctly detect whether "name" is used to refer to statement in this file
-						// importItem.defaultImportName = importClause.namedBindings.getText();
+						importItem.starImports.add(importClause.namedBindings.name.getText());
 					}
 				}
 			});
