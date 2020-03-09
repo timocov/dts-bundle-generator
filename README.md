@@ -155,45 +155,6 @@ but:
 
 ## Known limitations
 
-1. Do not rename types on import. If you use something like this
-
-    ```ts
-    import { A as B } from './b';
-    export C extends B {}
-    ```
-
-    you will get an error, because this tool does not follow your renaming (and actually cannot do that).
-
-1. Do not use types from `* as name`-imports:
-
-    ```ts
-    import * as someName from './some';
-    export class A extends someName.SomeClass {}
-    ```
-
-    This case is very similar to the previous one.
-
-    **NOTE:** some libraries with typings in `@types` (for example `react` or `react-dom`) has named exported namespace.
-    Since typings for these libraries are imported via triple-slash directive, you should import these libraries with renaming.
-    For example for source
-
-    ```ts
-    import * as ReactDOM from 'react-dom';
-    export interface MyRenderer extends ReactDOM.Renderer {}
-    ```
-
-    generated dts will be
-
-    ```ts
-    /// <reference types="react" />
-    /// <reference types="react-dom" />
-
-    export interface MyRenderer extends ReactDOM.Renderer {
-    }
-    ```
-
-    So please **make sure** that your `* as name`-import has right `name`.
-
 1. All your types should have different names inside a bundle. If you have 2 `interface Options {}` they will be merged by `TypeScript` and you will get wrong definitions.
 
 1. Don't re-export default exports as default export in entry files.
