@@ -8,7 +8,7 @@
 
 # DTS Bundle Generator
 
-[![CircleCI][ci-img]][ci-link]
+[![GH Actions][ci-img]][ci-link]
 [![npm version][npm-version-img]][npm-link]
 [![Downloads][npm-downloads-img]][npm-link]
 
@@ -180,8 +180,8 @@ but:
     export default MyClass;
     ```
 
-[ci-img]: https://img.shields.io/circleci/build/github/timocov/dts-bundle-generator.svg
-[ci-link]: https://circleci.com/gh/timocov/dts-bundle-generator
+[ci-img]: https://github.com/timocov/dts-bundle-generator/workflows/CI%20Test/badge.svg?branch=master
+[ci-link]: https://github.com/timocov/dts-bundle-generator/actions?query=branch%3Amaster
 
 [npm-version-img]: https://badge.fury.io/js/dts-bundle-generator.svg
 [npm-downloads-img]: https://img.shields.io/npm/dm/dts-bundle-generator.svg
