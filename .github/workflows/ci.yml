@@ -1,0 +1,58 @@
+name: CI Test
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    name: Lint files
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+      with:
+        node-version: 8
+    - run: npm install
+    - run: npm run lint
+
+  ts-min:
+    name: Minimal TS
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+      with:
+        node-version: 8
+    - run: npm install
+    - run: npm install typescript@2.6.1
+    - run: npm run compile
+
+  ts-current:
+    name: Current TS
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+      with:
+        node-version: 8
+    - run: npm install
+    - run: npm run compile
+    - run: npm run test
+    - run: npm run bundle-dts
+
+  ts-next:
+    name: The next TS
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+      with:
+        node-version: 8
+    - run: npm install
+    - run: npm install typescript@next
+    - run: npm run compile
+    - run: npm run test
+    - run: npm run bundle-dts
