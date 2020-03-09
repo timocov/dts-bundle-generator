@@ -163,7 +163,7 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 		const outputOptions: OutputOptions = entry.output || {};
 
 		const updateResultCommonParams = {
-			isStatementUsed: (statement: ts.Statement) => isNodeUsed(statement, rootFileExportSymbols, typesUsageEvaluator, typeChecker),
+			isStatementUsed: (statement: ts.Statement | ts.SourceFile) => isNodeUsed(statement, rootFileExportSymbols, typesUsageEvaluator, typeChecker),
 			shouldStatementBeImported: (statement: ts.DeclarationStatement) => {
 				return shouldNodeBeImported(
 					statement,
@@ -196,15 +196,19 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 
 			const prevStatementsCount = collectionResult.statements.length;
 			const updateFn = sourceFile === rootSourceFile ? updateResultForRootSourceFile : updateResult;
-			updateFn(
-				{
-					...updateResultCommonParams,
-					currentModule: getModuleInfo(sourceFile.fileName, criteria),
-					sourceFile,
-					statements: sourceFile.statements,
-				},
-				collectionResult
-			);
+			const currentModule = getModuleInfo(sourceFile.fileName, criteria);
+			const params: UpdateParams = {
+				...updateResultCommonParams,
+				currentModule,
+				statements: sourceFile.statements,
+			};
+
+			updateFn(params, collectionResult);
+
+			// handle `import * as module` usage if it's used as whole module
+			if (currentModule.type === ModuleType.ShouldBeImported && updateResultCommonParams.isStatementUsed(sourceFile)) {
+				updateImportsForStatement(sourceFile, params, collectionResult);
+			}
 
 			if (collectionResult.statements.length === prevStatementsCount) {
 				verboseLog(`No output for file: ${sourceFile.fileName}`);
@@ -271,9 +275,8 @@ interface CollectingResult {
 
 interface UpdateParams {
 	currentModule: ModuleInfo;
-	sourceFile: ts.SourceFile;
 	statements: ReadonlyArray<ts.Statement>;
-	isStatementUsed(statement: ts.Statement | ts.SourceFile): boolean;
+	isStatementUsed(statement: ts.Statement): boolean;
 	shouldStatementBeImported(statement: ts.DeclarationStatement): boolean;
 	shouldDeclareGlobalBeInlined(currentModule: ModuleInfo, statement: ts.ModuleDeclaration): boolean;
 	shouldDeclareExternalModuleBeInlined(): boolean;
@@ -291,11 +294,6 @@ const skippedNodes = [
 
 // tslint:disable-next-line:cyclomatic-complexity
 function updateResult(params: UpdateParams, result: CollectingResult): void {
-	// handle `import * as module` usage if it's used as whole module
-	if (params.currentModule.type === ModuleType.ShouldBeImported && params.isStatementUsed(params.sourceFile)) {
-		updateImportsForStatement(params.sourceFile, params, result);
-	}
-
 	for (const statement of params.statements) {
 		// we should skip import and exports statements
 		if (skippedNodes.indexOf(statement.kind) !== -1) {
