@@ -155,15 +155,6 @@ but:
 
 ## Known limitations
 
-1. Do not rename types on import. If you use something like this
-
-    ```ts
-    import { A as B } from './b';
-    export C extends B {}
-    ```
-
-    you will get an error, because this tool does not follow your renaming (and actually cannot do that).
-
 1. Do not use types from `* as name`-imports:
 
     ```ts

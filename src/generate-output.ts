@@ -2,9 +2,14 @@ import * as ts from 'typescript';
 
 import { hasNodeModifier } from './helpers/typescript';
 
+export interface ModuleImportsSet {
+	defaultImportName?: string;
+	namedImports: Set<string>;
+}
+
 export interface OutputParams {
 	typesReferences: Set<string>;
-	imports: Map<string, Set<string>>;
+	imports: Map<string, ModuleImportsSet>;
 	statements: ReadonlyArray<ts.Statement>;
 	shouldStatementHasExportKeyword(statement: ts.Statement): boolean;
 	needStripDefaultKeywordForStatement(statement: ts.Statement): boolean;
@@ -25,13 +30,13 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 
 	if (params.imports.size !== 0) {
 		// we need to have sorted imports of libraries to have more "stable" output
-		const sortedEntries = Array.from(params.imports.entries()).sort((firstEntry: [string, Set<string>], secondEntry: [string, Set<string>]) => {
+		const sortedEntries = Array.from(params.imports.entries()).sort((firstEntry: [string, ModuleImportsSet], secondEntry: [string, ModuleImportsSet]) => {
 			return firstEntry[0].localeCompare(secondEntry[0]);
 		});
 
-		const importsArray = sortedEntries.map((entry: [string, Set<string>]) => {
+		const importsArray = sortedEntries.map((entry: [string, ModuleImportsSet]) => {
 			const [libraryName, libraryImports] = entry;
-			return generateImport(libraryName, Array.from(libraryImports));
+			return generateImport(libraryName, libraryImports);
 		});
 
 		resultOutput += `${importsArray.join('\n')}\n\n`;
@@ -122,9 +127,18 @@ function getStatementText(statement: ts.Statement, shouldStatementHasExportKeywo
 	return result;
 }
 
-function generateImport(libraryName: string, imports: string[]): string {
-	// sort to make output more "stable"
-	return `import { ${imports.sort().join(', ')} } from '${libraryName}';`;
+function generateImport(libraryName: string, imports: ModuleImportsSet): string {
+	const importClauseParts = [];
+	if (imports.defaultImportName !== undefined) {
+		importClauseParts.push(imports.defaultImportName);
+	}
+
+	if (imports.namedImports.size !== 0) {
+		// sort to make output more "stable"
+		importClauseParts.push(`{ ${Array.from(imports.namedImports).sort().join(', ')} }`);
+	}
+
+	return `import ${importClauseParts.join(', ')} from '${libraryName}';`;
 }
 
 function generateReferenceTypesDirective(libraries: string[]): string {

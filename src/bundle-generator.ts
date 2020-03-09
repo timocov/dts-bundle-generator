@@ -28,7 +28,7 @@ import {
 	ModuleType,
 } from './module-info';
 
-import { generateOutput } from './generate-output';
+import { generateOutput, ModuleImportsSet } from './generate-output';
 
 import {
 	normalLog,
@@ -155,8 +155,8 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 		const rootFileExportSymbols = rootFileExports.map((exp: SourceFileExport) => exp.symbol);
 
 		const collectionResult: CollectingResult = {
-			typesReferences: new Set<string>(),
-			imports: new Map<string, Set<string>>(),
+			typesReferences: new Set(),
+			imports: new Map(),
 			statements: [],
 		};
 
@@ -185,6 +185,10 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 				const symbol = getActualSymbol(symbolForExpression, typeChecker);
 				return getDeclarationsForSymbol(symbol);
 			},
+			getDeclarationUsagesSourceFiles: (declaration: ts.NamedDeclaration) => {
+				return getDeclarationUsagesSourceFiles(declaration, rootFileExportSymbols, typesUsageEvaluator, typeChecker);
+			},
+			areDeclarationSame: (a: ts.NamedDeclaration, b: ts.NamedDeclaration) => getNodeSymbol(a, typeChecker) === getNodeSymbol(b, typeChecker),
 		};
 
 		for (const sourceFile of sourceFiles) {
@@ -260,7 +264,7 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 
 interface CollectingResult {
 	typesReferences: Set<string>;
-	imports: Map<string, Set<string>>;
+	imports: Map<string, ModuleImportsSet>;
 	statements: ts.Statement[];
 }
 
@@ -273,6 +277,8 @@ interface UpdateParams {
 	shouldDeclareExternalModuleBeInlined(): boolean;
 	getModuleInfo(fileName: string): ModuleInfo;
 	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
+	getDeclarationUsagesSourceFiles(declaration: ts.NamedDeclaration): Set<ts.SourceFile>;
+	areDeclarationSame(a: ts.NamedDeclaration, b: ts.NamedDeclaration): boolean;
 }
 
 const skippedNodes = [
@@ -424,27 +430,81 @@ function updateImportsForStatement(statement: ts.Statement, params: UpdateParams
 	const statementsToImport = ts.isVariableStatement(statement) ? statement.declarationList.declarations : [statement];
 	for (const statementToImport of statementsToImport) {
 		if (params.shouldStatementBeImported(statementToImport as ts.DeclarationStatement)) {
-			addImport(statementToImport as ts.DeclarationStatement, params.currentModule.libraryName, result.imports);
+			addImport(statementToImport as ts.DeclarationStatement, params, result.imports);
 		}
 	}
 }
 
-function addImport(statement: ts.DeclarationStatement, library: string, imports: Map<string, Set<string>>): void {
+function getDeclarationUsagesSourceFiles(
+	declaration: ts.NamedDeclaration,
+	rootFileExports: ReadonlyArray<ts.Symbol>,
+	typesUsageEvaluator: TypesUsageEvaluator,
+	typeChecker: ts.TypeChecker
+): Set<ts.SourceFile> {
+	return new Set(
+		getExportedSymbolsUsingStatement(declaration, rootFileExports, typesUsageEvaluator, typeChecker)
+			.map((symbol: ts.Symbol) => getDeclarationsForSymbol(symbol))
+			.reduce((acc: ts.Declaration[], val: ts.Declaration[]) => acc.concat(val), [])
+			.map((declaration: ts.Declaration) => declaration.getSourceFile())
+	);
+}
+
+function addImport(statement: ts.DeclarationStatement, params: UpdateParams, imports: CollectingResult['imports']): void {
 	if (statement.name === undefined) {
 		throw new Error(`Import/usage unnamed declaration: ${statement.getText()}`);
 	}
 
-	let libraryImports = imports.get(library);
-	if (libraryImports === undefined) {
-		libraryImports = new Set<string>();
-		imports.set(library, libraryImports);
-	}
+	params.getDeclarationUsagesSourceFiles(statement).forEach((sourceFile: ts.SourceFile) => {
+		sourceFile.statements
+			.filter(ts.isImportDeclaration)
+			.forEach((importDeclaration: ts.ImportDeclaration) => {
+				const importClause = importDeclaration.importClause;
+				if (importClause === undefined) {
+					return;
+				}
 
-	const importName = statement.name.getText();
-	if (!libraryImports.has(importName)) {
-		normalLog(`Adding import with name "${importName}" for library "${library}"`);
-		libraryImports.add(importName);
-	}
+				let items: (ts.Identifier | ts.ImportSpecifier)[] = [];
+				if (importClause.name !== undefined) {
+					// import name from 'module';
+					items.push(importClause.name);
+				}
+
+				if (importClause.namedBindings !== undefined) {
+					if (ts.isNamedImports(importClause.namedBindings)) {
+						// import { El1, El2 } from 'module';
+						items.push(...importClause.namedBindings.elements);
+					} else {
+						// import * as name from 'module';
+						items.push(importClause.namedBindings.name);
+					}
+				}
+
+				items = items.filter((item: ts.Identifier | ts.ImportSpecifier) => params.areDeclarationSame(statement, item));
+
+				if (items.length === 0) {
+					return;
+				}
+
+				const importModuleSpecifier = (importDeclaration.moduleSpecifier as ts.StringLiteral).text;
+
+				let importItem = imports.get(importModuleSpecifier);
+				if (importItem === undefined) {
+					importItem = {
+						namedImports: new Set<string>(),
+					};
+
+					imports.set(importModuleSpecifier, importItem);
+				}
+
+				for (const item of items) {
+					if (ts.isImportSpecifier(item)) {
+						importItem.namedImports.add(item.getText());
+					} else {
+						// TODO
+					}
+				}
+			});
+	});
 }
 
 function getRootSourceFile(program: ts.Program, rootFileName: string): ts.SourceFile {
@@ -514,13 +574,27 @@ function shouldNodeBeImported(
 		return false;
 	}
 
+	return getExportedSymbolsUsingStatement(node, rootFileExports, typesUsageEvaluator, typeChecker).length !== 0;
+}
+
+function getExportedSymbolsUsingStatement(
+	node: ts.NamedDeclaration,
+	rootFileExports: ReadonlyArray<ts.Symbol>,
+	typesUsageEvaluator: TypesUsageEvaluator,
+	typeChecker: ts.TypeChecker
+): ReadonlyArray<ts.Symbol> {
+	const nodeSymbol = getNodeSymbol(node, typeChecker);
+	if (nodeSymbol === null) {
+		return [];
+	}
+
 	const symbolsUsingNode = typesUsageEvaluator.getSymbolsUsingSymbol(nodeSymbol);
 	if (symbolsUsingNode === null) {
 		throw new Error('Something went wrong - value cannot be null');
 	}
 
 	// we should import only symbols which are used in types directly
-	return Array.from(symbolsUsingNode).some((symbol: ts.Symbol) => {
+	return Array.from(symbolsUsingNode).filter((symbol: ts.Symbol) => {
 		const symbolsDeclarations = getDeclarationsForSymbol(symbol);
 		if (symbolsDeclarations.length === 0 || symbolsDeclarations.every(isDeclarationFromExternalModule)) {
 			return false;
