@@ -2,6 +2,7 @@ import * as ts from 'typescript';
 import {
 	getActualSymbol,
 	isNodeNamedDeclaration,
+	splitTransientSymbol,
 } from './helpers/typescript';
 
 export type NodesParents = Map<ts.Symbol, Set<ts.Symbol>>;
@@ -76,17 +77,19 @@ export class TypesUsageEvaluator {
 			queue.push(...child.getChildren());
 
 			if (ts.isIdentifier(child)) {
-				const childSymbol = this.getSymbol(child);
+				const childSymbols = splitTransientSymbol(this.getSymbol(child), this.typeChecker);
 
-				let symbols = this.nodesParentsMap.get(childSymbol);
-				if (symbols === undefined) {
-					symbols = new Set<ts.Symbol>();
-					this.nodesParentsMap.set(childSymbol, symbols);
-				}
+				for (const childSymbol of childSymbols) {
+					let symbols = this.nodesParentsMap.get(childSymbol);
+					if (symbols === undefined) {
+						symbols = new Set<ts.Symbol>();
+						this.nodesParentsMap.set(childSymbol, symbols);
+					}
 
-				// to avoid infinite recursion
-				if (childSymbol !== parentSymbol) {
-					symbols.add(parentSymbol);
+					// to avoid infinite recursion
+					if (childSymbol !== parentSymbol) {
+						symbols.add(parentSymbol);
+					}
 				}
 			}
 		}

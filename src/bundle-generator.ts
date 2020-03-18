@@ -17,6 +17,7 @@ import {
 	isNamespaceStatement,
 	isNodeNamedDeclaration,
 	SourceFileExport,
+	splitTransientSymbol,
 } from './helpers/typescript';
 
 import { fixPath } from './helpers/fix-path';
@@ -188,7 +189,12 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 			getDeclarationUsagesSourceFiles: (declaration: ts.NamedDeclaration) => {
 				return getDeclarationUsagesSourceFiles(declaration, rootFileExportSymbols, typesUsageEvaluator, typeChecker);
 			},
-			areDeclarationSame: (a: ts.NamedDeclaration, b: ts.NamedDeclaration) => getNodeSymbol(a, typeChecker) === getNodeSymbol(b, typeChecker),
+			areDeclarationSame: (left: ts.NamedDeclaration, right: ts.NamedDeclaration) => {
+				const leftSymbols = splitTransientSymbol(getNodeSymbol(left, typeChecker) as ts.Symbol, typeChecker);
+				const rightSymbols = splitTransientSymbol(getNodeSymbol(right, typeChecker) as ts.Symbol, typeChecker);
+
+				return leftSymbols.some((leftSymbol: ts.Symbol) => rightSymbols.includes(leftSymbol));
+			},
 		};
 
 		for (const sourceFile of sourceFiles) {
