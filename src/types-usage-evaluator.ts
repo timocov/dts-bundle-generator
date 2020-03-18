@@ -29,7 +29,7 @@ export class TypesUsageEvaluator {
 		}
 
 		const reachableNodes = this.nodesParentsMap.get(fromSymbol);
-		if (reachableNodes) {
+		if (reachableNodes !== undefined) {
 			for (const symbol of Array.from(reachableNodes)) {
 				if (visitedSymbols.has(symbol)) {
 					continue;

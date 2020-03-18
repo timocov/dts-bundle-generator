@@ -207,7 +207,7 @@ function main(): void {
 
 	const generatedDts = generateDtsBundle(bundlerConfig.entries, bundlerConfig.compilationOptions);
 
-	const outFilesToCheck = [];
+	const outFilesToCheck: string[] = [];
 	for (let i = 0; i < bundlerConfig.entries.length; ++i) {
 		const entry = bundlerConfig.entries[i];
 		const outFile = entry.outFile !== undefined ? entry.outFile : generateOutFileName(entry.filePath);
