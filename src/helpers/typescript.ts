@@ -71,14 +71,18 @@ export function getDeclarationsForSymbol(symbol: ts.Symbol): ts.Declaration[] {
 
 	// Disabling tslint is for backward compat with TypeScript < 3
 	// tslint:disable-next-line:strict-type-predicates
-	if (symbol.valueDeclaration !== undefined) {
-		result.push(symbol.valueDeclaration);
+	if (symbol.declarations !== undefined) {
+		result.push(...symbol.declarations);
 	}
 
 	// Disabling tslint is for backward compat with TypeScript < 3
 	// tslint:disable-next-line:strict-type-predicates
-	if (symbol.declarations !== undefined) {
-		result.push(...symbol.declarations);
+	if (symbol.valueDeclaration !== undefined) {
+		// push valueDeclaration might be already in declarations array
+		// so let's check first to avoid duplication nodes
+		if (!result.includes(symbol.valueDeclaration)) {
+			result.push(symbol.valueDeclaration);
+		}
 	}
 
 	return result;
