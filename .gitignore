@@ -4,8 +4,7 @@
 /dist/
 
 node_modules/
-!tests/e2e/test-cases/node_modules/
-!tests/e2e/test-cases/node_modules/**
 
+*.d.ts
 package-lock.json
 package-lock.json.*
