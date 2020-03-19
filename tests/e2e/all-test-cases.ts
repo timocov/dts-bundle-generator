@@ -50,10 +50,17 @@ function getTestCases(): TestCase[] {
 describe('Functional tests', () => {
 	for (const testCase of getTestCases()) {
 		it(testCase.name, () => {
+			const outputOptions = testCase.config.output || {};
+			if (outputOptions.noBanner === undefined) {
+				// hide banner by default for all tests except these who set it explicitly
+				outputOptions.noBanner = true;
+			}
+
 			const dtsResult = generateDtsBundle(
 				[
 					{
 						...testCase.config,
+						output: outputOptions,
 						filePath: testCase.inputFileName,
 					},
 				]
