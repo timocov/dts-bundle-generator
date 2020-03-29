@@ -155,6 +155,43 @@ but:
 1. `A` is not used at all and most probably you do not want to export it.
 1. If you bundle your code in a way when all modules are merged (like when using Webpack or Rollup) then there should be no such modules as `a` or `b` (actually `entry` too) in the resulting file.
 
+## Webpack Plugin
+
+dts-bundle-generator can also be used with webpack. The output will be in the same directory as the generated js (by default, "dist").
+
+```js
+const path = require('path');
+const DtsBundleGenerator = require('dts-bundle-generator');
+module.exports = {
+  entry: __dirname + '/src/index.ts',
+  plugins: [ new DtsBundleGenerator.WebpackPlugin() ],
+  mode: 'development',
+  module: {
+    rules: [
+      {
+        test: /(\.tsx|\.ts)$/,
+        loader: 'ts-loader',
+        exclude: /(node_modules|bower_components)/,
+        options: {
+          onlyCompileBundledFiles: true
+        }
+      }
+    ]
+  },
+  resolve: {
+    modules: [path.resolve('./node_modules'), path.resolve('./src')],
+    extensions: ['.ts', '.tsx'],
+  }
+};
+```
+
+You can also use a configuration file.(`entry` and `output` settings of the webpack are ignored)
+
+```js
+  plugins: [ new DtsBundleGenerator.WebpackPlugin('./bundler.config.js') ],
+```
+
+
 ## Known limitations
 
 1. All your types should have different names inside a bundle. If you have 2 `interface Options {}` they will be merged by `TypeScript` and you will get wrong definitions.

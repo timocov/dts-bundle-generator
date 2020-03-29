@@ -118,6 +118,8 @@ export interface EntryPointConfig {
 	output?: OutputOptions;
 }
 
+export { WebpackPlugin } from './webpack-plugin';
+
 export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, options: CompilationOptions = {}): string[] {
 	normalLog('Compiling input files...');
 
