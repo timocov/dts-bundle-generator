@@ -40,6 +40,7 @@ interface ParsedArgs extends yargs.Arguments {
 	'inline-declare-externals': boolean;
 	'disable-symlinks-following': boolean;
 	'no-banner': boolean;
+	'respect-preserve-const-enum': boolean;
 
 	'out-file': string | undefined;
 	'umd-module-name': string | undefined;
@@ -133,6 +134,11 @@ function parseArgs(): ParsedArgs {
 			default: false,
 			description: '(EXPERIMENTAL) Disables resolving of symlinks to the original path. See https://github.com/timocov/dts-bundle-generator/issues/39 for more information',
 		})
+		.option('respect-preserve-const-enum', {
+			type: 'boolean',
+			default: false,
+			description: 'Enables stripping the `const` keyword from every direct-exported (or re-exported) from entry file `const enum`. See https://github.com/timocov/dts-bundle-generator/issues/110 for more information',
+		})
 		.option('config', {
 			type: 'string',
 			description: 'File path to the generator config file',
@@ -199,6 +205,7 @@ function main(): void {
 						umdModuleName: args['umd-module-name'],
 						sortNodes: args.sort,
 						noBanner: args['no-banner'],
+						respectPreserveConstEnum: args['respect-preserve-const-enum'],
 					},
 					failOnClass: args['fail-on-class'],
 				};
