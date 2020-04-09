@@ -9,12 +9,16 @@ export interface ModuleImportsSet {
 	namedImports: Set<string>;
 }
 
-export interface OutputParams {
+export interface OutputParams extends OutputHelpers {
 	typesReferences: Set<string>;
 	imports: Map<string, ModuleImportsSet>;
 	statements: ReadonlyArray<ts.Statement>;
+}
+
+export interface OutputHelpers {
 	shouldStatementHasExportKeyword(statement: ts.Statement): boolean;
 	needStripDefaultKeywordForStatement(statement: ts.Statement): boolean;
+	needStripConstFromConstEnum(constEnum: ts.EnumDeclaration): boolean;
 }
 
 export interface OutputOptions {
@@ -51,15 +55,7 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 		}
 	}
 
-	const statements = params.statements.map(
-		(statement: ts.Statement) => {
-			return getStatementText(
-				statement,
-				params.shouldStatementHasExportKeyword(statement),
-				params.needStripDefaultKeywordForStatement(statement)
-			);
-		}
-	);
+	const statements = params.statements.map((statement: ts.Statement) => getStatementText(statement, params));
 
 	if (options.sortStatements) {
 		statements.sort(compareStatementText);
@@ -101,10 +97,19 @@ function compareStatementText(a: StatementText, b: StatementText): number {
 	return 0;
 }
 
-function getStatementText(statement: ts.Statement, shouldStatementHasExportKeyword: boolean, needStripDefaultKeyword: boolean): StatementText {
+function getStatementText(statement: ts.Statement, helpers: OutputHelpers): StatementText {
+	const shouldStatementHasExportKeyword = helpers.shouldStatementHasExportKeyword(statement);
+	const needStripDefaultKeyword = helpers.needStripDefaultKeywordForStatement(statement);
 	const hasStatementExportKeyword = ts.isExportAssignment(statement) || hasNodeModifier(statement, ts.SyntaxKind.ExportKeyword);
 
 	let nodeText = getTextAccordingExport(statement.getText(), hasStatementExportKeyword, shouldStatementHasExportKeyword);
+
+	if (
+		ts.isEnumDeclaration(statement)
+		&& hasNodeModifier(statement, ts.SyntaxKind.ConstKeyword)
+		&& helpers.needStripConstFromConstEnum(statement)) {
+		nodeText = nodeText.replace(/\bconst\s/, '');
+	}
 
 	// strip the `default` keyword from node
 	if (hasNodeModifier(statement, ts.SyntaxKind.DefaultKeyword) && needStripDefaultKeyword) {
