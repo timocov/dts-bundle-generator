@@ -1,0 +1,12 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"preserveConstEnums": true
+	},
+	"include": [
+		"inputs.ts"
+	],
+	"exclude": [
+		"**/*.js"
+	]
+}
