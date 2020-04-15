@@ -197,7 +197,7 @@ but:
 
 ### Code Contributors
 
-This project exists thanks to all the people who contribute. [[Contribute](CONTRIBUTING.md)].
+This project exists thanks to all the people who contribute.
 <a href="https://github.com/timocov/dts-bundle-generator/graphs/contributors"><img src="https://opencollective.com/dts-bundle-generator/contributors.svg?width=890&button=false" /></a>
 
 ### Financial Contributors
