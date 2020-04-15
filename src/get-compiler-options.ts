@@ -6,6 +6,10 @@ import { fixPath } from './helpers/fix-path';
 import { checkDiagnosticsErrors } from './helpers/check-diagnostics-errors';
 import { verboseLog } from './logger';
 
+const enum Constants {
+	NoInputsWereFoundDiagnosticCode = 18003,
+}
+
 const parseConfigHost: ts.ParseConfigHost = {
 	useCaseSensitiveFileNames: ts.sys.useCaseSensitiveFileNames,
 	readDirectory: ts.sys.readDirectory,
@@ -29,7 +33,12 @@ export function getCompilerOptions(inputFileNames: ReadonlyArray<string>, prefer
 		getAbsolutePath(configFileName)
 	);
 
-	checkDiagnosticsErrors(compilerOptionsParseResult.errors, 'Error while processing tsconfig compiler options');
+	// we don't want to raise an error if no inputs found in a config file
+	// because this error is mostly for CLI, but we'll pass an inputs in createProgram
+	const diagnostics = compilerOptionsParseResult.errors
+		.filter((d: ts.Diagnostic) => d.code !== Constants.NoInputsWereFoundDiagnosticCode);
+
+	checkDiagnosticsErrors(diagnostics, 'Error while processing tsconfig compiler options');
 
 	return compilerOptionsParseResult.options;
 }
