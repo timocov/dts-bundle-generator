@@ -1,3 +1,5 @@
+export function functionName(): void;
+
 export const variable: string;
 
 export class SampleClass {}
