@@ -32,10 +32,10 @@ function getTestCases(): TestCase[] {
 			const testCaseDir = path.resolve(testCasesDir, directoryName);
 			const outputFileName = path.resolve(testCaseDir, 'output.d.ts');
 
-			const _ts = path.relative(process.cwd(), path.resolve(testCaseDir, 'input.ts'));
-			const _dts = path.relative(process.cwd(), path.resolve(testCaseDir, 'input.d.ts'));
+			const tsFilePath = path.relative(process.cwd(), path.resolve(testCaseDir, 'input.ts'));
+			const dtsFilePath = path.relative(process.cwd(), path.resolve(testCaseDir, 'input.d.ts'));
 
-			const inputFileName = fs.existsSync(_ts) ? _ts : _dts;
+			const inputFileName = fs.existsSync(tsFilePath) ? tsFilePath : dtsFilePath;
 
 			assert(fs.existsSync(inputFileName), `Input file doesn't exist for ${directoryName}`);
 			assert(fs.existsSync(outputFileName), `Output file doesn't exist for ${directoryName}`);
