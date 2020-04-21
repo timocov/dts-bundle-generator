@@ -120,8 +120,12 @@ function getStatementText(statement: ts.Statement, helpers: OutputHelpers): Stat
 
 	// for some reason TypeScript allows to do not write `declare` keyword for ClassDeclaration or VariableDeclaration
 	// if it already has `export` keyword - so we need to add it
-	if ((ts.isClassDeclaration(statement) && /^class\b/.test(nodeText)) ||
-	     ts.isVariableStatement(statement) && /^(const|let|var)\b/.test(nodeText)){
+	function isNeedToAddDeclare(statement: ts.Statement, nodeText: string): boolean {
+		return (ts.isClassDeclaration(statement) && /^class\b/.test(nodeText)) ||
+				(ts.isVariableStatement(statement) && /^(const|let|var)\b/.test(nodeText));
+	}
+
+	if (isNeedToAddDeclare(statement, nodeText)) {
 		nodeText = `declare ${nodeText}`;
 	}
 
