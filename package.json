@@ -3,9 +3,13 @@
   "name": "dts-bundle-generator",
   "version": "4.3.0",
   "description": "DTS Bundle Generator",
-  "main": "bundle-generator.js",
-  "typings": "bundle-generator.d.ts",
-  "bin": "bin/dts-bundle-generator.js",
+  "main": "dist/bundle-generator.js",
+  "typings": "dist/bundle-generator.d.ts",
+  "bin": "dist/bin/dts-bundle-generator.js",
+  "files": [
+    "dist/**/*.d.ts",
+    "dist/**/*.js"
+  ],
   "author": "Evgeniy Timokhov",
   "bugs": {
     "url": "https://github.com/timocov/dts-bundle-generator/issues"
@@ -19,7 +23,6 @@
     "@types/mocha": "~7.0.2",
     "@types/node": "8.10.50",
     "@types/yargs": "~15.0.4",
-    "clean-publish": "~1.1.6",
     "mocha": "~7.1.1",
     "npm-run-all": "~4.1.5",
     "rimraf": "~3.0.2",
@@ -35,13 +38,14 @@
     "node": ">=8.0.0"
   },
   "scripts": {
-    "clean": "rimraf lib/ dist/",
+    "clean": "rimraf dist/ dts-out/",
     "lint": "cd .dev-deps/ && npm run lint",
     "check-dts-config": "cd .dev-deps/ && npm run check-dts-config",
-    "bundle-dts": "npm run check-dts-config && node ./lib/src/bin/dts-bundle-generator.js --config dts-config.js --silent",
-    "compile": "cd .dev-deps/ && npm run compile",
+    "bundle-dts": "npm run check-dts-config && node ./dist/bin/dts-bundle-generator.js --config dts-config.js --silent",
+    "tsc": "cd .dev-deps/ && npm run tsc",
     "install": "cd .dev-deps/ && npm install",
-    "verify": "npm-run-all clean -p compile lint -s test && bash scripts/make-dist.sh",
+    "verify": "npm-run-all clean tsc -p bundle-dts lint -s test",
+    "prepare-release": "npm-run-all clean tsc bundle-dts && node scripts/clean-package-json.js",
     "test": "mocha tests/unittests/**/*.spec.ts tests/e2e/all-test-cases.ts"
   }
 }

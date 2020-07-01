@@ -9,9 +9,6 @@
 		{ "path": "../../src" },
 	],
 	"include": [
-		"./all-test-cases.ts",
-		"./test-case-config.ts",
-		"./test-cases/**/config.ts",
-		"./test-cases/test-case-config.ts",
+		"**/*.ts"
 	]
 }

@@ -4,8 +4,8 @@
 		"incremental": true
 	},
 	"references": [
-		{ "path": "./src" },
-		{ "path": "./tests" }
+		{ "path": "./e2e" },
+		{ "path": "./unittests" }
 	],
 	"include": []
 }

@@ -30,7 +30,7 @@ jobs:
         node-version: 8
     - run: npm install
     - run: npm install typescript@2.6.1
-    - run: npm run compile
+    - run: npm run tsc
 
   ts-current:
     name: Current TS
@@ -42,7 +42,7 @@ jobs:
       with:
         node-version: 8
     - run: npm install
-    - run: npm run compile
+    - run: npm run tsc
     - run: npm run test
     - run: npm run bundle-dts
 
@@ -57,6 +57,6 @@ jobs:
         node-version: 8
     - run: npm install
     - run: npm install typescript@next
-    - run: npm run compile
+    - run: npm run tsc
     - run: npm run test
     - run: npm run bundle-dts
