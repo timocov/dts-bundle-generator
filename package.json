@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@types/mocha": "~7.0.2",
-    "@types/node": "8.10.50",
+    "@types/node": "~12.12.47",
     "@types/yargs": "~15.0.4",
     "mocha": "~7.1.1",
     "npm-run-all": "~4.1.5",
@@ -35,7 +35,7 @@
     "url": "git+https://github.com/timocov/dts-bundle-generator.git"
   },
   "engines": {
-    "node": ">=8.0.0"
+    "node": ">=12.0.0"
   },
   "scripts": {
     "clean": "rimraf dist/ dts-out/",

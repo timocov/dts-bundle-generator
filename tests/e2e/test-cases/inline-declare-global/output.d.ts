@@ -1,6 +1,6 @@
 declare global {
 	interface SymbolConstructor {
-		observable: symbol;
+		readonly observable: symbol;
 	}
 }
 export declare const observable: string | symbol;

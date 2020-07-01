@@ -15,7 +15,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v1
       with:
-        node-version: 8
+        node-version: 12
     - run: npm install
     - run: npm run lint
 
@@ -27,7 +27,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v1
       with:
-        node-version: 8
+        node-version: 12
     - run: npm install
     - run: npm install typescript@2.6.1
     - run: npm run tsc
@@ -40,7 +40,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v1
       with:
-        node-version: 8
+        node-version: 12
     - run: npm install
     - run: npm run tsc
     - run: npm run test
@@ -54,7 +54,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v1
       with:
-        node-version: 8
+        node-version: 12
     - run: npm install
     - run: npm install typescript@next
     - run: npm run tsc

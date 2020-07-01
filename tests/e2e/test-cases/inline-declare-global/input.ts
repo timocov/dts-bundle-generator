@@ -2,7 +2,7 @@
 
 declare global {
 	interface SymbolConstructor {
-		observable: symbol;
+		readonly observable: symbol;
 	}
 }
 
