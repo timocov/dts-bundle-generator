@@ -13,6 +13,7 @@ export interface OutputParams extends OutputHelpers {
 	typesReferences: Set<string>;
 	imports: Map<string, ModuleImportsSet>;
 	statements: ReadonlyArray<ts.Statement>;
+	renamedExports: string[];
 }
 
 export interface OutputHelpers {
@@ -62,6 +63,10 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 	}
 
 	resultOutput += statements.map(statementTextToString).join('\n');
+
+	if (params.renamedExports.length !== 0) {
+		resultOutput += `\n\nexport {\n\t${params.renamedExports.sort().join(',\n\t')},\n};`;
+	}
 
 	if (options.umdModuleName !== undefined) {
 		resultOutput += `\n\nexport as namespace ${options.umdModuleName};`;
