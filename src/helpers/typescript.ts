@@ -130,6 +130,7 @@ export const enum ExportType {
 }
 
 export interface SourceFileExport {
+	exportedName: string;
 	symbol: ts.Symbol;
 	type: ExportType;
 }
@@ -142,6 +143,7 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 				{
 					symbol: getActualSymbol(commonJsExport, typeChecker),
 					type: ExportType.CommonJS,
+					exportedName: '',
 				},
 			];
 		}
@@ -149,7 +151,7 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 
 	const result: SourceFileExport[] = typeChecker
 		.getExportsOfModule(sourceFileSymbol)
-		.map((symbol: ts.Symbol) => ({ symbol, type: ExportType.ES6Named }));
+		.map((symbol: ts.Symbol) => ({ symbol, exportedName: symbol.escapedName as string, type: ExportType.ES6Named }));
 
 	if (sourceFileSymbol.exports !== undefined) {
 		const defaultExportSymbol = sourceFileSymbol.exports.get(ts.InternalSymbolName.Default);
@@ -163,6 +165,7 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 				result.push({
 					symbol: defaultExportSymbol,
 					type: ExportType.ES6Default,
+					exportedName: 'default',
 				});
 			}
 		}
@@ -175,59 +178,54 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 	return result;
 }
 
-export function getExportTypeForDeclaration(
+export function getExportsForStatement(
 	exportedSymbols: ReadonlyArray<SourceFileExport>,
 	typeChecker: ts.TypeChecker,
-	declaration: ts.NamedDeclaration | ts.VariableStatement
-): ExportType | null {
-	if (ts.isVariableStatement(declaration)) {
-		if (declaration.declarationList.declarations.length === 0) {
-			return null;
+	statement: ts.Statement
+): SourceFileExport[] {
+	if (ts.isVariableStatement(statement)) {
+		if (statement.declarationList.declarations.length === 0) {
+			return [];
 		}
 
-		const firstDeclarationExportType = getExportTypeForName(
+		const firstDeclarationExports = getExportsForName(
 			exportedSymbols,
 			typeChecker,
-			declaration.declarationList.declarations[0].name
+			statement.declarationList.declarations[0].name
 		);
 
-		const allDeclarationsHaveSameExportType = declaration.declarationList.declarations.every((variableDecl: ts.VariableDeclaration) => {
+		const allDeclarationsHaveSameExportType = statement.declarationList.declarations.every((variableDecl: ts.VariableDeclaration) => {
 			// all declaration should have the same export type
 			// TODO: for now it's not supported to have different type of exports
-			return getExportTypeForName(exportedSymbols, typeChecker, variableDecl.name) === firstDeclarationExportType;
+			return getExportsForName(exportedSymbols, typeChecker, variableDecl.name)[0] === firstDeclarationExports[0];
 		});
 
 		if (!allDeclarationsHaveSameExportType) {
 			// log warn?
-			return null;
+			return [];
 		}
 
-		return firstDeclarationExportType;
+		return firstDeclarationExports;
 	}
 
-	return getExportTypeForName(exportedSymbols, typeChecker, declaration.name);
+	return getExportsForName(exportedSymbols, typeChecker, (statement as unknown as ts.NamedDeclaration).name);
 }
 
-function getExportTypeForName(
+function getExportsForName(
 	exportedSymbols: ReadonlyArray<SourceFileExport>,
 	typeChecker: ts.TypeChecker,
 	name: ts.NamedDeclaration['name']
-): ExportType | null {
+): SourceFileExport[] {
 	if (name === undefined) {
-		return null;
+		return [];
 	}
 
 	if (ts.isArrayBindingPattern(name) || ts.isObjectBindingPattern(name)) {
 		// TODO: binding patterns in variable declarations are not supported for now
 		// see https://github.com/microsoft/TypeScript/issues/30598 also
-		return null;
+		return [];
 	}
 
 	const declarationSymbol = typeChecker.getSymbolAtLocation(name);
-	const exportedSymbol = exportedSymbols.find((rootExport: SourceFileExport) => rootExport.symbol === declarationSymbol);
-	if (exportedSymbol === undefined) {
-		return null;
-	}
-
-	return exportedSymbol.type;
+	return exportedSymbols.filter((rootExport: SourceFileExport) => rootExport.symbol === declarationSymbol);
 }

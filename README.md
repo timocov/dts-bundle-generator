@@ -163,29 +163,6 @@ but:
 
 1. All your types should have different names inside a bundle. If you have 2 `interface Options {}` they will be merged by `TypeScript` and you will get wrong definitions.
 
-1. Don't re-export default exports as default export in entry files.
-
-    `class.ts`:
-
-    ```ts
-    export default class MyClass {}
-    ```
-
-    `index.ts`:
-
-    ```ts
-    export { default } from './class';
-    ```
-
-    This can be simply "fixed" via importing and then exporting as default:
-
-    `index.ts`:
-
-    ```ts
-    import MyClass from './class';
-    export default MyClass;
-    ```
-
 [ci-img]: https://github.com/timocov/dts-bundle-generator/workflows/CI%20Test/badge.svg?branch=master
 [ci-link]: https://github.com/timocov/dts-bundle-generator/actions?query=branch%3Amaster
 

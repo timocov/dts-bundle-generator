@@ -1,2 +1,1 @@
-import MyClass from './class';
-export default MyClass;
+export { default } from './class';

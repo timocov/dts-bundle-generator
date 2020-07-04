@@ -1,5 +1,4 @@
-declare class MyClass {
+export default class MyClass {
 }
-export default MyClass;
 
 export {};
