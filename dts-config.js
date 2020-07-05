@@ -12,7 +12,7 @@ const config = {
 		},
 		{
 			filePath: './dts-out/config-file/load-config-file.d.ts',
-			outFile: './dist/config-schema.d.ts',
+			outFile: './config-schema.d.ts',
 		},
 	],
 };

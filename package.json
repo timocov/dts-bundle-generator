@@ -7,6 +7,7 @@
   "typings": "dist/bundle-generator.d.ts",
   "bin": "dist/bin/dts-bundle-generator.js",
   "files": [
+    "config-schema.d.ts",
     "dist/**/*.d.ts",
     "dist/**/*.js"
   ],
