@@ -7,6 +7,7 @@ export interface ModuleImportsSet {
 	defaultImports: Set<string>;
 	starImports: Set<string>;
 	namedImports: Set<string>;
+	requireImports: Set<string>;
 }
 
 export interface OutputParams extends OutputHelpers {
@@ -170,6 +171,7 @@ function generateImports(libraryName: string, imports: ModuleImportsSet): string
 
 	// sort to make output more "stable"
 	Array.from(imports.starImports).sort().forEach((importName: string) => result.push(`import * as ${importName} ${fromEnding}`));
+	Array.from(imports.requireImports).sort().forEach((importName: string) => result.push(`import ${importName} = require('${libraryName}');`));
 	Array.from(imports.defaultImports).sort().forEach((importName: string) => result.push(`import ${importName} ${fromEnding}`));
 
 	if (imports.namedImports.size !== 0) {

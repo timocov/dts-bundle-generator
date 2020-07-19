@@ -33,6 +33,7 @@ import { generateOutput, ModuleImportsSet } from './generate-output';
 import {
 	normalLog,
 	verboseLog,
+	warnLog,
 } from './logger';
 
 export interface CompilationOptions {
@@ -542,50 +543,82 @@ function getDeclarationUsagesSourceFiles(
 	);
 }
 
+function getImportModuleName(imp: ts.ImportEqualsDeclaration | ts.ImportDeclaration): string | null {
+	if (ts.isImportDeclaration(imp)) {
+		const importClause = imp.importClause;
+		if (importClause === undefined) {
+			return null;
+		}
+
+		return (imp.moduleSpecifier as ts.StringLiteral).text;
+	}
+
+	if (ts.isExternalModuleReference(imp.moduleReference)) {
+		if (!ts.isStringLiteral(imp.moduleReference.expression)) {
+			warnLog(`Cannot handle non string-literal-like import expression: ${imp.moduleReference.expression.getText()}`);
+			return null;
+		}
+
+		return imp.moduleReference.expression.text;
+	}
+
+	return null;
+}
+
 function addImport(statement: ts.DeclarationStatement, params: UpdateParams, imports: CollectingResult['imports']): void {
 	if (statement.name === undefined) {
 		throw new Error(`Import/usage unnamed declaration: ${statement.getText()}`);
 	}
 
 	params.getDeclarationUsagesSourceFiles(statement).forEach((sourceFile: ts.SourceFile) => {
-		sourceFile.statements
-			.filter(ts.isImportDeclaration)
-			.forEach((importDeclaration: ts.ImportDeclaration) => {
-				const importClause = importDeclaration.importClause;
-				if (importClause === undefined) {
-					return;
+		sourceFile.statements.forEach((st: ts.Statement) => {
+			if (!ts.isImportEqualsDeclaration(st) && !ts.isImportDeclaration(st)) {
+				return;
+			}
+
+			const importModuleSpecifier = getImportModuleName(st);
+			if (importModuleSpecifier === null) {
+				return;
+			}
+
+			let importItem = imports.get(importModuleSpecifier);
+			if (importItem === undefined) {
+				importItem = {
+					defaultImports: new Set<string>(),
+					namedImports: new Set<string>(),
+					starImports: new Set<string>(),
+					requireImports: new Set<string>(),
+				};
+
+				imports.set(importModuleSpecifier, importItem);
+			}
+
+			if (ts.isImportEqualsDeclaration(st)) {
+				if (params.areDeclarationSame(statement, st)) {
+					importItem.requireImports.add(st.name.text);
 				}
 
-				const importModuleSpecifier = (importDeclaration.moduleSpecifier as ts.StringLiteral).text;
+				return;
+			}
 
-				let importItem = imports.get(importModuleSpecifier);
-				if (importItem === undefined) {
-					importItem = {
-						defaultImports: new Set<string>(),
-						namedImports: new Set<string>(),
-						starImports: new Set<string>(),
-					};
+			const importClause = st.importClause as ts.ImportClause;
+			if (importClause.name !== undefined && params.areDeclarationSame(statement, importClause)) {
+				// import name from 'module';
+				importItem.defaultImports.add(importClause.name.text);
+			}
 
-					imports.set(importModuleSpecifier, importItem);
+			if (importClause.namedBindings !== undefined) {
+				if (ts.isNamedImports(importClause.namedBindings)) {
+					// import { El1, El2 } from 'module';
+					importClause.namedBindings.elements
+						.filter(params.areDeclarationSame.bind(params, statement))
+						.forEach((specifier: ts.ImportSpecifier) => (importItem as ModuleImportsSet).namedImports.add(specifier.getText()));
+				} else {
+					// import * as name from 'module';
+					importItem.starImports.add(importClause.namedBindings.name.getText());
 				}
-
-				if (importClause.name !== undefined && params.areDeclarationSame(statement, importClause)) {
-					// import name from 'module';
-					importItem.defaultImports.add(importClause.name.text);
-				}
-
-				if (importClause.namedBindings !== undefined) {
-					if (ts.isNamedImports(importClause.namedBindings)) {
-						// import { El1, El2 } from 'module';
-						importClause.namedBindings.elements
-							.filter(params.areDeclarationSame.bind(params, statement))
-							.forEach((specifier: ts.ImportSpecifier) => (importItem as ModuleImportsSet).namedImports.add(specifier.getText()));
-					} else {
-						// import * as name from 'module';
-						importItem.starImports.add(importClause.namedBindings.name.getText());
-					}
-				}
-			});
+			}
+		});
 	});
 }
 
