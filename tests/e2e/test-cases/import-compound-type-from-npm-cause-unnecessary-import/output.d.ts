@@ -1,5 +1,3 @@
-import { InterfaceWithFields } from 'fake-package';
-
+import { InterfaceWithFields } from "fake-package";
 export declare type MyType = InterfaceWithFields | null;
-
 export {};

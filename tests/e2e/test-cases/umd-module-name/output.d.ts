@@ -1,7 +1,5 @@
 export interface InterfaceName {
-	prop: number;
+    prop: number;
 }
-
 export as namespace MyUmdModule;
-
 export {};

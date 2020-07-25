@@ -1,7 +1,6 @@
 declare class NonExportedClass {
-	getThis(): this;
+    getThis(): this;
 }
 export declare class ExportedClass extends NonExportedClass {
 }
-
 export {};
