@@ -77,7 +77,12 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 	// see https://stackoverflow.com/questions/52583603/intentional-that-export-shuts-off-automatic-export-of-all-symbols-from-a-ty
 	resultOutput += `\n\nexport {};\n`;
 
-	return resultOutput;
+	const prettifierSourceFile = ts.createSourceFile('output.d.ts', resultOutput, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+	const printer = ts.createPrinter({
+		newLine: ts.NewLineKind.LineFeed,
+		removeComments: false,
+	});
+	return printer.printFile(prettifierSourceFile);
 }
 
 interface StatementText {
