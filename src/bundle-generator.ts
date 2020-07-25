@@ -525,6 +525,20 @@ function updateImportsForStatement(statement: ts.Statement | ts.SourceFile, para
 	for (const statementToImport of statementsToImport) {
 		if (params.shouldStatementBeImported(statementToImport as ts.DeclarationStatement)) {
 			addImport(statementToImport as ts.DeclarationStatement, params, result.imports);
+
+			// if we're going to add import of any statement in the bundle
+			// we should check whether the library of that statement
+			// could be referenced via triple-slash reference-types directive
+			// because the project which will use bundled declaration file
+			// can have `types: []` in the tsconfig and it'll fail
+			// this is especially related to the types packages
+			// which declares different modules in their declarations
+			// e.g. @types/node has declaration for "packages" events, fs, path and so on
+			const sourceFile = statementToImport.getSourceFile();
+			const moduleInfo = params.getModuleInfo(sourceFile.fileName);
+			if (moduleInfo.type === ModuleType.ShouldBeReferencedAsTypes) {
+				addTypesReference(moduleInfo.typesLibraryName, result.typesReferences);
+			}
 		}
 	}
 }
