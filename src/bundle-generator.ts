@@ -378,8 +378,8 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 			continue;
 		}
 
-		if (ts.isExportAssignment(statement) && statement.isExportEquals && params.currentModule.type === ModuleType.ShouldBeImported) {
-			updateResultForImportedEqExportAssignment(statement, params, result);
+		if (ts.isExportAssignment(statement) && statement.isExportEquals && params.currentModule.isExternal) {
+			updateResultForExternalEqExportAssignment(statement, params, result);
 			continue;
 		}
 
@@ -453,7 +453,7 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 	}
 }
 
-function updateResultForImportedEqExportAssignment(exportAssignment: ts.ExportAssignment, params: UpdateParams, result: CollectingResult): void {
+function updateResultForExternalEqExportAssignment(exportAssignment: ts.ExportAssignment, params: UpdateParams, result: CollectingResult): void {
 	const moduleDeclarations = params.getDeclarationsForExportedAssignment(exportAssignment)
 		.filter(isNamespaceStatement)
 		.filter((s: ts.ModuleDeclaration) => s.getSourceFile() === exportAssignment.getSourceFile());
