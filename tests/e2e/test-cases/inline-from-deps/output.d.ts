@@ -1,4 +1,5 @@
-export interface Interface {}
+export interface Interface {
+}
 export type Type = number | string;
 declare class SomeClass {
 	private x;

@@ -13,8 +13,8 @@ declare function funcName(): void;
 declare function defaultFunction(): void;
 declare class MyClass {
 }
-export { Server } from 'http';
-export * from 'fs';
+export { Server } from "http";
+export * from "fs";
 
 export {
 	AnotherInterface as Int2,
