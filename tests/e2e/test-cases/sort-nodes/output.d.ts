@@ -5,9 +5,10 @@ export declare type BType = number;
  */
 export declare type ZTypeName = string | null;
 export interface BInterfaceName {
-    prop: number;
-    prop2: ATypeName;
+	prop: number;
+	prop2: ATypeName;
 }
 export interface CInterfaceName {
 }
+
 export {};

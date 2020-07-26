@@ -63,7 +63,7 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 		statements.sort(compareStatementText);
 	}
 
-	resultOutput += statements.map(statementTextToString).join('\n');
+	resultOutput += statementsTextToString(statements);
 
 	if (params.renamedExports.length !== 0) {
 		resultOutput += `\n\nexport {\n\t${params.renamedExports.sort().join(',\n\t')},\n};`;
@@ -77,12 +77,7 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 	// see https://stackoverflow.com/questions/52583603/intentional-that-export-shuts-off-automatic-export-of-all-symbols-from-a-ty
 	resultOutput += `\n\nexport {};\n`;
 
-	const prettifierSourceFile = ts.createSourceFile('output.d.ts', resultOutput, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
-	const printer = ts.createPrinter({
-		newLine: ts.NewLineKind.LineFeed,
-		removeComments: false,
-	});
-	return printer.printFile(prettifierSourceFile);
+	return resultOutput;
 }
 
 interface StatementText {
@@ -96,6 +91,21 @@ function statementTextToString(s: StatementText): string {
 	}
 
 	return `${s.leadingComment}\n${s.text}`;
+}
+
+function statementsTextToString(statements: StatementText[]): string {
+	const statementsText = statements.map(statementTextToString).join('\n');
+	return spacesToTabs(prettifyStatementsText(statementsText));
+}
+
+function prettifyStatementsText(statementsText: string): string {
+	const sourceFile = ts.createSourceFile('output.d.ts', statementsText, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+	const printer = ts.createPrinter({
+		newLine: ts.NewLineKind.LineFeed,
+		removeComments: false,
+	});
+
+	return printer.printFile(sourceFile).trim();
 }
 
 function compareStatementText(a: StatementText, b: StatementText): number {
@@ -153,7 +163,7 @@ function getStatementText(statement: ts.Statement, helpers: OutputHelpers): Stat
 	}
 
 	const result: StatementText = {
-		text: spacesToTabs(nodeText),
+		text: nodeText,
 	};
 
 	// add jsdoc for exported nodes only
@@ -162,7 +172,7 @@ function getStatementText(statement: ts.Statement, helpers: OutputHelpers): Stat
 		const jsDocStart = statement.getStart(undefined, true);
 		const nodeJSDoc = statement.getSourceFile().getFullText().substring(jsDocStart, start).trim();
 		if (nodeJSDoc.length !== 0) {
-			result.leadingComment = spacesToTabs(nodeJSDoc);
+			result.leadingComment = nodeJSDoc;
 		}
 	}
 

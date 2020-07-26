@@ -1,7 +1,8 @@
 export interface UsedInterface {
-    field: number;
+	field: number;
 }
 export interface InterfaceName {
-    prop: UsedInterface;
+	prop: UsedInterface;
 }
+
 export {};

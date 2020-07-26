@@ -1,9 +1,10 @@
 export interface Interface {
-    field: Interface;
+	field: Interface;
 }
 export interface InterfaceInternal extends Interface {
 }
 export declare var ModuleName: {
-    prototype: Interface;
+	prototype: Interface;
 };
+
 export {};

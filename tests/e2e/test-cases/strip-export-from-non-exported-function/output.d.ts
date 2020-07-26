@@ -1,5 +1,6 @@
 declare function getRandom(): number;
 export interface Interface {
-    field: typeof getRandom;
+	field: typeof getRandom;
 }
+
 export {};
