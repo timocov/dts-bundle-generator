@@ -447,6 +447,14 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 				// export { baz as propertyName }
 				if (exportItem.propertyName !== undefined) {
 					result.renamedExports.push(exportItem.getText());
+					continue;
+				}
+
+				// export { name }
+				const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
+				if (resolvedIdentifier?.getText() !== exportItem.name.getText()) {
+					// exported "name" is different from "original" name
+					result.renamedExports.push(`${resolvedIdentifier?.getText() || ''} as ${exportItem.name.getText()}`);
 				}
 			}
 		}
