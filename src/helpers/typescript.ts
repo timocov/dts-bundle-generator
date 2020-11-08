@@ -29,6 +29,15 @@ export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker):
 	return symbol;
 }
 
+export function getDeclarationNameSymbol(name: ts.DeclarationName, typeChecker: ts.TypeChecker): ts.Symbol | null {
+	const symbol = typeChecker.getSymbolAtLocation(name);
+	if (symbol === undefined) {
+		return null;
+	}
+
+	return getActualSymbol(symbol, typeChecker);
+}
+
 export function splitTransientSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker): ts.Symbol[] {
 	// actually I think we even don't need to operate/use "Transient" symbols anywhere
 	// it's kind of aliased symbol, but just merged
@@ -130,6 +139,7 @@ export const enum ExportType {
 }
 
 export interface SourceFileExport {
+	originalName: string;
 	exportedName: string;
 	symbol: ts.Symbol;
 	type: ExportType;
@@ -139,11 +149,13 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 	if (sourceFileSymbol.exports !== undefined) {
 		const commonJsExport = sourceFileSymbol.exports.get(ts.InternalSymbolName.ExportEquals);
 		if (commonJsExport !== undefined) {
+			const symbol = getActualSymbol(commonJsExport, typeChecker);
 			return [
 				{
-					symbol: getActualSymbol(commonJsExport, typeChecker),
+					symbol,
 					type: ExportType.CommonJS,
 					exportedName: '',
+					originalName: symbol.escapedName as string,
 				},
 			];
 		}
@@ -151,7 +163,7 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 
 	const result: SourceFileExport[] = typeChecker
 		.getExportsOfModule(sourceFileSymbol)
-		.map((symbol: ts.Symbol) => ({ symbol, exportedName: symbol.escapedName as string, type: ExportType.ES6Named }));
+		.map((symbol: ts.Symbol) => ({ symbol, exportedName: symbol.escapedName as string, type: ExportType.ES6Named, originalName: '' }));
 
 	if (sourceFileSymbol.exports !== undefined) {
 		const defaultExportSymbol = sourceFileSymbol.exports.get(ts.InternalSymbolName.Default);
@@ -166,16 +178,43 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 					symbol: defaultExportSymbol,
 					type: ExportType.ES6Default,
 					exportedName: 'default',
+					originalName: '',
 				});
 			}
 		}
 	}
 
-	result.forEach((symbol: SourceFileExport) => {
-		symbol.symbol = getActualSymbol(symbol.symbol, typeChecker);
+	result.forEach((exp: SourceFileExport) => {
+		exp.symbol = getActualSymbol(exp.symbol, typeChecker);
+
+		const resolvedIdentifier = resolveIdentifierBySymbol(exp.symbol);
+		exp.originalName = resolvedIdentifier !== undefined ? resolvedIdentifier.getText() : exp.symbol.escapedName as string;
 	});
 
 	return result;
+}
+
+export function resolveIdentifier(typeChecker: ts.TypeChecker, identifier: ts.Identifier): ts.NamedDeclaration['name'] {
+	const symbol = getDeclarationNameSymbol(identifier, typeChecker);
+	if (symbol === null) {
+		return undefined;
+	}
+
+	return resolveIdentifierBySymbol(symbol);
+}
+
+function resolveIdentifierBySymbol(identifierSymbol: ts.Symbol): ts.NamedDeclaration['name'] {
+	const declarations = getDeclarationsForSymbol(identifierSymbol);
+	if (declarations.length === 0) {
+		return undefined;
+	}
+
+	const decl = declarations[0];
+	if (!isNodeNamedDeclaration(decl)) {
+		return undefined;
+	}
+
+	return decl.name;
 }
 
 export function getExportsForStatement(
