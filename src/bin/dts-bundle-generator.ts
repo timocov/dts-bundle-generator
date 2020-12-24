@@ -189,9 +189,9 @@ function main(): void {
 		}
 
 		bundlerConfig = {
-			entries: args._.map((path: string) => {
+			entries: args._.map((path: string | number) => {
 				return {
-					filePath: path,
+					filePath: String(path),
 					outFile: args['out-file'],
 					noCheck: args['no-check'],
 					libraries: {
