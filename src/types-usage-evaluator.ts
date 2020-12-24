@@ -1,6 +1,7 @@
 import * as ts from 'typescript';
 import {
 	getActualSymbol,
+	isNamedTupleMember,
 	isNodeNamedDeclaration,
 	splitTransientSymbol,
 } from './helpers/typescript';
@@ -77,6 +78,13 @@ export class TypesUsageEvaluator {
 			queue.push(...child.getChildren());
 
 			if (ts.isIdentifier(child)) {
+				// identifiers in labelled tuples don't have symbols for their labels
+				// so let's just skip them from collecting
+				// since this feature is for TypeScript > 4, we have to check that a function exist before accessing it
+				if (isNamedTupleMember(child.parent) && child.parent.name === child) {
+					continue;
+				}
+
 				const childSymbols = splitTransientSymbol(this.getSymbol(child), this.typeChecker);
 
 				for (const childSymbol of childSymbols) {

@@ -268,3 +268,41 @@ function getExportsForName(
 	const declarationSymbol = typeChecker.getSymbolAtLocation(name);
 	return exportedSymbols.filter((rootExport: SourceFileExport) => rootExport.symbol === declarationSymbol);
 }
+
+// labelled tuples were introduced in TypeScript 4.0, prior 4.0 version type `ts.NamedTupleMember` didn't exist
+// so the main question is how to make the compiler happy to compile the code without errors
+// and at the same time don't use `any` type and provide proper autocomplete and properties checking _with previous versions of the compiler_?
+// the following trick allows us to handle this!
+// if ts.NamedTupleMember doesn't exist (< 4.0) - NamedTupleMember will be `any` type
+// otherwise it will be a proper type from the compiler's typings
+// (this is how @ts-ignore works)
+// thus this type must NOT be inlined
+// tslint:disable-next-line:ban-ts-ignore
+// @ts-ignore
+type NamedTupleMember = ts.NamedTupleMember;
+
+// if NamedTupleMember is `any` type then let's use a fallback (we don't need to provide full type spec here, just what we're using in the code)
+// otherwise we'll use its type so we don't need to use a fallback
+type NamedTupleMemberCompat = unknown extends NamedTupleMember ? ts.Node & { name: ts.Identifier } : NamedTupleMember;
+
+export function isNamedTupleMember(node: ts.Node): node is NamedTupleMemberCompat {
+	interface CompatibilityTypeScriptPart {
+		// labelled tuples and this method were introduced in TypeScript 4.0
+		// so, to be compiled with TypeScript < 4.0 we need to have this trick
+		isNamedTupleMember?(node: ts.Node): node is NamedTupleMemberCompat;
+	}
+
+	type CommonKeys = keyof (CompatibilityTypeScriptPart | typeof ts);
+
+	// if current ts.Program has isSourceFileDefaultLibrary method - then use it
+	// if it does not have it yet - use fallback
+	type CompatibleTypeScript = CommonKeys extends never ? typeof ts & CompatibilityTypeScriptPart : typeof ts;
+
+	// tslint:disable-next-line:no-unnecessary-type-assertion
+	const compatTs = ts as CompatibleTypeScript;
+	if (!compatTs.isNamedTupleMember) {
+		return false;
+	}
+
+	return compatTs.isNamedTupleMember(node);
+}
