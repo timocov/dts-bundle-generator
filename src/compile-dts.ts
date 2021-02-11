@@ -21,6 +21,12 @@ export function compileDts(rootFiles: ReadonlyArray<string>, preferredConfigPath
 	compilerOptions.outDir = undefined;
 	compilerOptions.incremental = undefined;
 	compilerOptions.tsBuildInfoFile = undefined;
+	compilerOptions.declarationDir = undefined;
+
+	if (compilerOptions.composite) {
+		warnLog(`Composite projects aren't supported at the time. Prefer to use non-composite project to generate declarations instead or just ignore this message if everything works fine. See https://github.com/timocov/dts-bundle-generator/issues/93`);
+		compilerOptions.composite = undefined;
+	}
 
 	const dtsFiles = getDeclarationFiles(rootFiles, compilerOptions);
 
