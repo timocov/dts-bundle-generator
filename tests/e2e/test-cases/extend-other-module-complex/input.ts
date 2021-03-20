@@ -1,8 +1,9 @@
-import { SomeInterface } from "./extendable-module";
+// we need to add this to add `extender.d.ts` to list of files to bundle the types after compilation for dts
+/// <reference path="./extender.ts" />
+/// <reference path="./internal-extender/extender.d.ts" />
 
-// NOTE: if I do `import "./extender";` instead, it works slightly better
-// but misses justFunction in the output
-import { justFunction } from "./extender";
+import { SomeInterface } from './extendable-module';
+import { justFunction } from './extender';
 
 justFunction(true);
 

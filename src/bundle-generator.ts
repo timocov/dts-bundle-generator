@@ -13,7 +13,7 @@ import {
 	isAmbientModule,
 	isDeclarationFromExternalModule,
 	isDeclareGlobalStatement,
-	isDeclareModuleStatement,
+	isDeclareModule,
 	isNamespaceStatement,
 	isNodeNamedDeclaration,
 	resolveIdentifier,
@@ -357,7 +357,7 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 			continue;
 		}
 
-		if (isDeclareModuleStatement(statement)) {
+		if (isDeclareModule(statement)) {
 			updateResultForModuleDeclaration(statement, params, result);
 			continue;
 		}
