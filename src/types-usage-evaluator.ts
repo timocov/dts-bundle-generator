@@ -3,6 +3,7 @@ import {
 	getActualSymbol,
 	isNamedTupleMember,
 	isNodeNamedDeclaration,
+	isRelativeDeclareModule,
 	splitTransientSymbol,
 } from './helpers/typescript';
 
@@ -58,7 +59,11 @@ export class TypesUsageEvaluator {
 	}
 
 	private computeUsageForNode(node: ts.Node): void {
-		if (isNodeNamedDeclaration(node) && node.name) {
+		if (isRelativeDeclareModule(node) && node.body !== undefined && ts.isModuleBlock(node.body)) {
+			for (const statement of node.body.statements) {
+				this.computeUsageForNode(statement);
+			}
+		} else if (isNodeNamedDeclaration(node) && node.name) {
 			const childSymbol = this.getSymbol(node.name);
 			this.computeUsagesRecursively(node, childSymbol);
 		} else if (ts.isVariableStatement(node)) {
