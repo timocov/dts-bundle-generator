@@ -87,6 +87,12 @@ export interface OutputOptions {
 	 * This allows you "avoid" the issue described in https://github.com/microsoft/TypeScript/issues/37774.
 	 */
 	respectPreserveConstEnum?: boolean;
+
+	/**
+	 * By default all interfaces, types and const enums are marked as exported even if they aren't exported directly.
+	 * This option allows you to disable this behavior so a node will be exported if it is exported from root source file only.
+	 */
+	exportReferencedTypes?: boolean;
 }
 
 export interface LibrariesOptions {
@@ -245,6 +251,9 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 			}
 		}
 
+		// by default this option should be enabled
+		const exportReferencedTypes = outputOptions.exportReferencedTypes !== false;
+
 		return generateOutput(
 			{
 				...collectionResult,
@@ -277,19 +286,20 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 						return shouldBeDefaultExportedDirectly || exp.exportedName === exp.originalName;
 					}) !== undefined;
 
-					if (ts.isClassDeclaration(statement)
-						|| ts.isEnumDeclaration(statement)
+					// "direct export" means export from the root source file
+					// e.g. classes/functions/etc must be exported from the root source file to have an "export" keyword
+					// by default interfaces/types are exported even if they aren't directly exported (e.g. when they are referenced by other types)
+					// but if `exportReferencedTypes` option is disabled we have to check direct export for them either
+					const onlyDirectlyExportedShouldBeExported = !exportReferencedTypes
+						|| ts.isClassDeclaration(statement)
+						|| (ts.isEnumDeclaration(statement) && !hasNodeModifier(statement, ts.SyntaxKind.ConstKeyword))
 						|| ts.isFunctionDeclaration(statement)
-						|| ts.isVariableStatement(statement)
-					) {
-						// "valuable" statements must be re-exported from root source file
-						// to having export keyword in declaration fle
-						result = result && statementExports.length !== 0;
+						|| ts.isVariableStatement(statement);
 
-						if (ts.isEnumDeclaration(statement)) {
-							// const enum always can be exported
-							result = result || hasNodeModifier(statement, ts.SyntaxKind.ConstKeyword);
-						}
+					if (onlyDirectlyExportedShouldBeExported) {
+						// "valuable" statements must be re-exported from root source file
+						// to having export keyword in declaration file
+						result = result && statementExports.length !== 0;
 					} else if (isAmbientModule(statement) || ts.isExportDeclaration(statement)) {
 						result = false;
 					}
