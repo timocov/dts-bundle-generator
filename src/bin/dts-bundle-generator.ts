@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as ts from 'typescript';
 import * as yargs from 'yargs';
 
-import { loadConfigFile, BundlerConfig } from '../config-file/load-config-file';
+import { loadConfigFile, BundlerConfig, ConfigEntryPoint } from '../config-file/load-config-file';
 
 import { generateDtsBundle } from '../bundle-generator';
 import { checkProgramDiagnosticsErrors } from '../helpers/check-diagnostics-errors';
@@ -41,6 +41,7 @@ interface ParsedArgs extends yargs.Arguments {
 	'disable-symlinks-following': boolean;
 	'no-banner': boolean;
 	'respect-preserve-const-enum': boolean;
+	'export-referenced-types': boolean;
 
 	'out-file': string | undefined;
 	'umd-module-name': string | undefined;
@@ -139,6 +140,11 @@ function parseArgs(): ParsedArgs {
 			default: false,
 			description: 'Enables stripping the `const` keyword from every direct-exported (or re-exported) from entry file `const enum`. See https://github.com/timocov/dts-bundle-generator/issues/110 for more information',
 		})
+		.option('export-referenced-types', {
+			type: 'boolean',
+			default: true,
+			description: 'By default all interfaces, types and const enums are marked as exported even if they aren\'t exported directly. This option allows you to disable this behavior so a node will be exported if it is exported from root source file only.',
+		})
 		.option('config', {
 			type: 'string',
 			description: 'File path to the generator config file',
@@ -189,7 +195,7 @@ function main(): void {
 		}
 
 		bundlerConfig = {
-			entries: args._.map((path: string | number) => {
+			entries: args._.map<ConfigEntryPoint>((path: string | number) => {
 				return {
 					filePath: String(path),
 					outFile: args['out-file'],
@@ -206,6 +212,7 @@ function main(): void {
 						sortNodes: args.sort,
 						noBanner: args['no-banner'],
 						respectPreserveConstEnum: args['respect-preserve-const-enum'],
+						exportReferencedTypes: args['export-referenced-types'],
 					},
 					failOnClass: args['fail-on-class'],
 				};

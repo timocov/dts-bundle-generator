@@ -111,6 +111,12 @@ Config file might be either JSON file or JS file with CommonJS export of the con
                  * This allows you "avoid" the issue described in https://github.com/microsoft/TypeScript/issues/37774.
                  */
                 respectPreserveConstEnum: false,
+
+                /**
+                 * By default all interfaces, types and const enums are marked as exported even if they aren't exported directly.
+                 * This option allows you to disable this behavior so a node will be exported if it is exported from root source file only.
+                 */
+                exportReferencedTypes: true,
             },
         },
     ],

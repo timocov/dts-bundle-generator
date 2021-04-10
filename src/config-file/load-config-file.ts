@@ -77,6 +77,7 @@ const configScheme: SchemeDescriptor<BundlerConfig> = {
 				umdModuleName: schemaPrimitiveValues.string,
 				noBanner: schemaPrimitiveValues.boolean,
 				respectPreserveConstEnum: schemaPrimitiveValues.boolean,
+				exportReferencedTypes: schemaPrimitiveValues.boolean,
 			},
 		},
 	],
