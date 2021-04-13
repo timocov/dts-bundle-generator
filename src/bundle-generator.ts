@@ -318,6 +318,19 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 
 					return rootFileExportSymbols.includes(enumSymbol);
 				},
+				needStripImportFromImportTypeNode: (node: ts.ImportTypeNode) => {
+					if (node.qualifier === undefined) {
+						return false;
+					}
+
+					if (!ts.isLiteralTypeNode(node.argument) || !ts.isStringLiteral(node.argument.literal)) {
+						return false;
+					}
+
+					// we don't need to specify exact file here since we need to figure out whether a file is external or internal one
+					const moduleFileName = resolveModuleFileName(rootSourceFile.fileName, node.argument.literal.text);
+					return !getModuleInfo(moduleFileName, criteria).isExternal;
+				},
 			},
 			{
 				sortStatements: outputOptions.sortNodes,
