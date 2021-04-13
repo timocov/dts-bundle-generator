@@ -21,6 +21,7 @@ export interface OutputHelpers {
 	shouldStatementHasExportKeyword(statement: ts.Statement): boolean;
 	needStripDefaultKeywordForStatement(statement: ts.Statement): boolean;
 	needStripConstFromConstEnum(constEnum: ts.EnumDeclaration): boolean;
+	needStripImportFromImportTypeNode(importType: ts.ImportTypeNode): boolean;
 }
 
 export interface OutputOptions {
@@ -63,7 +64,7 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 		statements.sort(compareStatementText);
 	}
 
-	resultOutput += statementsTextToString(statements);
+	resultOutput += statementsTextToString(statements, params);
 
 	if (params.renamedExports.length !== 0) {
 		resultOutput += `\n\nexport {\n\t${params.renamedExports.sort().join(',\n\t')},\n};`;
@@ -93,17 +94,38 @@ function statementTextToString(s: StatementText): string {
 	return `${s.leadingComment}\n${s.text}`;
 }
 
-function statementsTextToString(statements: StatementText[]): string {
+function statementsTextToString(statements: StatementText[], helpers: OutputHelpers): string {
 	const statementsText = statements.map(statementTextToString).join('\n');
-	return spacesToTabs(prettifyStatementsText(statementsText));
+	return spacesToTabs(prettifyStatementsText(statementsText, helpers));
 }
 
-function prettifyStatementsText(statementsText: string): string {
+function prettifyStatementsText(statementsText: string, helpers: OutputHelpers): string {
 	const sourceFile = ts.createSourceFile('output.d.ts', statementsText, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
-	const printer = ts.createPrinter({
-		newLine: ts.NewLineKind.LineFeed,
-		removeComments: false,
-	});
+	const printer = ts.createPrinter(
+		{
+			newLine: ts.NewLineKind.LineFeed,
+			removeComments: false,
+		},
+		{
+			substituteNode: (hint: ts.EmitHint, node: ts.Node) => {
+				// `import('module').Qualifier` or `typeof import('module').Qualifier`
+				if (ts.isImportTypeNode(node) && node.qualifier !== undefined && helpers.needStripImportFromImportTypeNode(node)) {
+					if (node.isTypeOf) {
+						// I personally don't like this solution because it spreads the logic of modifying nodes in the code
+						// I'd prefer to have it somewhere near getStatementText or so
+						// but at the moment it seems that it's the fastest and most easiest way to remove `import('./module').` form the code
+						// if you read this and know how to make it better - feel free to share your ideas/PR with fixes
+						// tslint:disable-next-line:deprecation
+						return ts.createTypeQueryNode(node.qualifier);
+					}
+
+					return node.qualifier;
+				}
+
+				return node;
+			},
+		}
+	);
 
 	return printer.printFile(sourceFile).trim();
 }
