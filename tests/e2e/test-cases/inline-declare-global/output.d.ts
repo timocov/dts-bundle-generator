@@ -3,6 +3,6 @@ declare global {
 		readonly observable: symbol;
 	}
 }
-export declare const observable: string | symbol;
+export declare const observable: string | typeof Symbol.observable;
 
 export {};
