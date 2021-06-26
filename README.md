@@ -127,7 +127,7 @@ Examples:
 ```
 
 ```bash
-./node_modules/.bin/dts-bundle-generator --external-inlines=@mycompany/internal-project --external-imports=@angular/core,rxjs path/to/your/entry-file.ts
+./node_modules/.bin/dts-bundle-generator --external-inlines=@mycompany/internal-project --external-imports=@angular/core rxjs path/to/your/entry-file.ts
 ```
 
 ```bash
