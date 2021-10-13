@@ -48,7 +48,7 @@ function findConfig(inputFiles: ReadonlyArray<string>): string {
 		throw new Error('Cannot find tsconfig for multiple files. Please specify preferred tsconfig file');
 	}
 
-	const searchPath = fixPath(inputFiles[0]);
+	const searchPath = fixPath(path.resolve(inputFiles[0]));
 
 	const configFileName = ts.findConfigFile(searchPath, ts.sys.fileExists);
 
