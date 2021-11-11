@@ -21,8 +21,11 @@ import {
 	warnLog,
 } from '../logger';
 
-// tslint:disable-next-line:no-any
-function toStringsArray(data: any): string[] {
+function toStringsArray(data: unknown): string[] | undefined {
+	if (data === undefined) {
+		return data;
+	}
+
 	if (!Array.isArray(data)) {
 		throw new Error(`${data} is not a array`);
 	}
@@ -263,6 +266,6 @@ try {
 	normalLog(`Done in ${(executionTime / 1000).toFixed(2)}s`);
 } catch (ex) {
 	normalLog('');
-	errorLog(`Error: ${ex.message}`);
+	errorLog(`Error: ${(ex as Error).message}`);
 	process.exit(1);
 }
