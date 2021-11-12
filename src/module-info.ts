@@ -79,7 +79,7 @@ function getModuleInfoImpl(currentFilePath: string, originalFileName: string, cr
 		return { type: ModuleType.ShouldBeInlined, fileName: originalFileName, isExternal: true };
 	}
 
-	if (shouldLibraryBeImported(npmLibraryName, typesLibraryName, criteria.importedLibraries)) {
+	if (shouldLibraryBeImported(npmLibraryName, typesLibraryName, criteria.importedLibraries, criteria.allowedTypesLibraries)) {
 		return { type: ModuleType.ShouldBeImported, fileName: originalFileName, isExternal: true };
 	}
 
@@ -94,14 +94,24 @@ function shouldLibraryBeInlined(npmLibraryName: string, typesLibraryName: string
 	return isLibraryAllowed(npmLibraryName, inlinedLibraries) || typesLibraryName !== null && isLibraryAllowed(typesLibraryName, inlinedLibraries);
 }
 
-function shouldLibraryBeImported(npmLibraryName: string, typesLibraryName: string | null, importedLibraries: string[] | undefined): boolean {
-	// npm library can be imported only when it is not from @types
-	const shouldNpmLibraryBeImported = typesLibraryName === null && isLibraryAllowed(npmLibraryName, importedLibraries);
+function shouldLibraryBeImported(
+	npmLibraryName: string,
+	typesLibraryName: string | null,
+	importedLibraries: string[] | undefined,
+	allowedTypesLibraries: string[] | undefined
+): boolean {
+	if (typesLibraryName === null) {
+		return isLibraryAllowed(npmLibraryName, importedLibraries);
+	}
 
-	// library from @types can be imported only when it is specified explicitly
-	const shouldTypesLibraryBeImported = importedLibraries !== undefined && typesLibraryName !== null && isLibraryAllowed(typesLibraryName, importedLibraries);
+	// to be imported a library from types shouldn't be allowed to be references as types
+	// thus by default we treat all libraries as "should be imported"
+	// but if it is a @types library then it should be imported only if it is not marked as "should be referenced as types" explicitly
+	if (allowedTypesLibraries === undefined || !isLibraryAllowed(typesLibraryName, allowedTypesLibraries)) {
+		return isLibraryAllowed(typesLibraryName, importedLibraries);
+	}
 
-	return shouldNpmLibraryBeImported || shouldTypesLibraryBeImported;
+	return false;
 }
 
 function isLibraryAllowed(libraryName: string, allowedArray?: string[]): boolean {
