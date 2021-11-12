@@ -1,0 +1,8 @@
+*.js
+
+/dist/**
+/dts-out/**
+
+**/node_modules
+
+/tests/e2e/test-cases/**/*.ts

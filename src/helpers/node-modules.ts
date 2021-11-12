@@ -1,5 +1,5 @@
 const nodeModulesFolderName = 'node_modules/';
-const libraryNameRegex = /node_modules\/((?:(?=@)[^\/]+\/[^\/]+|[^\/]+))\//;
+const libraryNameRegex = /node_modules\/((?:(?=@)[^/]+\/[^/]+|[^/]+))\//;
 
 export function getLibraryName(fileName: string): string | null {
 	const lastNodeModulesIndex = fileName.lastIndexOf(nodeModulesFolderName);

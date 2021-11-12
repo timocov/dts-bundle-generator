@@ -12,7 +12,7 @@ export interface CompileDtsResult {
 	rootFilesRemapping: Map<string, string>;
 }
 
-export function compileDts(rootFiles: ReadonlyArray<string>, preferredConfigPath?: string, followSymlinks: boolean = true): CompileDtsResult {
+export function compileDts(rootFiles: readonly string[], preferredConfigPath?: string, followSymlinks: boolean = true): CompileDtsResult {
 	const compilerOptions = getCompilerOptions(rootFiles, preferredConfigPath);
 
 	// currently we don't support these compiler options
@@ -35,7 +35,7 @@ export function compileDts(rootFiles: ReadonlyArray<string>, preferredConfigPath
 	const host = ts.createCompilerHost(compilerOptions);
 
 	if (!followSymlinks) {
-		host.realpath = (path: string) => path;
+		host.realpath = (p: string) => p;
 	}
 
 	host.resolveModuleNames = (moduleNames: string[], containingFile: string) => {
@@ -93,7 +93,7 @@ function changeExtensionToDts(fileName: string): string {
 /**
  * @description Compiles source files into d.ts files and returns map of absolute path to file content
  */
-function getDeclarationFiles(rootFiles: ReadonlyArray<string>, compilerOptions: ts.CompilerOptions): Map<string, string> {
+function getDeclarationFiles(rootFiles: readonly string[], compilerOptions: ts.CompilerOptions): Map<string, string> {
 	// we must pass `declaration: true` and `noEmit: false` if we want to generate declaration files
 	// see https://github.com/microsoft/TypeScript/issues/24002#issuecomment-550549393
 	compilerOptions = {

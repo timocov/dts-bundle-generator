@@ -171,7 +171,7 @@ function generateOutFileName(inputFilePath: string): string {
 	return fixPath(path.join(inputFilePath, '..', inputFileName + '.d.ts'));
 }
 
-// tslint:disable-next-line:cyclomatic-complexity
+// eslint-disable-next-line complexity
 function main(): void {
 	const args = parseArgs();
 
@@ -198,9 +198,9 @@ function main(): void {
 		}
 
 		bundlerConfig = {
-			entries: args._.map<ConfigEntryPoint>((path: string | number) => {
+			entries: args._.map<ConfigEntryPoint>((entryPath: string | number) => {
 				return {
-					filePath: String(path),
+					filePath: String(entryPath),
 					outFile: args['out-file'],
 					noCheck: args['no-check'],
 					libraries: {

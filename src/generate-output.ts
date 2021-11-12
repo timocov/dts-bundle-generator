@@ -13,7 +13,7 @@ export interface ModuleImportsSet {
 export interface OutputParams extends OutputHelpers {
 	typesReferences: Set<string>;
 	imports: Map<string, ModuleImportsSet>;
-	statements: ReadonlyArray<ts.Statement>;
+	statements: readonly ts.Statement[];
 	renamedExports: string[];
 }
 
@@ -235,6 +235,7 @@ function getTextAccordingExport(nodeText: string, isNodeExported: boolean, shoul
 }
 
 function spacesToTabs(text: string): string {
+	// eslint-disable-next-line no-regex-spaces
 	return text.replace(/^(    )+/gm, (substring: string) => {
 		return '\t'.repeat(substring.length / 4);
 	});

@@ -17,7 +17,7 @@ const parseConfigHost: ts.ParseConfigHost = {
 	readFile: ts.sys.readFile,
 };
 
-export function getCompilerOptions(inputFileNames: ReadonlyArray<string>, preferredConfigPath?: string): ts.CompilerOptions {
+export function getCompilerOptions(inputFileNames: readonly string[], preferredConfigPath?: string): ts.CompilerOptions {
 	const configFileName = preferredConfigPath !== undefined ? preferredConfigPath : findConfig(inputFileNames);
 
 	verboseLog(`Using config: ${configFileName}`);
@@ -43,7 +43,7 @@ export function getCompilerOptions(inputFileNames: ReadonlyArray<string>, prefer
 	return compilerOptionsParseResult.options;
 }
 
-function findConfig(inputFiles: ReadonlyArray<string>): string {
+function findConfig(inputFiles: readonly string[]): string {
 	if (inputFiles.length !== 1) {
 		throw new Error('Cannot find tsconfig for multiple files. Please specify preferred tsconfig file');
 	}

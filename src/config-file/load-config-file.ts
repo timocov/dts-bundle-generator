@@ -27,6 +27,7 @@ export interface BundlerConfig {
  * @internal Do not output this function in generated dts for the npm package
  */
 export function loadConfigFile(configPath: string): BundlerConfig {
+	// eslint-disable-next-line @typescript-eslint/no-var-requires
 	const possibleConfig = require(getAbsolutePath(configPath));
 
 	const errors: string[] = [];

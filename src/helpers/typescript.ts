@@ -58,12 +58,12 @@ export function splitTransientSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChec
 			continue;
 		}
 
-		const symbol = typeChecker.getSymbolAtLocation(declaration.name);
-		if (symbol === undefined) {
+		const sym = typeChecker.getSymbolAtLocation(declaration.name);
+		if (sym === undefined) {
 			continue;
 		}
 
-		result.push(getActualSymbol(symbol, typeChecker));
+		result.push(getActualSymbol(sym, typeChecker));
 	}
 
 	return result;
@@ -233,7 +233,7 @@ function resolveIdentifierBySymbol(identifierSymbol: ts.Symbol): ts.NamedDeclara
 }
 
 export function getExportsForStatement(
-	exportedSymbols: ReadonlyArray<SourceFileExport>,
+	exportedSymbols: readonly SourceFileExport[],
 	typeChecker: ts.TypeChecker,
 	statement: ts.Statement
 ): SourceFileExport[] {
@@ -266,7 +266,7 @@ export function getExportsForStatement(
 }
 
 function getExportsForName(
-	exportedSymbols: ReadonlyArray<SourceFileExport>,
+	exportedSymbols: readonly SourceFileExport[],
 	typeChecker: ts.TypeChecker,
 	name: ts.NamedDeclaration['name']
 ): SourceFileExport[] {
@@ -292,7 +292,7 @@ function getExportsForName(
 // otherwise it will be a proper type from the compiler's typings
 // (this is how @ts-ignore works)
 // thus this type must NOT be inlined
-// tslint:disable-next-line:ban-ts-ignore
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 type NamedTupleMember = ts.NamedTupleMember;
 
@@ -309,11 +309,11 @@ export function isNamedTupleMember(node: ts.Node): node is NamedTupleMemberCompa
 
 	type CommonKeys = keyof (CompatibilityTypeScriptPart | typeof ts);
 
-	// if current ts.Program has isSourceFileDefaultLibrary method - then use it
+	// if current ts.Program has isNamedTupleMember method - then use it
 	// if it does not have it yet - use fallback
 	type CompatibleTypeScript = CommonKeys extends never ? typeof ts & CompatibilityTypeScriptPart : typeof ts;
 
-	// tslint:disable-next-line:no-unnecessary-type-assertion
+	// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 	const compatTs = ts as CompatibleTypeScript;
 	if (!compatTs.isNamedTupleMember) {
 		return false;

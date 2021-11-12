@@ -32,7 +32,7 @@ export function checkSchemaMatch<T>(value: unknown, schema: SchemeDescriptor<T>,
 	return checkSchemaMatchRecursively(value, schema, '', errors);
 }
 
-// tslint:disable-next-line:cyclomatic-complexity
+// eslint-disable-next-line complexity
 function checkSchemaMatchRecursively<T>(value: unknown, schema: SchemeDescriptor<T> | [SchemeDescriptor<T>], prefix: string, errors: string[]): value is T {
 	if (typeof schema === 'boolean' || typeof schema === 'string') {
 		const schemeType = typeof schema;

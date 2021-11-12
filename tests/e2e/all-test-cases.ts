@@ -43,6 +43,7 @@ function getTestCases(): TestCase[] {
 			const result: TestCase = {
 				name: directoryName,
 				inputFileName,
+				// eslint-disable-next-line @typescript-eslint/no-var-requires
 				config: require(path.resolve(testCaseDir, 'config.ts')) as TestCaseConfig,
 				outputFileContent: prepareString(fs.readFileSync(outputFileName, 'utf-8')),
 			};

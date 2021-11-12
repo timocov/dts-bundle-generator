@@ -7,6 +7,4 @@
         "tests/e2e/.tsc-out/**": true,
         "tests/unittests/.tsc-out/**": true,
     },
-    "typescript.tsdk": ".dev-deps/node_modules/typescript/lib",
-    "tslint.nodePath": ".dev-deps/",
 }

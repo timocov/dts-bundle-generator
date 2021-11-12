@@ -132,7 +132,7 @@ export interface EntryPointConfig {
 	output?: OutputOptions;
 }
 
-export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, options: CompilationOptions = {}): string[] {
+export function generateDtsBundle(entries: readonly EntryPointConfig[], options: CompilationOptions = {}): string[] {
 	normalLog('Compiling input files...');
 
 	const { program, rootFilesRemapping } = compileDts(entries.map((entry: EntryPointConfig) => entry.filePath), options.preferredConfigPath, options.followSymlinks);
@@ -141,14 +141,13 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 	const typeRoots = ts.getEffectiveTypeRoots(program.getCompilerOptions(), {});
 
 	const sourceFiles = program.getSourceFiles().filter((file: ts.SourceFile) => {
-		return !isSourceFileDefaultLibrary(program, file);
+		return !program.isSourceFileDefaultLibrary(file);
 	});
 
 	verboseLog(`Input source files:\n  ${sourceFiles.map((file: ts.SourceFile) => file.fileName).join('\n  ')}`);
 
 	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker);
 
-	// tslint:disable-next-line:cyclomatic-complexity
 	return entries.map((entry: EntryPointConfig) => {
 		normalLog(`Processing ${entry.filePath}`);
 
@@ -192,7 +191,7 @@ export function generateDtsBundle(entries: ReadonlyArray<EntryPointConfig>, opti
 					rootFileExportSymbols,
 					typesUsageEvaluator,
 					typeChecker,
-					isSourceFileDefaultLibrary.bind(null, program)
+					program.isSourceFileDefaultLibrary.bind(program)
 				);
 			},
 			shouldDeclareGlobalBeInlined: (currentModule: ModuleInfo) => Boolean(outputOptions.inlineDeclareGlobals) && currentModule.type === ModuleType.ShouldBeInlined,
@@ -350,7 +349,7 @@ interface CollectingResult {
 
 interface UpdateParams {
 	currentModule: ModuleInfo;
-	statements: ReadonlyArray<ts.Statement>;
+	statements: readonly ts.Statement[];
 	isStatementUsed(statement: ts.Statement): boolean;
 	shouldStatementBeImported(statement: ts.DeclarationStatement): boolean;
 	shouldDeclareGlobalBeInlined(currentModule: ModuleInfo, statement: ts.ModuleDeclaration): boolean;
@@ -372,7 +371,7 @@ const skippedNodes = [
 	ts.SyntaxKind.ImportEqualsDeclaration,
 ];
 
-// tslint:disable-next-line:cyclomatic-complexity
+// eslint-disable-next-line complexity
 function updateResult(params: UpdateParams, result: CollectingResult): void {
 	for (const statement of params.statements) {
 		// we should skip import and exports statements
@@ -420,7 +419,7 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 	}
 }
 
-// tslint:disable-next-line:cyclomatic-complexity
+// eslint-disable-next-line complexity
 function updateResultForRootSourceFile(params: UpdateParams, result: CollectingResult): void {
 	function isReExportFromImportableModule(statement: ts.Statement): boolean {
 		if (!ts.isExportDeclaration(statement) || statement.moduleSpecifier === undefined || !ts.isStringLiteral(statement.moduleSpecifier)) {
@@ -577,7 +576,7 @@ function updateImportsForStatement(statement: ts.Statement | ts.SourceFile, para
 
 function getDeclarationUsagesSourceFiles(
 	declaration: ts.NamedDeclaration,
-	rootFileExports: ReadonlyArray<ts.Symbol>,
+	rootFileExports: readonly ts.Symbol[],
 	typesUsageEvaluator: TypesUsageEvaluator,
 	typeChecker: ts.TypeChecker
 ): Set<ts.SourceFile> {
@@ -585,7 +584,7 @@ function getDeclarationUsagesSourceFiles(
 		getExportedSymbolsUsingStatement(declaration, rootFileExports, typesUsageEvaluator, typeChecker)
 			.map((symbol: ts.Symbol) => getDeclarationsForSymbol(symbol))
 			.reduce((acc: ts.Declaration[], val: ts.Declaration[]) => acc.concat(val), [])
-			.map((declaration: ts.Declaration) => declaration.getSourceFile())
+			.map((decl: ts.Declaration) => decl.getSourceFile())
 	);
 }
 
@@ -683,7 +682,7 @@ function getRootSourceFile(program: ts.Program, rootFileName: string): ts.Source
 
 function isNodeUsed(
 	node: ts.Node,
-	rootFileExports: ReadonlyArray<ts.Symbol>,
+	rootFileExports: readonly ts.Symbol[],
 	typesUsageEvaluator: TypesUsageEvaluator,
 	typeChecker: ts.TypeChecker
 ): boolean {
@@ -705,7 +704,7 @@ function isNodeUsed(
 
 function shouldNodeBeImported(
 	node: ts.NamedDeclaration,
-	rootFileExports: ReadonlyArray<ts.Symbol>,
+	rootFileExports: readonly ts.Symbol[],
 	typesUsageEvaluator: TypesUsageEvaluator,
 	typeChecker: ts.TypeChecker,
 	isDefaultLibrary: (sourceFile: ts.SourceFile) => boolean
@@ -740,10 +739,10 @@ function shouldNodeBeImported(
 
 function getExportedSymbolsUsingStatement(
 	node: ts.NamedDeclaration,
-	rootFileExports: ReadonlyArray<ts.Symbol>,
+	rootFileExports: readonly ts.Symbol[],
 	typesUsageEvaluator: TypesUsageEvaluator,
 	typeChecker: ts.TypeChecker
-): ReadonlyArray<ts.Symbol> {
+): readonly ts.Symbol[] {
 	const nodeSymbol = getNodeSymbol(node, typeChecker);
 	if (nodeSymbol === null) {
 		return [];
@@ -763,24 +762,6 @@ function getExportedSymbolsUsingStatement(
 
 		return rootFileExports.some((rootSymbol: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(symbol, rootSymbol));
 	});
-}
-
-function isSourceFileDefaultLibrary(program: ts.Program, file: ts.SourceFile): boolean {
-	interface CompatibilityProgramPart {
-		// this method was introduced in TypeScript 2.6
-		// but to the public API it was added only in TypeScript 3.0
-		// so, to be compiled with TypeScript < 3.0 we need to have this hack
-		isSourceFileDefaultLibrary(file: ts.SourceFile): boolean;
-	}
-
-	type CommonKeys = keyof (CompatibilityProgramPart | ts.Program);
-
-	// if current ts.Program has isSourceFileDefaultLibrary method - then use it
-	// if it does not have it yet - use fallback
-	type CompatibleProgram = CommonKeys extends never ? ts.Program & CompatibilityProgramPart : ts.Program;
-
-	// tslint:disable-next-line:no-unnecessary-type-assertion
-	return (program as CompatibleProgram).isSourceFileDefaultLibrary(file);
 }
 
 function getNodeSymbol(node: ts.Node, typeChecker: ts.TypeChecker): ts.Symbol | null {

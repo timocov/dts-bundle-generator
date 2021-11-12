@@ -12,7 +12,7 @@ export function checkProgramDiagnosticsErrors(program: ts.Program): void {
 	checkDiagnosticsErrors(program.getDeclarationDiagnostics(), 'Compiled with errors');
 }
 
-export function checkDiagnosticsErrors(diagnostics: ReadonlyArray<ts.Diagnostic>, failMessage: string): void {
+export function checkDiagnosticsErrors(diagnostics: readonly ts.Diagnostic[], failMessage: string): void {
 	if (diagnostics.length === 0) {
 		return;
 	}

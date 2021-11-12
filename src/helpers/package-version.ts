@@ -6,7 +6,8 @@ export function packageVersion(): string {
 	while (dirName.length !== 0) {
 		const packageJsonFilePath = path.join(dirName, 'package.json');
 		if (fs.existsSync(packageJsonFilePath)) {
-			return require(packageJsonFilePath).version;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-var-requires
+			return require(packageJsonFilePath).version as string;
 		}
 
 		dirName = path.join(dirName, '..');
