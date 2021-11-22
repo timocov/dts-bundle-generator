@@ -2,7 +2,6 @@ import * as ts from 'typescript';
 import * as path from 'path';
 
 import { getAbsolutePath } from './helpers/get-absolute-path';
-import { fixPath } from './helpers/fix-path';
 import { checkDiagnosticsErrors } from './helpers/check-diagnostics-errors';
 import { verboseLog } from './logger';
 
@@ -48,7 +47,10 @@ function findConfig(inputFiles: readonly string[]): string {
 		throw new Error('Cannot find tsconfig for multiple files. Please specify preferred tsconfig file');
 	}
 
-	const searchPath = fixPath(path.resolve(inputFiles[0]));
+	// input file could be a relative path to the current path
+	// and desired config could be outside of current cwd folder
+	// so we have to provide absolute path to find config until the root
+	const searchPath = getAbsolutePath(inputFiles[0]);
 
 	const configFileName = ts.findConfigFile(searchPath, ts.sys.fileExists);
 
