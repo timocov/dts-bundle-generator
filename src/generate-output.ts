@@ -119,7 +119,7 @@ function prettifyStatementsText(statementsText: string, helpers: OutputHelpers):
 						return ts.createTypeQueryNode(node.qualifier);
 					}
 
-					return node.qualifier;
+					return ts.createTypeReferenceNode(node.qualifier, node.typeArguments);
 				}
 
 				return node;
