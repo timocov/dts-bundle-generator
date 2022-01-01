@@ -251,7 +251,7 @@ export function getExportsForStatement(
 		const allDeclarationsHaveSameExportType = statement.declarationList.declarations.every((variableDecl: ts.VariableDeclaration) => {
 			// all declaration should have the same export type
 			// TODO: for now it's not supported to have different type of exports
-			return getExportsForName(exportedSymbols, typeChecker, variableDecl.name)[0] === firstDeclarationExports[0];
+			return getExportsForName(exportedSymbols, typeChecker, variableDecl.name)[0]?.type === firstDeclarationExports[0]?.type;
 		});
 
 		if (!allDeclarationsHaveSameExportType) {
