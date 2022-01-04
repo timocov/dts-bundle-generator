@@ -198,9 +198,6 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			shouldDeclareExternalModuleBeInlined: () => Boolean(outputOptions.inlineDeclareExternals),
 			getModuleInfo: (fileName: string) => getModuleInfo(fileName, criteria),
 			resolveIdentifier: (identifier: ts.Identifier) => resolveIdentifier(typeChecker, identifier),
-			// @ts-expect-error There is actually a `symbol` property at runtime?!
-			getDefaultExportForSourceFile: (sourceFile: ts.SourceFile) => getExportsForSourceFile(typeChecker, sourceFile.symbol)
-				.filter((exportedExpression) => exportedExpression.exportedName === 'default')[0],
 			getDeclarationsForExportedAssignment: (exportAssignment: ts.ExportAssignment) => {
 				const symbolForExpression = typeChecker.getSymbolAtLocation(exportAssignment.expression);
 				if (symbolForExpression === undefined) {
@@ -363,7 +360,6 @@ interface UpdateParams {
 	 * Could be used to resolve "default" identifier in exports.
 	 */
 	resolveIdentifier(identifier: ts.NamedDeclaration['name']): ts.NamedDeclaration['name'];
-	getDefaultExportForSourceFile: (sourceFile: ts.SourceFile) => SourceFileExport;
 	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
 	getDeclarationUsagesSourceFiles(declaration: ts.NamedDeclaration): Set<ts.SourceFile>;
 	areDeclarationSame(a: ts.NamedDeclaration, b: ts.NamedDeclaration): boolean;
@@ -452,8 +448,8 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 				if (exportItem.name.getText() === 'default' && exportItem.propertyName === undefined) {
 					// export { default }
 					// return export { /get default export of source file/ as default };
-					const defaultExport = params.getDefaultExportForSourceFile(statement.getSourceFile());
-					result.renamedExports.push(`${defaultExport.originalName} as default`);
+					const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
+					result.renamedExports.push(`${resolvedIdentifier?.getText()} as default`);
 					continue;
 				}
 
