@@ -448,8 +448,12 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 				if (exportItem.name.getText() === 'default' && exportItem.propertyName === undefined) {
 					// export { default }
 					// return export { /get default export of source file/ as default };
-					const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
-					result.renamedExports.push(`${resolvedIdentifier?.getText()} as default`);
+					// Leave `export { default } from 'external-package'` untouched
+					if (!isDeclarationFromExternalModule(params.resolveIdentifier(exportItem.name)!.getSourceFile())) {
+						const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
+						result.renamedExports.push(`${resolvedIdentifier?.getText()} as default`);
+					}
+
 					continue;
 				}
 
