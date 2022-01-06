@@ -4,6 +4,7 @@ import * as path from 'path';
 import { compileDts } from './compile-dts';
 import { TypesUsageEvaluator } from './types-usage-evaluator';
 import {
+	getNodeName,
 	getActualSymbol,
 	getDeclarationNameSymbol,
 	getDeclarationsForSymbol,
@@ -413,7 +414,7 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 				break;
 
 			case ModuleType.ShouldBeInlined:
-				result.statements.push(statement);
+				updateExportsForStatement(statement, params, result);
 				break;
 		}
 	}
@@ -435,25 +436,22 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 	// add skipped by `updateResult` exports
 	for (const statement of params.statements) {
 		// "export default" or "export ="
-		const isExportAssignment = ts.isExportAssignment(statement);
-		const isReExportFromImportable = isReExportFromImportableModule(statement);
-
-		if (isExportAssignment || isReExportFromImportable) {
+		if (ts.isExportAssignment(statement) || isReExportFromImportableModule(statement)) {
 			result.statements.push(statement);
 		}
 
 		// export { foo, bar, baz as fooBar }
 		if (ts.isExportDeclaration(statement) && statement.exportClause !== undefined && ts.isNamedExports(statement.exportClause)) {
 			for (const exportItem of statement.exportClause.elements) {
+				// export { default }
 				if (exportItem.name.getText() === 'default' && exportItem.propertyName === undefined) {
-					// export { default }
-					// return export { /get default export of source file/ as default };
-					// Leave `export { default } from 'external-package'` untouched
-					if (!isDeclarationFromExternalModule(params.resolveIdentifier(exportItem.name)!.getSourceFile())) {
-						const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
-						result.renamedExports.push(`${resolvedIdentifier?.getText()} as default`);
+					if (isDeclarationFromExternalModule(params.resolveIdentifier(exportItem.name)!.getSourceFile())) {
+						// Leave `export { default } from 'external-package'` untouched
+						continue;
 					}
 
+					const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
+					result.renamedExports.push(`${resolvedIdentifier?.getText()} as default`);
 					continue;
 				}
 
@@ -577,6 +575,19 @@ function updateImportsForStatement(statement: ts.Statement | ts.SourceFile, para
 			}
 		}
 	}
+}
+
+function updateExportsForStatement(statement: ts.Statement, params: UpdateParams, result: CollectingResult): void {
+	// If the node has a name and is exported as default in a non-root source file,
+	// strip the `export` and `default` modifiers.
+	if (getNodeName(statement) !== null) {
+		// @ts-expect-error
+		statement.modifiers = statement.modifiers?.filter(
+			(modifier) => modifier.kind !== ts.SyntaxKind.DefaultKeyword
+		)
+	}
+	
+	result.statements.push(statement);
 }
 
 function getDeclarationUsagesSourceFiles(
@@ -770,7 +781,7 @@ function getExportedSymbolsUsingStatement(
 }
 
 function getNodeSymbol(node: ts.Node, typeChecker: ts.TypeChecker): ts.Symbol | null {
-	const nodeName = (node as unknown as ts.NamedDeclaration).name;
+	const nodeName = getNodeName(node);
 	if (nodeName === undefined) {
 		return null;
 	}

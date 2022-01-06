@@ -22,6 +22,19 @@ export function hasNodeModifier(node: ts.Node, modifier: ts.SyntaxKind): boolean
 	return Boolean(node.modifiers && node.modifiers.some((nodeModifier: ts.Modifier) => nodeModifier.kind === modifier));
 }
 
+export function getNodeName(node: ts.Node): ts.NamedDeclaration['name'] {
+	const nodeName = (node as unknown as ts.NamedDeclaration).name;
+	if (nodeName === undefined) {
+		const defaultModifier = node.modifiers?.find((mod: ts.Modifier) => mod.kind === ts.SyntaxKind.DefaultKeyword);
+		if (defaultModifier !== undefined) {
+			return defaultModifier as unknown as ts.DeclarationName;
+		}
+	}
+
+	return nodeName;
+}
+
+
 export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker): ts.Symbol {
 	if (symbol.flags & ts.SymbolFlags.Alias) {
 		symbol = typeChecker.getAliasedSymbol(symbol);
@@ -262,7 +275,7 @@ export function getExportsForStatement(
 		return firstDeclarationExports;
 	}
 
-	return getExportsForName(exportedSymbols, typeChecker, (statement as unknown as ts.NamedDeclaration).name);
+	return getExportsForName(exportedSymbols, typeChecker, getNodeName(statement));
 }
 
 function getExportsForName(
