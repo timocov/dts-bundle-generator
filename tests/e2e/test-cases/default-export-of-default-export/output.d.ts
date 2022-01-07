@@ -1,4 +1,8 @@
-export default class MyClass {
+declare class MyClass {
 }
+
+export {
+	MyClass as default,
+};
 
 export {};

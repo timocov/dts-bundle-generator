@@ -268,7 +268,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					// function/class, then keep the `export default` keyword
 					const isNamedExport = getNodeName(statement) !== null;
 					const isPartOfRootSourceFile = rootSourceFile.fileName === statement.getSourceFile()?.fileName;
-					
+
 					return hasNoDefaultExport || (isNamedExport && !isPartOfRootSourceFile);
 				},
 				shouldStatementHasExportKeyword: (statement: ts.Statement) => {
@@ -425,7 +425,7 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 				break;
 
 			case ModuleType.ShouldBeInlined:
-				updateExportsForStatement(statement, params, result);
+				result.statements.push(statement)
 				break;
 		}
 	}
@@ -449,6 +449,8 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 		// "export default" or "export ="
 		if (ts.isExportAssignment(statement) || isReExportFromImportableModule(statement)) {
 			result.statements.push(statement);
+
+			continue;
 		}
 
 		// export { foo, bar, baz as fooBar }
@@ -456,8 +458,8 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 			for (const exportItem of statement.exportClause.elements) {
 				// export { default }
 				if (exportItem.name.getText() === 'default' && exportItem.propertyName === undefined) {
+					// Leave `export { default } from 'external-package'` untouched
 					if (isDeclarationFromExternalModule(params.resolveIdentifier(exportItem.name)!.getSourceFile())) {
-						// Leave `export { default } from 'external-package'` untouched
 						continue;
 					}
 
@@ -586,19 +588,6 @@ function updateImportsForStatement(statement: ts.Statement | ts.SourceFile, para
 			}
 		}
 	}
-}
-
-function updateExportsForStatement(statement: ts.Statement, params: UpdateParams, result: CollectingResult): void {
-	// If the node has a name and is exported as default in a non-root source file,
-	// strip the `export` and `default` modifiers.
-	if (getNodeName(statement) !== null) {
-		// @ts-expect-error
-		statement.modifiers = statement.modifiers?.filter(
-			(modifier) => modifier.kind !== ts.SyntaxKind.DefaultKeyword
-		)
-	}
-	
-	result.statements.push(statement);
 }
 
 function getDeclarationUsagesSourceFiles(
