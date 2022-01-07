@@ -266,7 +266,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					const hasNoDefaultExport = statementExports.find((exp: SourceFileExport) => exp.exportedName === 'default') === undefined;
 					// If true, the exported node has a name. If the node has no name (anonymous)
 					// function/class, then keep the `export default` keyword
-					const isNamedExport = getNodeName(statement) !== null;
+					const isNamedExport = getNodeName(statement) !== undefined;
 					const isPartOfRootSourceFile = rootSourceFile.fileName === statement.getSourceFile()?.fileName;
 
 					return hasNoDefaultExport || (isNamedExport && !isPartOfRootSourceFile);
@@ -298,14 +298,14 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						|| ts.isFunctionDeclaration(statement)
 						|| ts.isVariableStatement(statement);
 
-					// If the statement has a named default export, then remove the default and
-					// export keywords. The node should be re-exported as default from the root
-					// source file instead.
-					const hasDefaultExport = statementExports.find((symbol) => symbol.exportedName === 'default') !== undefined;
-					const isNamedExport = getNodeName(statement) !== null;
+					// If the statement has *only* a named default export, then remove the
+					// `default` and `export` keywords. The node should be re-exported as
+					// default from the root source file instead.
+					const isOnlyExportedAsDefault = statementExports.length === 1 && statementExports.find((symbol) => symbol.exportedName === 'default') !== undefined;
+					const isNamedExport = getNodeName(statement) !== undefined;
 					const isPartOfRootSourceFile = rootSourceFile.fileName === statement.getSourceFile()?.fileName;
 
-					if (hasDefaultExport && isNamedExport && !isPartOfRootSourceFile) {
+					if (isOnlyExportedAsDefault && isNamedExport && !isPartOfRootSourceFile) {
 						result = false;
 					} else if (onlyDirectlyExportedShouldBeExported) {
 						// "valuable" statements must be re-exported from root source file
@@ -425,7 +425,7 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 				break;
 
 			case ModuleType.ShouldBeInlined:
-				result.statements.push(statement)
+				result.statements.push(statement);
 				break;
 		}
 	}
