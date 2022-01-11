@@ -440,7 +440,10 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 	// add skipped by `updateResult` exports
 	for (const statement of params.statements) {
 		// "export default" or "export ="
-		if (ts.isExportAssignment(statement) || isReExportFromImportableModule(statement)) {
+		const isExportAssignment = ts.isExportAssignment(statement);
+		const isReExportFromImportable = isReExportFromImportableModule(statement);
+
+		if (isExportAssignment || isReExportFromImportable) {
 			result.statements.push(statement);
 
 			continue;
