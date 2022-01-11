@@ -22,12 +22,12 @@ export function hasNodeModifier(node: ts.Node, modifier: ts.SyntaxKind): boolean
 	return Boolean(node.modifiers && node.modifiers.some((nodeModifier: ts.Modifier) => nodeModifier.kind === modifier));
 }
 
-export function getNodeName(node: ts.Node): ts.NamedDeclaration['name'] {
+export function getNodeName(node: ts.Node): ts.NamedDeclaration['name'] | ts.Modifier {
 	const nodeName = (node as unknown as ts.NamedDeclaration).name;
 	if (nodeName === undefined) {
 		const defaultModifier = node.modifiers?.find((mod: ts.Modifier) => mod.kind === ts.SyntaxKind.DefaultKeyword);
 		if (defaultModifier !== undefined) {
-			return defaultModifier as unknown as ts.DeclarationName;
+			return defaultModifier;
 		}
 	}
 
@@ -43,7 +43,7 @@ export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker):
 	return symbol;
 }
 
-export function getDeclarationNameSymbol(name: ts.DeclarationName, typeChecker: ts.TypeChecker): ts.Symbol | null {
+export function getDeclarationNameSymbol(name: ts.DeclarationName | ts.Modifier, typeChecker: ts.TypeChecker): ts.Symbol | null {
 	const symbol = typeChecker.getSymbolAtLocation(name);
 	if (symbol === undefined) {
 		return null;
@@ -281,7 +281,7 @@ export function getExportsForStatement(
 function getExportsForName(
 	exportedSymbols: readonly SourceFileExport[],
 	typeChecker: ts.TypeChecker,
-	name: ts.NamedDeclaration['name']
+	name: ts.NamedDeclaration['name'] | ts.Modifier
 ): SourceFileExport[] {
 	if (name === undefined) {
 		return [];
