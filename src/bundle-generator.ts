@@ -458,7 +458,7 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 				// export { default as name }
 				if (exportItem.propertyName !== undefined && exportItem.propertyName.getText() === 'default') {
 					const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
-					if (!resolvedIdentifier) {
+					if (resolvedIdentifier === undefined) {
 						continue;
 					}
 
