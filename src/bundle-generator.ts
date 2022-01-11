@@ -445,9 +445,8 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 			for (const exportItem of statement.exportClause.elements) {
 				// export { default }
 				if (exportItem.name.getText() === 'default' && exportItem.propertyName === undefined) {
-					// Leave `export { default } from 'external-package'` untouched
 					const exportedNode = params.resolveIdentifier(exportItem.name);
-					if (!exportedNode || isDeclarationFromExternalModule(exportedNode.getSourceFile())) {
+					if (exportedNode === undefined) {
 						continue;
 					}
 
