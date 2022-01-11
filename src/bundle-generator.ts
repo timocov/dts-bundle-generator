@@ -446,19 +446,23 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 				// export { default }
 				if (exportItem.name.getText() === 'default' && exportItem.propertyName === undefined) {
 					// Leave `export { default } from 'external-package'` untouched
-					if (isDeclarationFromExternalModule(params.resolveIdentifier(exportItem.name)?.getSourceFile())) {
+					const exportedNode = params.resolveIdentifier(exportItem.name);
+					if (!exportedNode || isDeclarationFromExternalModule(exportedNode.getSourceFile())) {
 						continue;
 					}
 
-					const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
-					result.renamedExports.push(`${resolvedIdentifier?.getText()} as default`);
+					result.renamedExports.push(`${exportedNode.getText()} as default`);
 					continue;
 				}
 
 				// export { default as name }
 				if (exportItem.propertyName !== undefined && exportItem.propertyName.getText() === 'default') {
-					const resolvedIdentifier = params.resolveIdentifier(exportItem.propertyName);
-					const resolvedIdentifierText = resolvedIdentifier?.getText() || '';
+					const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
+					if (!resolvedIdentifier) {
+						continue;
+					}
+
+					const resolvedIdentifierText = resolvedIdentifier.getText();
 					const exportItemNameText = exportItem.name.getText();
 
 					// in case of re-export with the original name (e.g. through another module)
@@ -470,13 +474,13 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 					continue;
 				}
 
-				// export { baz as propertyName }
+				// export { name }
 				if (exportItem.propertyName !== undefined) {
 					result.renamedExports.push(exportItem.getText());
 					continue;
 				}
 
-				// export { name }
+				// export { baz as propertyName }
 				const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
 				if (resolvedIdentifier?.getText() !== exportItem.name.getText()) {
 					// exported "name" is different from "original" name
