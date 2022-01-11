@@ -259,17 +259,10 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				...collectionResult,
 				needStripDefaultKeywordForStatement: (statement: ts.Statement) => {
 					const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
-					// If true, then no direct export was found. That means that node might have 
-					// an export keyword (like interface, type, etc) otherwise, if there are
-					// only re-exports with renaming (like export { foo as bar }) we don't need
-					// to put export keyword for this statement because we'll re-export it in the way
-					const hasNoDefaultExport = statementExports.find((exp: SourceFileExport) => exp.exportedName === 'default') === undefined;
-					// If true, the exported node has a name. If the node has no name (anonymous)
-					// function/class, then keep the `export default` keyword
-					const isNamedExport = getNodeName(statement) !== undefined;
-					const isPartOfRootSourceFile = rootSourceFile.fileName === statement.getSourceFile()?.fileName;
-
-					return hasNoDefaultExport || (isNamedExport && !isPartOfRootSourceFile);
+					// a statement should have a 'default' keyword only if it it declared in the root source file
+					// otherwise it will be re-exported via `export { name as default }`
+					const defaultExport = statementExports.find((exp: SourceFileExport) => exp.exportedName === 'default');
+					return defaultExport === undefined || defaultExport.originalName !== 'default' && statement.getSourceFile() !== rootSourceFile;
 				},
 				shouldStatementHasExportKeyword: (statement: ts.Statement) => {
 					const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
