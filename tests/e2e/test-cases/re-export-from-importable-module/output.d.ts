@@ -15,6 +15,7 @@ export declare class MyClass {
 }
 export { Server } from "http";
 export * from "fs";
+export { default } from "package-with-default-export";
 
 export {
 	AnotherInterface as Int2,

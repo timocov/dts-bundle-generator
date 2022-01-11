@@ -4,6 +4,7 @@ import * as path from 'path';
 import { compileDts } from './compile-dts';
 import { TypesUsageEvaluator } from './types-usage-evaluator';
 import {
+	getNodeName,
 	getActualSymbol,
 	getDeclarationNameSymbol,
 	getDeclarationsForSymbol,
@@ -258,30 +259,25 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				...collectionResult,
 				needStripDefaultKeywordForStatement: (statement: ts.Statement) => {
 					const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
-
-					// if true - no direct export was found
-					// that means that node might have an export keyword (like interface, type, etc)
-					// otherwise, if there are only re-exports with renaming (like export { foo as bar })
-					// we don't need to put export keyword for this statement
-					// because we'll re-export it in the way
-					return statementExports.find((exp: SourceFileExport) => exp.exportedName === 'default') === undefined;
+					// a statement should have a 'default' keyword only if it it declared in the root source file
+					// otherwise it will be re-exported via `export { name as default }`
+					const defaultExport = statementExports.find((exp: SourceFileExport) => exp.exportedName === 'default');
+					return defaultExport === undefined || defaultExport.originalName !== 'default' && statement.getSourceFile() !== rootSourceFile;
 				},
-
 				shouldStatementHasExportKeyword: (statement: ts.Statement) => {
 					const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
 
-					// if true - no direct export was found
-					// that means that node might have an export keyword (like interface, type, etc)
-					// otherwise, if there are only re-exports with renaming (like export { foo as bar })
-					// we don't need to put export keyword for this statement
-					// because we'll re-export it in the way
+					// If true, then no direct export was found. That means that node might have
+					// an export keyword (like interface, type, etc) otherwise, if there are
+					// only re-exports with renaming (like export { foo as bar }) we don't need
+					// to put export keyword for this statement because we'll re-export it in the way
 					const hasStatementedDefaultKeyword = hasNodeModifier(statement, ts.SyntaxKind.DefaultKeyword);
 					let result = statementExports.length === 0 || statementExports.find((exp: SourceFileExport) => {
 						// "directly" means "without renaming" or "without additional node/statement"
 						// for instance, `class A {} export default A;` - here `statement` is `class A {}`
 						// it's default exported by `export default A;`, but class' statement itself doesn't have `export` keyword
 						// so we shouldn't add this either
-						const shouldBeDefaultExportedDirectly = exp.exportedName === 'default' && hasStatementedDefaultKeyword;
+						const shouldBeDefaultExportedDirectly = exp.exportedName === 'default' && hasStatementedDefaultKeyword && statement.getSourceFile() === rootSourceFile;
 						return shouldBeDefaultExportedDirectly || exp.exportedName === exp.originalName;
 					}) !== undefined;
 
@@ -440,22 +436,32 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 
 		if (isExportAssignment || isReExportFromImportable) {
 			result.statements.push(statement);
+
+			continue;
 		}
 
 		// export { foo, bar, baz as fooBar }
 		if (ts.isExportDeclaration(statement) && statement.exportClause !== undefined && ts.isNamedExports(statement.exportClause)) {
 			for (const exportItem of statement.exportClause.elements) {
+				// export { default }
 				if (exportItem.name.getText() === 'default' && exportItem.propertyName === undefined) {
-					// export { default }
-					// return export { /get name of exportItem.name's symbol node/ as default };
-					// it seems unnecessary?
+					const exportedNode = params.resolveIdentifier(exportItem.name);
+					if (exportedNode === undefined) {
+						continue;
+					}
+
+					result.renamedExports.push(`${exportedNode.getText()} as default`);
 					continue;
 				}
 
 				// export { default as name }
 				if (exportItem.propertyName !== undefined && exportItem.propertyName.getText() === 'default') {
-					const resolvedIdentifier = params.resolveIdentifier(exportItem.propertyName);
-					const resolvedIdentifierText = resolvedIdentifier?.getText() || '';
+					const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
+					if (resolvedIdentifier === undefined) {
+						continue;
+					}
+
+					const resolvedIdentifierText = resolvedIdentifier.getText();
 					const exportItemNameText = exportItem.name.getText();
 
 					// in case of re-export with the original name (e.g. through another module)
@@ -467,13 +473,13 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 					continue;
 				}
 
-				// export { baz as propertyName }
+				// export { name }
 				if (exportItem.propertyName !== undefined) {
 					result.renamedExports.push(exportItem.getText());
 					continue;
 				}
 
-				// export { name }
+				// export { baz as propertyName }
 				const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
 				if (resolvedIdentifier?.getText() !== exportItem.name.getText()) {
 					// exported "name" is different from "original" name
@@ -765,7 +771,7 @@ function getExportedSymbolsUsingStatement(
 }
 
 function getNodeSymbol(node: ts.Node, typeChecker: ts.TypeChecker): ts.Symbol | null {
-	const nodeName = (node as unknown as ts.NamedDeclaration).name;
+	const nodeName = getNodeName(node);
 	if (nodeName === undefined) {
 		return null;
 	}

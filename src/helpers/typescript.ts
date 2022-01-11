@@ -14,12 +14,29 @@ const namedDeclarationKinds = [
 	ts.SyntaxKind.PropertySignature,
 ];
 
+// actually we should use ts.DefaultKeyword instead of ts.Modifier
+// but there is no such type in previous versions of the compiler so we cannot use it here
+// TODO: replace with ts.DefaultKeyword once the min typescript will be upgraded
+export type NodeName = ts.DeclarationName | ts.Modifier;
+
 export function isNodeNamedDeclaration(node: ts.Node): node is ts.NamedDeclaration {
 	return namedDeclarationKinds.indexOf(node.kind) !== -1;
 }
 
 export function hasNodeModifier(node: ts.Node, modifier: ts.SyntaxKind): boolean {
 	return Boolean(node.modifiers && node.modifiers.some((nodeModifier: ts.Modifier) => nodeModifier.kind === modifier));
+}
+
+export function getNodeName(node: ts.Node): NodeName | undefined {
+	const nodeName = (node as unknown as ts.NamedDeclaration).name;
+	if (nodeName === undefined) {
+		const defaultModifier = node.modifiers?.find((mod: ts.Modifier) => mod.kind === ts.SyntaxKind.DefaultKeyword);
+		if (defaultModifier !== undefined) {
+			return defaultModifier;
+		}
+	}
+
+	return nodeName;
 }
 
 export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker): ts.Symbol {
@@ -30,7 +47,7 @@ export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker):
 	return symbol;
 }
 
-export function getDeclarationNameSymbol(name: ts.DeclarationName, typeChecker: ts.TypeChecker): ts.Symbol | null {
+export function getDeclarationNameSymbol(name: NodeName, typeChecker: ts.TypeChecker): ts.Symbol | null {
 	const symbol = typeChecker.getSymbolAtLocation(name);
 	if (symbol === undefined) {
 		return null;
@@ -262,18 +279,19 @@ export function getExportsForStatement(
 		return firstDeclarationExports;
 	}
 
-	return getExportsForName(exportedSymbols, typeChecker, (statement as unknown as ts.NamedDeclaration).name);
+	const nodeName = getNodeName(statement);
+	if (nodeName === undefined) {
+		return [];
+	}
+
+	return getExportsForName(exportedSymbols, typeChecker, nodeName);
 }
 
 function getExportsForName(
 	exportedSymbols: readonly SourceFileExport[],
 	typeChecker: ts.TypeChecker,
-	name: ts.NamedDeclaration['name']
+	name: NodeName
 ): SourceFileExport[] {
-	if (name === undefined) {
-		return [];
-	}
-
 	if (ts.isArrayBindingPattern(name) || ts.isObjectBindingPattern(name)) {
 		// TODO: binding patterns in variable declarations are not supported for now
 		// see https://github.com/microsoft/TypeScript/issues/30598 also
