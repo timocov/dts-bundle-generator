@@ -34,7 +34,6 @@ export function getNodeName(node: ts.Node): ts.NamedDeclaration['name'] | ts.Mod
 	return nodeName;
 }
 
-
 export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker): ts.Symbol {
 	if (symbol.flags & ts.SymbolFlags.Alias) {
 		symbol = typeChecker.getAliasedSymbol(symbol);

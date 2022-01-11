@@ -267,7 +267,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				shouldStatementHasExportKeyword: (statement: ts.Statement) => {
 					const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
 
-					// If true, then no direct export was found. That means that node might have 
+					// If true, then no direct export was found. That means that node might have
 					// an export keyword (like interface, type, etc) otherwise, if there are
 					// only re-exports with renaming (like export { foo as bar }) we don't need
 					// to put export keyword for this statement because we'll re-export it in the way
@@ -446,7 +446,7 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 				// export { default }
 				if (exportItem.name.getText() === 'default' && exportItem.propertyName === undefined) {
 					// Leave `export { default } from 'external-package'` untouched
-					if (isDeclarationFromExternalModule(params.resolveIdentifier(exportItem.name)!.getSourceFile())) {
+					if (isDeclarationFromExternalModule(params.resolveIdentifier(exportItem.name)?.getSourceFile())) {
 						continue;
 					}
 
