@@ -277,7 +277,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						// for instance, `class A {} export default A;` - here `statement` is `class A {}`
 						// it's default exported by `export default A;`, but class' statement itself doesn't have `export` keyword
 						// so we shouldn't add this either
-						const shouldBeDefaultExportedDirectly = exp.exportedName === 'default' && hasStatementedDefaultKeyword;
+						const shouldBeDefaultExportedDirectly = exp.exportedName === 'default' && hasStatementedDefaultKeyword && statement.getSourceFile() === rootSourceFile;
 						return shouldBeDefaultExportedDirectly || exp.exportedName === exp.originalName;
 					}) !== undefined;
 
@@ -291,16 +291,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						|| ts.isFunctionDeclaration(statement)
 						|| ts.isVariableStatement(statement);
 
-					// If the statement has *only* a named default export, then remove the
-					// `default` and `export` keywords. The node should be re-exported as
-					// default from the root source file instead.
-					const isOnlyExportedAsDefault = statementExports.length === 1 && statementExports.find((symbol) => symbol.exportedName === 'default') !== undefined;
-					const isNamedExport = getNodeName(statement) !== undefined;
-					const isPartOfRootSourceFile = rootSourceFile.fileName === statement.getSourceFile()?.fileName;
-
-					if (isOnlyExportedAsDefault && isNamedExport && !isPartOfRootSourceFile) {
-						result = false;
-					} else if (onlyDirectlyExportedShouldBeExported) {
+					if (onlyDirectlyExportedShouldBeExported) {
 						// "valuable" statements must be re-exported from root source file
 						// to having export keyword in declaration file
 						result = result && statementExports.length !== 0;
