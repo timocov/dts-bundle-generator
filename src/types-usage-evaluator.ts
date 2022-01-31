@@ -1,9 +1,9 @@
 import * as ts from 'typescript';
 import {
 	getActualSymbol,
+	isDeclareModule,
 	isNamedTupleMember,
 	isNodeNamedDeclaration,
-	isRelativeDeclareModule,
 	splitTransientSymbol,
 } from './helpers/typescript';
 
@@ -59,7 +59,7 @@ export class TypesUsageEvaluator {
 	}
 
 	private computeUsageForNode(node: ts.Node): void {
-		if (isRelativeDeclareModule(node) && node.body !== undefined && ts.isModuleBlock(node.body)) {
+		if (isDeclareModule(node) && node.body !== undefined && ts.isModuleBlock(node.body)) {
 			for (const statement of node.body.statements) {
 				this.computeUsageForNode(statement);
 			}

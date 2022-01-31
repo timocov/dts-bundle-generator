@@ -2,7 +2,7 @@ import { TestCaseConfig } from '../test-case-config';
 
 const config: TestCaseConfig = {
 	libraries: {
-		inlinedLibraries: ['fake-package'],
+		inlinedLibraries: ['fake-package', 'fake-types-lib-2'],
 	},
 };
 

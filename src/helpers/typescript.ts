@@ -1,6 +1,5 @@
 import * as ts from 'typescript';
 
-import { fixPath } from './fix-path';
 import { getLibraryName } from './node-modules';
 
 const namedDeclarationKinds = [
@@ -108,20 +107,6 @@ export function isDeclareModule(node: ts.Node): node is ts.ModuleDeclaration {
 	// `declare module ""`, `declare global` and `namespace {}` are ModuleDeclaration
 	// but here we need to check only `declare module` statements
 	return ts.isModuleDeclaration(node) && !(node.flags & ts.NodeFlags.Namespace) && !isGlobalScopeAugmentation(node);
-}
-
-/**
- * Returns whether a node is `declare module` ModuleDeclaration with a relative path
- */
-export function isRelativeDeclareModule(node: ts.Node): node is ts.ModuleDeclaration {
-	// `declare module ""`, `declare global` and `namespace {}` are ModuleDeclaration
-	// but here we need to check only `declare module` statements
-	if (!isDeclareModule(node) || !ts.isStringLiteral(node.name)) {
-		return false;
-	}
-
-	const moduleName = fixPath(node.name.text);
-	return moduleName.startsWith('./') || moduleName.startsWith('../');
 }
 
 /**
