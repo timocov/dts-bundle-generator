@@ -21,6 +21,11 @@ Config file might be either JSON file or JS file with CommonJS export of the con
          * Must be set if entries count more than 1.
          */
         preferredConfigPath: './tsconfig.json',
+        /**
+	     * Override properties under "compilerOptions" of tsconfig.json.
+	     * For example:{"removeComments": false}
+	     */
+	    compilerOptions:{}
     },
 
     // non-empty array of entries

@@ -52,6 +52,11 @@ export interface CompilationOptions {
 	 * Path to the tsconfig file that will be used for the compilation.
 	 */
 	preferredConfigPath?: string;
+	/**
+	 * Override properties under "compilerOptions" of tsconfig.json.
+	 * For example:{"removeComments": false}
+	 */
+	compilerOptions?:{[key:string]:any}
 }
 
 export interface OutputOptions {

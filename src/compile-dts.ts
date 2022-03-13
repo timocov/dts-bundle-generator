@@ -12,8 +12,8 @@ export interface CompileDtsResult {
 	rootFilesRemapping: Map<string, string>;
 }
 
-export function compileDts(rootFiles: readonly string[], preferredConfigPath?: string, followSymlinks: boolean = true): CompileDtsResult {
-	const compilerOptions = getCompilerOptions(rootFiles, preferredConfigPath);
+export function compileDts(rootFiles: readonly string[], preferredConfigPath?: string, followSymlinks: boolean = true,_compilerOptions?:{[key:string]:any}): CompileDtsResult {
+	const compilerOptions = getCompilerOptions(rootFiles, preferredConfigPath,_compilerOptions);
 
 	// currently we don't support these compiler options
 	// and removing them shouldn't affect generated code
