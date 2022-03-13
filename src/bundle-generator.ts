@@ -141,7 +141,7 @@ export interface EntryPointConfig {
 export function generateDtsBundle(entries: readonly EntryPointConfig[], options: CompilationOptions = {}): string[] {
 	normalLog('Compiling input files...');
 
-	const { program, rootFilesRemapping } = compileDts(entries.map((entry: EntryPointConfig) => entry.filePath), options.preferredConfigPath, options.followSymlinks);
+	const { program, rootFilesRemapping } = compileDts(entries.map((entry: EntryPointConfig) => entry.filePath), options.preferredConfigPath, options.followSymlinks,options.compilerOptions);
 	const typeChecker = program.getTypeChecker();
 
 	const typeRoots = ts.getEffectiveTypeRoots(program.getCompilerOptions(), {});
