@@ -627,6 +627,7 @@ function addImport(statement: ts.DeclarationStatement, params: UpdateParams, imp
 			}
 
 			interface ImportSpecifierInternal extends ts.ImportSpecifier {
+				// fallback to support TS versions without type-only imports/exports
 				isTypeOnly: boolean;
 			}
 
@@ -635,9 +636,9 @@ function addImport(statement: ts.DeclarationStatement, params: UpdateParams, imp
 					// import { El1, El2 } from 'module';
 					importClause.namedBindings.elements
 						.filter(params.areDeclarationSame.bind(params, statement))
-						.forEach((specifier: ImportSpecifierInternal) => {
+						.forEach((specifier: ts.ImportSpecifier) => {
 							let importName = specifier.getText();
-							if (specifier.isTypeOnly) {
+							if ((specifier as ImportSpecifierInternal).isTypeOnly) {
 								// let's fallback all the imports to ones without "type" specifier
 								importName = importName.replace(/^(\s*type\s+)/g, '');
 							}
