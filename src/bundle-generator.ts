@@ -626,12 +626,16 @@ function addImport(statement: ts.DeclarationStatement, params: UpdateParams, imp
 				importItem.defaultImports.add(importClause.name.text);
 			}
 
+			interface ImportSpecifierInternal extends ts.ImportSpecifier {
+				isTypeOnly: boolean;
+			}
+
 			if (importClause.namedBindings !== undefined) {
 				if (ts.isNamedImports(importClause.namedBindings)) {
 					// import { El1, El2 } from 'module';
 					importClause.namedBindings.elements
 						.filter(params.areDeclarationSame.bind(params, statement))
-						.forEach((specifier: ts.ImportSpecifier) => {
+						.forEach((specifier: ImportSpecifierInternal) => {
 							let importName = specifier.getText();
 							if (specifier.isTypeOnly) {
 								// let's fallback all the imports to ones without "type" specifier
