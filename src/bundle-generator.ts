@@ -631,7 +631,15 @@ function addImport(statement: ts.DeclarationStatement, params: UpdateParams, imp
 					// import { El1, El2 } from 'module';
 					importClause.namedBindings.elements
 						.filter(params.areDeclarationSame.bind(params, statement))
-						.forEach((specifier: ts.ImportSpecifier) => (importItem as ModuleImportsSet).namedImports.add(specifier.getText()));
+						.forEach((specifier: ts.ImportSpecifier) => {
+							let importName = specifier.getText();
+							if (specifier.isTypeOnly) {
+								// let's fallback all the imports to ones without "type" specifier
+								importName = importName.replace(/^(\s*type\s+)/g, '');
+							}
+
+							(importItem as ModuleImportsSet).namedImports.add(importName);
+						});
 				} else {
 					// import * as name from 'module';
 					importItem.starImports.add(importClause.namedBindings.name.getText());
