@@ -436,54 +436,22 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 
 		if (isExportAssignment || isReExportFromImportable) {
 			result.statements.push(statement);
-
 			continue;
 		}
 
 		// export { foo, bar, baz as fooBar }
 		if (ts.isExportDeclaration(statement) && statement.exportClause !== undefined && ts.isNamedExports(statement.exportClause)) {
 			for (const exportItem of statement.exportClause.elements) {
-				// export { default }
-				if (exportItem.name.getText() === 'default' && exportItem.propertyName === undefined) {
-					const exportedNode = params.resolveIdentifier(exportItem.name);
-					if (exportedNode === undefined) {
-						continue;
-					}
-
-					result.renamedExports.push(`${exportedNode.getText()} as default`);
+				const exportedNameNode = params.resolveIdentifier(exportItem.name);
+				if (exportedNameNode === undefined) {
 					continue;
 				}
 
-				// export { default as name }
-				if (exportItem.propertyName !== undefined && exportItem.propertyName.getText() === 'default') {
-					const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
-					if (resolvedIdentifier === undefined) {
-						continue;
-					}
+				const originalName = exportedNameNode.getText();
+				const exportedName = exportItem.name.getText();
 
-					const resolvedIdentifierText = resolvedIdentifier.getText();
-					const exportItemNameText = exportItem.name.getText();
-
-					// in case of re-export with the original name (e.g. through another module)
-					// we don't need to put that re-export to avoid duplicated identifiers error
-					if (resolvedIdentifierText !== exportItemNameText) {
-						result.renamedExports.push(`${resolvedIdentifierText} as ${exportItemNameText}`);
-					}
-
-					continue;
-				}
-
-				// export { name }
-				if (exportItem.propertyName !== undefined) {
-					result.renamedExports.push(exportItem.getText());
-					continue;
-				}
-
-				// export { baz as propertyName }
-				const resolvedIdentifier = params.resolveIdentifier(exportItem.name);
-				if (resolvedIdentifier?.getText() !== exportItem.name.getText()) {
-					// exported "name" is different from "original" name
-					result.renamedExports.push(`${resolvedIdentifier?.getText() || ''} as ${exportItem.name.getText()}`);
+				if (originalName !== exportedName) {
+					result.renamedExports.push(`${originalName} as ${exportedName}`);
 				}
 			}
 		}
