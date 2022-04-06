@@ -217,6 +217,27 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				return leftSymbols.some((leftSymbol: ts.Symbol) => rightSymbols.includes(leftSymbol));
 			},
+			resolveReferencedModule: (node: ts.ExportDeclaration) => {
+				if (node.moduleSpecifier === undefined) {
+					return null;
+				}
+
+				const moduleSymbol = typeChecker.getSymbolAtLocation(node.moduleSpecifier);
+				if (moduleSymbol === undefined) {
+					return null;
+				}
+
+				const symbol = getActualSymbol(moduleSymbol, typeChecker);
+				if (symbol.valueDeclaration === undefined) {
+					return null;
+				}
+
+				if (ts.isSourceFile(symbol.valueDeclaration) || ts.isModuleDeclaration(symbol.valueDeclaration)) {
+					return symbol.valueDeclaration;
+				}
+
+				return null;
+			},
 		};
 
 		for (const sourceFile of sourceFiles) {
@@ -359,6 +380,7 @@ interface UpdateParams {
 	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
 	getDeclarationUsagesSourceFiles(declaration: ts.NamedDeclaration): Set<ts.SourceFile>;
 	areDeclarationSame(a: ts.NamedDeclaration, b: ts.NamedDeclaration): boolean;
+	resolveReferencedModule(node: ts.ExportDeclaration): ts.SourceFile | ts.ModuleDeclaration | null;
 }
 
 const skippedNodes = [
@@ -418,12 +440,20 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 // eslint-disable-next-line complexity
 function updateResultForRootSourceFile(params: UpdateParams, result: CollectingResult): void {
 	function isReExportFromImportableModule(statement: ts.Statement): boolean {
-		if (!ts.isExportDeclaration(statement) || statement.moduleSpecifier === undefined || !ts.isStringLiteral(statement.moduleSpecifier)) {
+		if (!ts.isExportDeclaration(statement)) {
 			return false;
 		}
 
-		const moduleFileName = resolveModuleFileName(statement.getSourceFile().fileName, statement.moduleSpecifier.text);
-		return params.getModuleInfo(moduleFileName).type === ModuleType.ShouldBeImported;
+		const resolvedModule = params.resolveReferencedModule(statement);
+		if (resolvedModule === null) {
+			return false;
+		}
+
+		const fileName = ts.isSourceFile(resolvedModule)
+			? resolvedModule.fileName
+			: resolveModuleFileName(resolvedModule.getSourceFile().fileName, resolvedModule.name.text);
+
+		return params.getModuleInfo(fileName).type === ModuleType.ShouldBeImported;
 	}
 
 	updateResult(params, result);
