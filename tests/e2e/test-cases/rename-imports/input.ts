@@ -1,6 +1,6 @@
-import { InterfaceWithFields as FakePacakgeInterface } from 'fake-package';
+import { InterfaceWithFields as FakePackageInterface } from 'fake-package';
 
-export const myVar: FakePacakgeInterface = {
+export const myVar: FakePackageInterface = {
 	field: 2,
 	field2: {},
 };
