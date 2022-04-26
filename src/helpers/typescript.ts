@@ -1,7 +1,5 @@
 import * as ts from 'typescript';
 
-import { getLibraryName } from './node-modules';
-
 const namedDeclarationKinds = [
 	ts.SyntaxKind.InterfaceDeclaration,
 	ts.SyntaxKind.ClassDeclaration,
@@ -143,10 +141,6 @@ export function getDeclarationsForSymbol(symbol: ts.Symbol): ts.Declaration[] {
 	}
 
 	return result;
-}
-
-export function isDeclarationFromExternalModule(node: ts.Declaration): boolean {
-	return getLibraryName(node.getSourceFile().fileName) !== null;
 }
 
 export const enum ExportType {
