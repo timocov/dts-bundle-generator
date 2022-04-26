@@ -12,7 +12,6 @@ import {
 	getExportsForStatement,
 	hasNodeModifier,
 	isAmbientModule,
-	isDeclarationFromExternalModule,
 	isDeclareGlobalStatement,
 	isDeclareModule,
 	isNamespaceStatement,
@@ -192,12 +191,19 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					rootFileExportSymbols,
 					typesUsageEvaluator,
 					typeChecker,
-					program.isSourceFileDefaultLibrary.bind(program)
+					program.isSourceFileDefaultLibrary.bind(program),
+					criteria
 				);
 			},
 			shouldDeclareGlobalBeInlined: (currentModule: ModuleInfo) => Boolean(outputOptions.inlineDeclareGlobals) && currentModule.type === ModuleType.ShouldBeInlined,
 			shouldDeclareExternalModuleBeInlined: () => Boolean(outputOptions.inlineDeclareExternals),
-			getModuleInfo: (fileName: string) => getModuleInfo(fileName, criteria),
+			getModuleInfo: (fileNameOrModuleLike: string | ts.SourceFile | ts.ModuleDeclaration) => {
+				if (typeof fileNameOrModuleLike !== 'string') {
+					return getModuleLikeInfo(fileNameOrModuleLike, criteria);
+				}
+
+				return getModuleInfo(fileNameOrModuleLike, criteria);
+			},
 			resolveIdentifier: (identifier: ts.Identifier) => resolveIdentifier(typeChecker, identifier),
 			getDeclarationsForExportedAssignment: (exportAssignment: ts.ExportAssignment) => {
 				const symbolForExpression = typeChecker.getSymbolAtLocation(exportAssignment.expression);
@@ -209,7 +215,13 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				return getDeclarationsForSymbol(symbol);
 			},
 			getDeclarationUsagesSourceFiles: (declaration: ts.NamedDeclaration) => {
-				return getDeclarationUsagesSourceFiles(declaration, rootFileExportSymbols, typesUsageEvaluator, typeChecker);
+				return getDeclarationUsagesSourceFiles(
+					declaration,
+					rootFileExportSymbols,
+					typesUsageEvaluator,
+					typeChecker,
+					criteria
+				);
 			},
 			areDeclarationSame: (left: ts.NamedDeclaration, right: ts.NamedDeclaration) => {
 				const leftSymbols = splitTransientSymbol(getNodeSymbol(left, typeChecker) as ts.Symbol, typeChecker);
@@ -371,14 +383,14 @@ interface UpdateParams {
 	shouldStatementBeImported(statement: ts.DeclarationStatement): boolean;
 	shouldDeclareGlobalBeInlined(currentModule: ModuleInfo, statement: ts.ModuleDeclaration): boolean;
 	shouldDeclareExternalModuleBeInlined(): boolean;
-	getModuleInfo(fileName: string): ModuleInfo;
+	getModuleInfo(fileName: string | ts.SourceFile | ts.ModuleDeclaration): ModuleInfo;
 	/**
 	 * Returns original name which is referenced by passed identifier.
 	 * Could be used to resolve "default" identifier in exports.
 	 */
 	resolveIdentifier(identifier: ts.NamedDeclaration['name']): ts.NamedDeclaration['name'];
 	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
-	getDeclarationUsagesSourceFiles(declaration: ts.NamedDeclaration): Set<ts.SourceFile>;
+	getDeclarationUsagesSourceFiles(declaration: ts.NamedDeclaration): Set<ts.SourceFile | ts.ModuleDeclaration>;
 	areDeclarationSame(a: ts.NamedDeclaration, b: ts.NamedDeclaration): boolean;
 	resolveReferencedModule(node: ts.ExportDeclaration): ts.SourceFile | ts.ModuleDeclaration | null;
 }
@@ -449,11 +461,7 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 			return false;
 		}
 
-		const fileName = ts.isSourceFile(resolvedModule)
-			? resolvedModule.fileName
-			: resolveModuleFileName(resolvedModule.getSourceFile().fileName, resolvedModule.name.text);
-
-		return params.getModuleInfo(fileName).type === ModuleType.ShouldBeImported;
+		return params.getModuleInfo(resolvedModule).type === ModuleType.ShouldBeImported;
 	}
 
 	updateResult(params, result);
@@ -578,17 +586,28 @@ function updateImportsForStatement(statement: ts.Statement | ts.SourceFile, para
 	}
 }
 
+function getClosestModuleLikeNode(node: ts.Node): ts.SourceFile | ts.ModuleDeclaration {
+	while (!ts.isModuleBlock(node) && !ts.isSourceFile(node)) {
+		node = node.parent;
+	}
+
+	// we need to find a module block and return its module declaration
+	// we don't need to handle empty modules/modules with jsdoc/etc
+	return ts.isSourceFile(node) ? node : node.parent;
+}
+
 function getDeclarationUsagesSourceFiles(
 	declaration: ts.NamedDeclaration,
 	rootFileExports: readonly ts.Symbol[],
 	typesUsageEvaluator: TypesUsageEvaluator,
-	typeChecker: ts.TypeChecker
-): Set<ts.SourceFile> {
+	typeChecker: ts.TypeChecker,
+	criteria: ModuleCriteria
+): Set<ts.SourceFile | ts.ModuleDeclaration> {
 	return new Set(
-		getExportedSymbolsUsingStatement(declaration, rootFileExports, typesUsageEvaluator, typeChecker)
+		getExportedSymbolsUsingStatement(declaration, rootFileExports, typesUsageEvaluator, typeChecker, criteria)
 			.map((symbol: ts.Symbol) => getDeclarationsForSymbol(symbol))
 			.reduce((acc: ts.Declaration[], val: ts.Declaration[]) => acc.concat(val), [])
-			.map((decl: ts.Declaration) => decl.getSourceFile())
+			.map(getClosestModuleLikeNode)
 	);
 }
 
@@ -619,8 +638,12 @@ function addImport(statement: ts.DeclarationStatement, params: UpdateParams, imp
 		throw new Error(`Import/usage unnamed declaration: ${statement.getText()}`);
 	}
 
-	params.getDeclarationUsagesSourceFiles(statement).forEach((sourceFile: ts.SourceFile) => {
-		sourceFile.statements.forEach((st: ts.Statement) => {
+	params.getDeclarationUsagesSourceFiles(statement).forEach((sourceFile: ts.SourceFile | ts.ModuleDeclaration) => {
+		const statements = ts.isSourceFile(sourceFile)
+			? sourceFile.statements
+			: (sourceFile.body as ts.ModuleBlock).statements;
+
+		statements.forEach((st: ts.Statement) => {
 			if (!ts.isImportEqualsDeclaration(st) && !ts.isImportDeclaration(st)) {
 				return;
 			}
@@ -724,7 +747,8 @@ function shouldNodeBeImported(
 	rootFileExports: readonly ts.Symbol[],
 	typesUsageEvaluator: TypesUsageEvaluator,
 	typeChecker: ts.TypeChecker,
-	isDefaultLibrary: (sourceFile: ts.SourceFile) => boolean
+	isDefaultLibrary: (sourceFile: ts.SourceFile) => boolean,
+	criteria: ModuleCriteria
 ): boolean {
 	const nodeSymbol = getNodeSymbol(node, typeChecker);
 	if (nodeSymbol === null) {
@@ -751,14 +775,21 @@ function shouldNodeBeImported(
 		return false;
 	}
 
-	return getExportedSymbolsUsingStatement(node, rootFileExports, typesUsageEvaluator, typeChecker).length !== 0;
+	return getExportedSymbolsUsingStatement(
+		node,
+		rootFileExports,
+		typesUsageEvaluator,
+		typeChecker,
+		criteria
+	).length !== 0;
 }
 
 function getExportedSymbolsUsingStatement(
 	node: ts.NamedDeclaration,
 	rootFileExports: readonly ts.Symbol[],
 	typesUsageEvaluator: TypesUsageEvaluator,
-	typeChecker: ts.TypeChecker
+	typeChecker: ts.TypeChecker,
+	criteria: ModuleCriteria
 ): readonly ts.Symbol[] {
 	const nodeSymbol = getNodeSymbol(node, typeChecker);
 	if (nodeSymbol === null) {
@@ -773,7 +804,10 @@ function getExportedSymbolsUsingStatement(
 	// we should import only symbols which are used in types directly
 	return Array.from(symbolsUsingNode).filter((symbol: ts.Symbol) => {
 		const symbolsDeclarations = getDeclarationsForSymbol(symbol);
-		if (symbolsDeclarations.length === 0 || symbolsDeclarations.every(isDeclarationFromExternalModule)) {
+		if (symbolsDeclarations.length === 0 || symbolsDeclarations.every((decl: ts.Declaration) => {
+			// we need to make sure that at least 1 declaration is inlined
+			return getModuleLikeInfo(getClosestModuleLikeNode(decl), criteria).type !== ModuleType.ShouldBeInlined;
+		})) {
 			return false;
 		}
 
@@ -788,4 +822,12 @@ function getNodeSymbol(node: ts.Node, typeChecker: ts.TypeChecker): ts.Symbol | 
 	}
 
 	return getDeclarationNameSymbol(nodeName, typeChecker);
+}
+
+function getModuleLikeInfo(moduleLike: ts.SourceFile | ts.ModuleDeclaration, criteria: ModuleCriteria): ModuleInfo {
+	const fileName = ts.isSourceFile(moduleLike)
+		? moduleLike.fileName
+		: resolveModuleFileName(moduleLike.getSourceFile().fileName, moduleLike.name.text);
+
+	return getModuleInfo(fileName, criteria);
 }
