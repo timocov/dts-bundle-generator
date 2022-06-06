@@ -304,7 +304,10 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					// an export keyword (like interface, type, etc) otherwise, if there are
 					// only re-exports with renaming (like export { foo as bar }) we don't need
 					// to put export keyword for this statement because we'll re-export it in the way
-					const hasStatementedDefaultKeyword = hasNodeModifier(statement, ts.SyntaxKind.DefaultKeyword);
+					const hasStatementedDefaultKeyword = ts.isExportAssignment(statement)
+						? !statement.isExportEquals
+						: hasNodeModifier(statement, ts.SyntaxKind.DefaultKeyword);
+
 					let result = statementExports.length === 0 || statementExports.find((exp: SourceFileExport) => {
 						// "directly" means "without renaming" or "without additional node/statement"
 						// for instance, `class A {} export default A;` - here `statement` is `class A {}`
