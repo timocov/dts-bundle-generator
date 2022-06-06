@@ -468,12 +468,27 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 
 	// add skipped by `updateResult` exports
 	for (const statement of params.statements) {
-		// "export default" or "export ="
-		const isExportAssignment = ts.isExportAssignment(statement);
-		const isReExportFromImportable = isReExportFromImportableModule(statement);
-
-		if (isExportAssignment || isReExportFromImportable) {
+		// "export =" or "export {} from 'importable-package'"
+		if (ts.isExportAssignment(statement) && statement.isExportEquals || isReExportFromImportableModule(statement)) {
 			result.statements.push(statement);
+			continue;
+		}
+
+		// "export default"
+		if (ts.isExportAssignment(statement) && !statement.isExportEquals) {
+			// `export default 123`, `export default "str"`
+			if (!ts.isIdentifier(statement.expression)) {
+				result.statements.push(statement);
+				continue;
+			}
+
+			const exportedNameNode = params.resolveIdentifier(statement.expression);
+			if (exportedNameNode === undefined) {
+				continue;
+			}
+
+			const originalName = exportedNameNode.getText();
+			result.renamedExports.push(`${originalName} as default`);
 			continue;
 		}
 

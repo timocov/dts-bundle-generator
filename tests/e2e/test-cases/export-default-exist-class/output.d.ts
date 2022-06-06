@@ -1,5 +1,8 @@
 export declare class MyAwesomeClass {
 }
-export default MyAwesomeClass;
+
+export {
+	MyAwesomeClass as default,
+};
 
 export {};
