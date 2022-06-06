@@ -10,6 +10,9 @@ declare function getRandom(): number;
 interface SomeInterface {
 	field: typeof getRandom;
 }
-export default SomeInterface;
+
+export {
+	SomeInterface as default,
+};
 
 export {};

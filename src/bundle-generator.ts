@@ -304,10 +304,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					// an export keyword (like interface, type, etc) otherwise, if there are
 					// only re-exports with renaming (like export { foo as bar }) we don't need
 					// to put export keyword for this statement because we'll re-export it in the way
-					const hasStatementedDefaultKeyword = ts.isExportAssignment(statement)
-						? !statement.isExportEquals
-						: hasNodeModifier(statement, ts.SyntaxKind.DefaultKeyword);
-
+					const hasStatementedDefaultKeyword = hasNodeModifier(statement, ts.SyntaxKind.DefaultKeyword);
 					let result = statementExports.length === 0 || statementExports.find((exp: SourceFileExport) => {
 						// "directly" means "without renaming" or "without additional node/statement"
 						// for instance, `class A {} export default A;` - here `statement` is `class A {}`
@@ -471,12 +468,27 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 
 	// add skipped by `updateResult` exports
 	for (const statement of params.statements) {
-		// "export default" or "export ="
-		const isExportAssignment = ts.isExportAssignment(statement);
-		const isReExportFromImportable = isReExportFromImportableModule(statement);
-
-		if (isExportAssignment || isReExportFromImportable) {
+		// "export =" or "export {} from 'importable-package'"
+		if (ts.isExportAssignment(statement) && statement.isExportEquals || isReExportFromImportableModule(statement)) {
 			result.statements.push(statement);
+			continue;
+		}
+
+		// "export default"
+		if (ts.isExportAssignment(statement) && !statement.isExportEquals) {
+			// `export default 123`, `export default "str"`
+			if (!ts.isIdentifier(statement.expression)) {
+				result.statements.push(statement);
+				continue;
+			}
+
+			const exportedNameNode = params.resolveIdentifier(statement.expression);
+			if (exportedNameNode === undefined) {
+				continue;
+			}
+
+			const originalName = exportedNameNode.getText();
+			result.renamedExports.push(`${originalName} as default`);
 			continue;
 		}
 

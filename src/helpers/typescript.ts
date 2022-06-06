@@ -27,9 +27,6 @@ export function hasNodeModifier(node: ts.Node, modifier: ts.SyntaxKind): boolean
 export function getNodeName(node: ts.Node): NodeName | undefined {
 	const nodeName = (node as unknown as ts.NamedDeclaration).name;
 	if (nodeName === undefined) {
-		if (ts.isExportAssignment(node) && !node.isExportEquals) {
-			return node.expression as ts.Identifier;
-		}
 		const defaultModifier = node.modifiers?.find((mod: ts.Modifier) => mod.kind === ts.SyntaxKind.DefaultKeyword);
 		if (defaultModifier !== undefined) {
 			return defaultModifier;

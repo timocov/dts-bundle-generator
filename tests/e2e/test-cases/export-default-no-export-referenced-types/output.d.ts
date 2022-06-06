@@ -1,4 +1,7 @@
 declare const foo = "bar";
-export default foo;
+
+export {
+	foo as default,
+};
 
 export {};
