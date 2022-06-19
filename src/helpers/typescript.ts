@@ -21,15 +21,15 @@ export function isNodeNamedDeclaration(node: ts.Node): node is ts.NamedDeclarati
 }
 
 export function hasNodeModifier(node: ts.Node, modifier: ts.SyntaxKind): boolean {
-	return Boolean(node.modifiers && node.modifiers.some((nodeModifier: ts.Modifier) => nodeModifier.kind === modifier));
+	return Boolean(node.modifiers && node.modifiers.some((nodeModifier: NonNullable<ts.Node['modifiers']>[number]) => nodeModifier.kind === modifier));
 }
 
 export function getNodeName(node: ts.Node): NodeName | undefined {
 	const nodeName = (node as unknown as ts.NamedDeclaration).name;
 	if (nodeName === undefined) {
-		const defaultModifier = node.modifiers?.find((mod: ts.Modifier) => mod.kind === ts.SyntaxKind.DefaultKeyword);
+		const defaultModifier = node.modifiers?.find((mod: NonNullable<ts.Node['modifiers']>[number]) => mod.kind === ts.SyntaxKind.DefaultKeyword);
 		if (defaultModifier !== undefined) {
-			return defaultModifier;
+			return defaultModifier as NodeName;
 		}
 	}
 
