@@ -33,6 +33,7 @@ function toStringsArray(data: unknown): string[] | undefined {
 	return data.map(String);
 }
 
+/* eslint-disable @typescript-eslint/naming-convention */
 interface ParsedArgs extends yargs.Arguments {
 	sort: boolean;
 	silent: boolean;
@@ -55,14 +56,17 @@ interface ParsedArgs extends yargs.Arguments {
 	'external-imports': string[] | undefined;
 	'external-types': string[] | undefined;
 }
+/* eslint-enable @typescript-eslint/naming-convention */
 
 function parseArgs(): ParsedArgs {
 	return yargs
 		.parserConfiguration({
+			/* eslint-disable @typescript-eslint/naming-convention */
 			'boolean-negation': false,
 			'camel-case-expansion': false,
 			'dot-notation': false,
 			'short-option-groups': false,
+			/* eslint-enable @typescript-eslint/naming-convention */
 		})
 		.usage('Usage: $0 [options] <file(s)>')
 		.demandCommand(0)
