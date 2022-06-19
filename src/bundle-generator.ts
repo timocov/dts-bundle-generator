@@ -229,12 +229,13 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				return leftSymbols.some((leftSymbol: ts.Symbol) => rightSymbols.includes(leftSymbol));
 			},
-			resolveReferencedModule: (node: ts.ExportDeclaration) => {
-				if (node.moduleSpecifier === undefined) {
+			resolveReferencedModule: (node: ts.ExportDeclaration | ts.ModuleDeclaration) => {
+				const moduleName = ts.isExportDeclaration(node) ? node.moduleSpecifier : node.name;
+				if (moduleName === undefined) {
 					return null;
 				}
 
-				const moduleSymbol = typeChecker.getSymbolAtLocation(node.moduleSpecifier);
+				const moduleSymbol = typeChecker.getSymbolAtLocation(moduleName);
 				if (moduleSymbol === undefined) {
 					return null;
 				}
@@ -392,7 +393,7 @@ interface UpdateParams {
 	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
 	getDeclarationUsagesSourceFiles(declaration: ts.NamedDeclaration): Set<ts.SourceFile | ts.ModuleDeclaration>;
 	areDeclarationSame(a: ts.NamedDeclaration, b: ts.NamedDeclaration): boolean;
-	resolveReferencedModule(node: ts.ExportDeclaration): ts.SourceFile | ts.ModuleDeclaration | null;
+	resolveReferencedModule(node: ts.ExportDeclaration | ts.ModuleDeclaration): ts.SourceFile | ts.ModuleDeclaration | null;
 }
 
 const skippedNodes = [
@@ -539,9 +540,27 @@ function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, para
 		return;
 	}
 
-	const moduleName = moduleDecl.name.text;
-	const moduleFileName = resolveModuleFileName(params.currentModule.fileName, moduleName);
-	const moduleInfo = params.getModuleInfo(moduleFileName);
+	let moduleInfo: ModuleInfo;
+
+	if (!ts.isStringLiteral(moduleDecl.name)) {
+		// this is an old behavior of handling `declare module Name` statements
+		// where Name is a identifier, not a string literal
+		// actually in this case I'd say we need to add a statement as-is without processing
+		// but it might be a breaking change to let's not break it yet
+		const moduleFileName = resolveModuleFileName(params.currentModule.fileName, moduleDecl.name.text);
+		moduleInfo = params.getModuleInfo(moduleFileName);
+	} else {
+		const referencedModule = params.resolveReferencedModule(moduleDecl);
+		if (referencedModule === null) {
+			return;
+		}
+
+		const moduleFilePath = ts.isSourceFile(referencedModule)
+			? referencedModule.fileName
+			: resolveModuleFileName(referencedModule.getSourceFile().fileName, referencedModule.name.text);
+
+		moduleInfo = params.getModuleInfo(moduleFilePath);
+	}
 
 	// if we have declaration of external module inside internal one
 	if (!params.currentModule.isExternal && moduleInfo.isExternal) {
