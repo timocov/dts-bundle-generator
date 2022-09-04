@@ -6,7 +6,6 @@ import * as yargs from 'yargs';
 
 import { loadConfigFile, BundlerConfig, ConfigEntryPoint } from '../config-file/load-config-file';
 
-import * as pkg from '../../package.json';
 import { generateDtsBundle } from '../bundle-generator';
 import { checkProgramDiagnosticsErrors } from '../helpers/check-diagnostics-errors';
 import { getCompilerOptions } from '../get-compiler-options';
@@ -69,7 +68,7 @@ function parseArgs(): ParsedArgs {
 			'short-option-groups': false,
 			/* eslint-enable @typescript-eslint/naming-convention */
 		})
-		.usage(`Usage: ${pkg.name} [options] <file(s)>`)
+		.usage('Usage: $0 [options] <file(s)>')
 		.demandCommand(0)
 		.option('out-file', {
 			alias: 'o',
