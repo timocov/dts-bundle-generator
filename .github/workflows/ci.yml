@@ -29,7 +29,7 @@ jobs:
       with:
         node-version: 12
     - run: npm install
-    - run: npm install typescript@3.0.1
+    - run: npm install typescript@4.0.2
     - run: npm run tsc
 
   ts-current:
