@@ -1,7 +1,8 @@
 {
 	"compilerOptions": {
 		"declaration": true,
-		"lib": ["es2015"],
+		"lib": ["es2020"],
+		"module": "commonjs",
 		"newLine": "LF",
 		"noEmitOnError": true,
 		"noFallthroughCasesInSwitch": true,
@@ -9,6 +10,6 @@
 		"noUnusedLocals": true,
 		"strict": true,
 		"stripInternal": true,
-		"target": "es5"
+		"target": "es2020"
 	}
 }
