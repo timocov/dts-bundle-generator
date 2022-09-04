@@ -1,7 +1,7 @@
 import * as ts from 'typescript';
 
-import { hasNodeModifier } from './helpers/typescript';
 import { packageVersion } from './helpers/package-version';
+import { modifiersToMap, recreateRootLevelNodeWithModifiers } from './helpers/typescript';
 
 export interface ModuleImportsSet {
 	defaultImports: Set<string>;
@@ -58,13 +58,17 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 		}
 	}
 
-	const statements = params.statements.map((statement: ts.Statement) => getStatementText(statement, params));
+	const statements = params.statements.map((statement: ts.Statement) => getStatementText(
+		statement,
+		Boolean(options.sortStatements),
+		params
+	));
 
 	if (options.sortStatements) {
 		statements.sort(compareStatementText);
 	}
 
-	resultOutput += statementsTextToString(statements, params);
+	resultOutput += statementsTextToString(statements);
 
 	if (params.renamedExports.length !== 0) {
 		resultOutput += `\n\nexport {\n\t${params.renamedExports.sort().join(',\n\t')},\n};`;
@@ -82,48 +86,21 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 }
 
 interface StatementText {
-	leadingComment?: string;
 	text: string;
+	sortingValue: string;
 }
 
-function statementTextToString(s: StatementText): string {
-	if (s.leadingComment === undefined) {
-		return s.text;
-	}
-
-	return `${s.leadingComment}\n${s.text}`;
+function statementsTextToString(statements: StatementText[]): string {
+	const statementsText = statements.map(statement => statement.text).join('\n');
+	return spacesToTabs(prettifyStatementsText(statementsText));
 }
 
-function statementsTextToString(statements: StatementText[], helpers: OutputHelpers): string {
-	const statementsText = statements.map(statementTextToString).join('\n');
-	return spacesToTabs(prettifyStatementsText(statementsText, helpers));
-}
-
-function prettifyStatementsText(statementsText: string, helpers: OutputHelpers): string {
+function prettifyStatementsText(statementsText: string): string {
 	const sourceFile = ts.createSourceFile('output.d.ts', statementsText, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
 	const printer = ts.createPrinter(
 		{
 			newLine: ts.NewLineKind.LineFeed,
 			removeComments: false,
-		},
-		{
-			substituteNode: (hint: ts.EmitHint, node: ts.Node) => {
-				// `import('module').Qualifier` or `typeof import('module').Qualifier`
-				if (ts.isImportTypeNode(node) && node.qualifier !== undefined && helpers.needStripImportFromImportTypeNode(node)) {
-					if (node.isTypeOf) {
-						// I personally don't like this solution because it spreads the logic of modifying nodes in the code
-						// I'd prefer to have it somewhere near getStatementText or so
-						// but at the moment it seems that it's the fastest and most easiest way to remove `import('./module').` form the code
-						// if you read this and know how to make it better - feel free to share your ideas/PR with fixes
-						// tslint:disable-next-line:deprecation
-						return ts.createTypeQueryNode(node.qualifier);
-					}
-
-					return ts.createTypeReferenceNode(node.qualifier, node.typeArguments);
-				}
-
-				return node;
-			},
 		}
 	);
 
@@ -131,78 +108,100 @@ function prettifyStatementsText(statementsText: string, helpers: OutputHelpers):
 }
 
 function compareStatementText(a: StatementText, b: StatementText): number {
-	if (a.text > b.text) {
+	if (a.sortingValue > b.sortingValue) {
 		return 1;
-	} else if (a.text < b.text) {
+	} else if (a.sortingValue < b.sortingValue) {
 		return -1;
 	}
 
 	return 0;
 }
 
-function needAddDeclareKeyword(statement: ts.Statement, nodeText: string): boolean {
-	// for some reason TypeScript allows to not write `declare` keyword for ClassDeclaration, FunctionDeclaration and VariableDeclaration
-	// if it already has `export` keyword - so we need to add it
-	// to avoid TS1046: Top-level declarations in .d.ts files must start with either a 'declare' or 'export' modifier.
-	if (ts.isClassDeclaration(statement) && (/^class\b/.test(nodeText) || /^abstract\b/.test(nodeText))) {
-		return true;
-	}
-
-	if (ts.isFunctionDeclaration(statement) && /^function\b/.test(nodeText)) {
-		return true;
-	}
-
-	if (ts.isVariableStatement(statement) && /^(const|let|var)\b/.test(nodeText)) {
-		return true;
-	}
-
-	if (ts.isEnumDeclaration(statement) && (/^(const)\b/.test(nodeText) || /^(enum)\b/.test(nodeText))) {
-		return true;
-	}
-
-	return false;
-}
-
-function getStatementText(statement: ts.Statement, helpers: OutputHelpers): StatementText {
+function getStatementText(statement: ts.Statement, includeSortingValue: boolean, helpers: OutputHelpers): StatementText {
 	const shouldStatementHasExportKeyword = helpers.shouldStatementHasExportKeyword(statement);
 	const needStripDefaultKeyword = helpers.needStripDefaultKeywordForStatement(statement);
-	const hasStatementExportKeyword = ts.isExportAssignment(statement) || hasNodeModifier(statement, ts.SyntaxKind.ExportKeyword);
 
-	let nodeText = getTextAccordingExport(statement.getText(), hasStatementExportKeyword, shouldStatementHasExportKeyword);
+	const printer = ts.createPrinter(
+		{
+			newLine: ts.NewLineKind.LineFeed,
+			removeComments: false,
+		},
+		{
+			// eslint-disable-next-line complexity
+			substituteNode: (hint: ts.EmitHint, node: ts.Node) => {
+				// `import('module').Qualifier` or `typeof import('module').Qualifier`
+				if (ts.isImportTypeNode(node) && node.qualifier !== undefined && helpers.needStripImportFromImportTypeNode(node)) {
+					if (node.isTypeOf) {
+						return ts.factory.createTypeQueryNode(node.qualifier);
+					}
 
-	if (
-		ts.isEnumDeclaration(statement)
-		&& hasNodeModifier(statement, ts.SyntaxKind.ConstKeyword)
-		&& helpers.needStripConstFromConstEnum(statement)) {
-		nodeText = nodeText.replace(/\bconst\s/, '');
-	}
+					return ts.factory.createTypeReferenceNode(node.qualifier, node.typeArguments);
+				}
 
-	// strip the `default` keyword from node
-	if (hasNodeModifier(statement, ts.SyntaxKind.DefaultKeyword) && needStripDefaultKeyword) {
-		// we need just to remove `default` from any node except class node
-		// for classes we need to replace `default` with `declare` instead
-		nodeText = nodeText.replace(/\bdefault\s/, ts.isClassDeclaration(statement) ? 'declare ' : '');
-	}
+				if (node !== statement) {
+					return node;
+				}
 
-	if (needAddDeclareKeyword(statement, nodeText)) {
-		nodeText = `declare ${nodeText}`;
-	}
+				const modifiersMap = modifiersToMap(node.modifiers);
 
-	const result: StatementText = {
-		text: nodeText,
-	};
+				if (
+					ts.isEnumDeclaration(node)
+					&& modifiersMap[ts.SyntaxKind.ConstKeyword]
+					&& helpers.needStripConstFromConstEnum(node)
+				) {
+					modifiersMap[ts.SyntaxKind.ConstKeyword] = false;
+				}
 
-	// add jsdoc for exported nodes only
-	if (shouldStatementHasExportKeyword) {
-		const start = statement.getStart();
-		const jsDocStart = statement.getStart(undefined, true);
-		const nodeJSDoc = statement.getSourceFile().getFullText().substring(jsDocStart, start).trim();
-		if (nodeJSDoc.length !== 0) {
-			result.leadingComment = nodeJSDoc;
+				// strip the `default` keyword from node
+				if (modifiersMap[ts.SyntaxKind.DefaultKeyword] && needStripDefaultKeyword) {
+					// we need just to remove `default` from any node except class node
+					// for classes we need to replace `default` with `declare` instead
+					modifiersMap[ts.SyntaxKind.DefaultKeyword] = false;
+					if (ts.isClassDeclaration(node)) {
+						modifiersMap[ts.SyntaxKind.DeclareKeyword] = true;
+					}
+				}
+
+				if (!shouldStatementHasExportKeyword) {
+					modifiersMap[ts.SyntaxKind.ExportKeyword] = false;
+				} else {
+					modifiersMap[ts.SyntaxKind.ExportKeyword] = true;
+				}
+
+				// for some reason TypeScript allows to not write `declare` keyword for ClassDeclaration, FunctionDeclaration and VariableDeclaration
+				// if it already has `export` keyword - so we need to add it
+				// to avoid TS1046: Top-level declarations in .d.ts files must start with either a 'declare' or 'export' modifier.
+				if (!modifiersMap[ts.SyntaxKind.ExportKeyword] &&
+					(ts.isClassDeclaration(node)
+						|| ts.isFunctionDeclaration(node)
+						|| ts.isVariableStatement(node)
+						|| ts.isEnumDeclaration(node)
+					)
+				) {
+					modifiersMap[ts.SyntaxKind.DeclareKeyword] = true;
+				}
+
+				return recreateRootLevelNodeWithModifiers(node, modifiersMap, shouldStatementHasExportKeyword);
+			},
 		}
+	);
+
+	const statementText = printer.printNode(ts.EmitHint.Unspecified, statement, statement.getSourceFile()).trim();
+
+	let sortingValue = '';
+
+	if (includeSortingValue) {
+		// it looks like there is no way to get node's text without a comment at the same time as printing it
+		// so to get the actual node text we have to parse it again
+		// hopefully it shouldn't take too long (we don't need to do type check, just parse the AST)
+		// also let's do it opt-in so if someone isn't using node sorting it won't affect them
+		const tempSourceFile = ts.createSourceFile('temp.d.ts', statementText, ts.ScriptTarget.ESNext);
+
+		// we certainly know that there should be 1 statement at the root level (the printed statement)
+		sortingValue = tempSourceFile.getChildren()[0].getText();
 	}
 
-	return result;
+	return { text: statementText, sortingValue };
 }
 
 function generateImports(libraryName: string, imports: ModuleImportsSet): string[] {
@@ -226,16 +225,6 @@ function generateReferenceTypesDirective(libraries: string[]): string {
 	return libraries.sort().map((library: string) => {
 		return `/// <reference types="${library}" />`;
 	}).join('\n');
-}
-
-function getTextAccordingExport(nodeText: string, isNodeExported: boolean, shouldNodeBeExported: boolean): string {
-	if (shouldNodeBeExported && !isNodeExported) {
-		return 'export ' + nodeText;
-	} else if (isNodeExported && !shouldNodeBeExported) {
-		return nodeText.slice('export '.length);
-	}
-
-	return nodeText;
 }
 
 function spacesToTabs(text: string): string {

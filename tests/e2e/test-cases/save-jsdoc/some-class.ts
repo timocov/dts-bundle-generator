@@ -20,6 +20,7 @@ export class NonExportedClass {
 		return NonExportedEnum.First;
 	}
 
+	/** Method description */
 	public method2(): NonExportedConstEnum {
 		return NonExportedConstEnum.First;
 	}

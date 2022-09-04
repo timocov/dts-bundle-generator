@@ -13,7 +13,10 @@ export type ExportedType = string | number;
 /**
  * ExportedConstEnum JSDoc
  */
-export const enum ExportedConstEnum { Item }
+export const enum ExportedConstEnum {
+	/** Item description */
+	Item,
+}
 
 /**
  * ExportedEnum JSDoc

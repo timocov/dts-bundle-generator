@@ -273,3 +273,214 @@ function getExportsForName(
 	const declarationSymbol = typeChecker.getSymbolAtLocation(name);
 	return exportedSymbols.filter((rootExport: SourceFileExport) => rootExport.symbol === declarationSymbol);
 }
+
+export type ModifiersMap = Record<ts.ModifierSyntaxKind, boolean>;
+
+const modifiersPriority: Record<ts.ModifierSyntaxKind, number> = {
+	[ts.SyntaxKind.ExportKeyword]: 4,
+	[ts.SyntaxKind.DefaultKeyword]: 3,
+	[ts.SyntaxKind.DeclareKeyword]: 2,
+
+	[ts.SyntaxKind.AsyncKeyword]: 1,
+	[ts.SyntaxKind.ConstKeyword]: 1,
+
+	// we don't care about these modifiers as they are used in classes only and cannot be at the root level
+	[ts.SyntaxKind.AbstractKeyword]: 0,
+	[ts.SyntaxKind.ReadonlyKeyword]: 0,
+	[ts.SyntaxKind.StaticKeyword]: 0,
+	[ts.SyntaxKind.InKeyword]: 0,
+	[ts.SyntaxKind.OutKeyword]: 0,
+	[ts.SyntaxKind.OverrideKeyword]: 0,
+	[ts.SyntaxKind.PrivateKeyword]: 0,
+	[ts.SyntaxKind.ProtectedKeyword]: 0,
+	[ts.SyntaxKind.PublicKeyword]: 0,
+};
+
+export function modifiersToMap(modifiers: (readonly ts.Modifier[]) | undefined | null): ModifiersMap {
+	modifiers = modifiers || [];
+
+	return modifiers.reduce(
+		(result: ModifiersMap, modifier: ts.Modifier) => {
+			result[modifier.kind] = true;
+			return result;
+		},
+		// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+		{} as Record<ts.ModifierSyntaxKind, boolean>
+	);
+}
+
+export function modifiersMapToArray(modifiersMap: ModifiersMap): ts.Modifier[] {
+	return Object.entries(modifiersMap)
+		.filter(([kind, include]) => include)
+		.map(([kind]) => ts.factory.createModifier(Number(kind)))
+		.sort((a: ts.Modifier, b: ts.Modifier) => {
+			// note `|| 0` is here as a fallback in the case if the compiler adds a new modifier
+			// but the tool isn't updated yet
+			const aValue = modifiersPriority[a.kind as ts.ModifierSyntaxKind] || 0;
+			const bValue = modifiersPriority[b.kind as ts.ModifierSyntaxKind] || 0;
+			return bValue - aValue;
+		});
+}
+
+export function recreateRootLevelNodeWithModifiers(node: ts.Node, modifiersMap: ModifiersMap, keepComments: boolean = true): ts.Node {
+	const newNode = recreateRootLevelNodeWithModifiersImpl(node, modifiersMap);
+
+	if (keepComments) {
+		ts.setCommentRange(newNode, ts.getCommentRange(node));
+	}
+
+	return newNode;
+}
+
+// eslint-disable-next-line complexity
+function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: ModifiersMap): ts.Node {
+	const modifiers = modifiersMapToArray(modifiersMap);
+
+	if (ts.isArrowFunction(node)) {
+		return ts.factory.createArrowFunction(
+			modifiers,
+			node.typeParameters,
+			node.parameters,
+			node.type,
+			node.equalsGreaterThanToken,
+			node.body
+		);
+	}
+
+	if (ts.isClassDeclaration(node)) {
+		return ts.factory.createClassDeclaration(
+			node.decorators,
+			modifiers,
+			node.name,
+			node.typeParameters,
+			node.heritageClauses,
+			node.members
+		);
+	}
+
+	if (ts.isClassExpression(node)) {
+		return ts.factory.createClassExpression(
+			node.decorators,
+			modifiers,
+			node.name,
+			node.typeParameters,
+			node.heritageClauses,
+			node.members
+		);
+	}
+
+	if (ts.isEnumDeclaration(node)) {
+		return ts.factory.createEnumDeclaration(
+			node.decorators,
+			modifiers,
+			node.name,
+			node.members
+		);
+	}
+
+	if (ts.isExportAssignment(node)) {
+		return ts.factory.createExportAssignment(
+			node.decorators,
+			modifiers,
+			node.isExportEquals,
+			node.expression
+		);
+	}
+
+	if (ts.isExportDeclaration(node)) {
+		return ts.factory.createExportDeclaration(
+			node.decorators,
+			modifiers,
+			node.isTypeOnly,
+			node.exportClause,
+			node.moduleSpecifier,
+			node.assertClause
+		);
+	}
+
+	if (ts.isFunctionDeclaration(node)) {
+		return ts.factory.createFunctionDeclaration(
+			node.decorators,
+			modifiers,
+			node.asteriskToken,
+			node.name,
+			node.typeParameters,
+			node.parameters,
+			node.type,
+			node.body
+		);
+	}
+
+	if (ts.isFunctionExpression(node)) {
+		return ts.factory.createFunctionExpression(
+			modifiers,
+			node.asteriskToken,
+			node.name,
+			node.typeParameters,
+			node.parameters,
+			node.type,
+			node.body
+		);
+	}
+
+	if (ts.isImportDeclaration(node)) {
+		return ts.factory.createImportDeclaration(
+			node.decorators,
+			modifiers,
+			node.importClause,
+			node.moduleSpecifier,
+			node.assertClause
+		);
+	}
+
+	if (ts.isImportEqualsDeclaration(node)) {
+		return ts.factory.createImportEqualsDeclaration(
+			node.decorators,
+			modifiers,
+			node.isTypeOnly,
+			node.name,
+			node.moduleReference
+		);
+	}
+
+	if (ts.isInterfaceDeclaration(node)) {
+		return ts.factory.createInterfaceDeclaration(
+			node.decorators,
+			modifiers,
+			node.name,
+			node.typeParameters,
+			node.heritageClauses,
+			node.members
+		);
+	}
+
+	if (ts.isModuleDeclaration(node)) {
+		return ts.factory.createModuleDeclaration(
+			node.decorators,
+			modifiers,
+			node.name,
+			node.body,
+			node.flags
+		);
+	}
+
+	if (ts.isTypeAliasDeclaration(node)) {
+		return ts.factory.createTypeAliasDeclaration(
+			node.decorators,
+			modifiers,
+			node.name,
+			node.typeParameters,
+			node.type
+		);
+	}
+
+	if (ts.isVariableStatement(node)) {
+		return ts.factory.createVariableStatement(
+			modifiers,
+			node.declarationList
+		);
+	}
+
+	throw new Error(`Unknown top-level node kind (with modifiers): ${ts.SyntaxKind[node.kind]}.
+If you're seeing this error, please report a bug on https://github.com/timocov/dts-bundle-generator/issues`);
+}
