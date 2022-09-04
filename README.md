@@ -65,7 +65,7 @@ export declare function makeB(): B;
 ## Usage
 
 ```
-Usage: dts-bundle-generator.js [options] <file(s)>
+Usage: dts-bundle-generator [options] <file(s)>
 
 Options:
   --help                         Show help                                                 [boolean]
