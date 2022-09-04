@@ -96,10 +96,14 @@ function changeExtensionToDts(fileName: string): string {
 function getDeclarationFiles(rootFiles: readonly string[], compilerOptions: ts.CompilerOptions): Map<string, string> {
 	// we must pass `declaration: true` and `noEmit: false` if we want to generate declaration files
 	// see https://github.com/microsoft/TypeScript/issues/24002#issuecomment-550549393
+	// also, we don't want to generate anything apart from declarations so that's why `emitDeclarationOnly: true` is here
+	// it allows to run the tool for projects with allowJs flag enabled to avoid errors like:
+	// error TS5055: Cannot write file '<filename>' because it would overwrite input file.
 	compilerOptions = {
 		...compilerOptions,
 		noEmit: false,
 		declaration: true,
+		emitDeclarationOnly: true,
 	};
 
 	const program = ts.createProgram(rootFiles, compilerOptions);
