@@ -7,7 +7,7 @@ const config = {
 	recursive: true,
 	diff: true,
 	timeout: 10000,
-	slow: 2500,
+	slow: 5000,
 };
 
 if (process.env.TESTS_REPORT_FILE) {
