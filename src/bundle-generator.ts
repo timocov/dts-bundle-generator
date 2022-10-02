@@ -229,8 +229,17 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				return leftSymbols.some((leftSymbol: ts.Symbol) => rightSymbols.includes(leftSymbol));
 			},
-			resolveReferencedModule: (node: ts.ExportDeclaration | ts.ModuleDeclaration) => {
-				const moduleName = ts.isExportDeclaration(node) ? node.moduleSpecifier : node.name;
+			resolveReferencedModule: (node: ts.ExportDeclaration | ts.ModuleDeclaration | ts.ImportTypeNode) => {
+				let moduleName: ts.Expression | ts.LiteralTypeNode | undefined;
+
+				if (ts.isExportDeclaration(node)) {
+					moduleName = node.moduleSpecifier;
+				} else if (ts.isModuleDeclaration(node)) {
+					moduleName = node.name;
+				} else if (ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) {
+					moduleName = node.argument.literal;
+				}
+
 				if (moduleName === undefined) {
 					return null;
 				}
@@ -356,9 +365,12 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						return false;
 					}
 
-					// we don't need to specify exact file here since we need to figure out whether a file is external or internal one
-					const moduleFileName = resolveModuleFileName(rootSourceFile.fileName, node.argument.literal.text);
-					return !getModuleInfo(moduleFileName, criteria).isExternal;
+					const resolvedModule = updateResultCommonParams.resolveReferencedModule(node);
+					if (resolvedModule === null) {
+						return false;
+					}
+
+					return !updateResultCommonParams.getModuleInfo(resolvedModule).isExternal;
 				},
 			},
 			{
@@ -393,7 +405,7 @@ interface UpdateParams {
 	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
 	getDeclarationUsagesSourceFiles(declaration: ts.NamedDeclaration): Set<ts.SourceFile | ts.ModuleDeclaration>;
 	areDeclarationSame(a: ts.NamedDeclaration, b: ts.NamedDeclaration): boolean;
-	resolveReferencedModule(node: ts.ExportDeclaration | ts.ModuleDeclaration): ts.SourceFile | ts.ModuleDeclaration | null;
+	resolveReferencedModule(node: ts.ExportDeclaration | ts.ModuleDeclaration | ts.ImportTypeNode): ts.SourceFile | ts.ModuleDeclaration | null;
 }
 
 const skippedNodes = [

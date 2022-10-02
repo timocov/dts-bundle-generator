@@ -17,24 +17,24 @@
   },
   "homepage": "https://github.com/timocov/dts-bundle-generator",
   "dependencies": {
-    "typescript": ">=3.0.1",
-    "yargs": "^17.2.1"
+    "typescript": ">=4.5.2",
+    "yargs": "^17.6.0"
   },
   "devDependencies": {
-    "@types/mocha": "~9.1.1",
-    "@types/node": "~12.12.47",
-    "@types/yargs": "~17.0.5",
-    "@typescript-eslint/eslint-plugin": "~5.28.0",
-    "@typescript-eslint/parser": "~5.28.0",
-    "eslint": "~8.18.0",
+    "@types/mocha": "~10.0.0",
+    "@types/node": "~14.18.26",
+    "@types/yargs": "~17.0.13",
+    "@typescript-eslint/eslint-plugin": "~5.38.1",
+    "@typescript-eslint/parser": "~5.38.1",
+    "eslint": "~8.24.0",
     "eslint-plugin-import": "~2.26.0",
     "eslint-plugin-prefer-arrow": "~1.2.1",
-    "eslint-plugin-unicorn": "~42.0.0",
+    "eslint-plugin-unicorn": "~44.0.0",
     "mocha": "~10.0.0",
     "npm-run-all": "~4.1.5",
     "rimraf": "~3.0.2",
-    "ts-compiler": "npm:typescript@4.8.2",
-    "ts-node": "~10.8.1"
+    "ts-compiler": "npm:typescript@4.8.4",
+    "ts-node": "~10.9.1"
   },
   "license": "MIT",
   "readme": "README.md",
@@ -43,7 +43,7 @@
     "url": "git+https://github.com/timocov/dts-bundle-generator.git"
   },
   "engines": {
-    "node": ">=12.0.0"
+    "node": ">=14.0.0"
   },
   "scripts": {
     "clean": "rimraf dist/ dts-out/",

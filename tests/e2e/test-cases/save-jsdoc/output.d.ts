@@ -9,6 +9,7 @@ export declare const enum NonExportedConstEnum {
 }
 declare class NonExportedClass {
 	method(): NonExportedEnum;
+	/** Method description */
 	method2(): NonExportedConstEnum;
 }
 /**
@@ -24,6 +25,7 @@ export declare type ExportedType = string | number;
  * ExportedConstEnum JSDoc
  */
 export declare const enum ExportedConstEnum {
+	/** Item description */
 	Item = 0
 }
 /**
