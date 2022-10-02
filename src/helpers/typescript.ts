@@ -278,24 +278,13 @@ function getExportsForName(
 
 export type ModifiersMap = Record<ts.ModifierSyntaxKind, boolean>;
 
-const modifiersPriority: Record<ts.ModifierSyntaxKind, number> = {
+const modifiersPriority: Partial<Record<ts.ModifierSyntaxKind, number>> = {
 	[ts.SyntaxKind.ExportKeyword]: 4,
 	[ts.SyntaxKind.DefaultKeyword]: 3,
 	[ts.SyntaxKind.DeclareKeyword]: 2,
 
 	[ts.SyntaxKind.AsyncKeyword]: 1,
 	[ts.SyntaxKind.ConstKeyword]: 1,
-
-	// we don't care about these modifiers as they are used in classes only and cannot be at the root level
-	[ts.SyntaxKind.AbstractKeyword]: 0,
-	[ts.SyntaxKind.ReadonlyKeyword]: 0,
-	[ts.SyntaxKind.StaticKeyword]: 0,
-	[ts.SyntaxKind.InKeyword]: 0,
-	[ts.SyntaxKind.OutKeyword]: 0,
-	[ts.SyntaxKind.OverrideKeyword]: 0,
-	[ts.SyntaxKind.PrivateKeyword]: 0,
-	[ts.SyntaxKind.ProtectedKeyword]: 0,
-	[ts.SyntaxKind.PublicKeyword]: 0,
 };
 
 export function modifiersToMap(modifiers: (readonly ts.Modifier[]) | undefined | null): ModifiersMap {
