@@ -18,13 +18,15 @@ export function isNodeNamedDeclaration(node: ts.Node): node is ts.NamedDeclarati
 }
 
 export function hasNodeModifier(node: ts.Node, modifier: ts.SyntaxKind): boolean {
-	return Boolean(node.modifiers && node.modifiers.some((nodeModifier: NonNullable<ts.Node['modifiers']>[number]) => nodeModifier.kind === modifier));
+	const modifiers = getModifiers(node);
+	return Boolean(modifiers && modifiers.some((nodeModifier: NonNullable<ts.Node['modifiers']>[number]) => nodeModifier.kind === modifier));
 }
 
 export function getNodeName(node: ts.Node): NodeName | undefined {
 	const nodeName = (node as unknown as ts.NamedDeclaration).name;
 	if (nodeName === undefined) {
-		const defaultModifier = node.modifiers?.find((mod: NonNullable<ts.Node['modifiers']>[number]) => mod.kind === ts.SyntaxKind.DefaultKeyword);
+		const modifiers = getModifiers(node);
+		const defaultModifier = modifiers?.find((mod: NonNullable<ts.Node['modifiers']>[number]) => mod.kind === ts.SyntaxKind.DefaultKeyword);
 		if (defaultModifier !== undefined) {
 			return defaultModifier as NodeName;
 		}
@@ -483,4 +485,27 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 
 	throw new Error(`Unknown top-level node kind (with modifiers): ${ts.SyntaxKind[node.kind]}.
 If you're seeing this error, please report a bug on https://github.com/timocov/dts-bundle-generator/issues`);
+}
+
+interface TsCompatWith48 {
+	canHaveModifiers?(node: ts.Node): boolean;
+	getModifiers?(node: ts.Node): readonly ts.Modifier[] | undefined;
+}
+
+function canHaveModifiersCompat(node: ts.Node): boolean {
+	const compatTs = ts as TsCompatWith48;
+	return compatTs.canHaveModifiers !== undefined ? compatTs.canHaveModifiers(node) : true;
+}
+
+function getModifiersCompat(node: ts.Node): readonly ts.Modifier[] | undefined {
+	const compatTs = ts as TsCompatWith48;
+	return compatTs.getModifiers !== undefined ? compatTs.getModifiers(node) : node.modifiers as readonly ts.Modifier[] | undefined;
+}
+
+export function getModifiers(node: ts.Node): readonly ts.Modifier[] | undefined {
+	if (!canHaveModifiersCompat(node)) {
+		throw new Error(`Node kind=${ts.SyntaxKind[node.kind]} cannot have modifiers`);
+	}
+
+	return getModifiersCompat(node);
 }

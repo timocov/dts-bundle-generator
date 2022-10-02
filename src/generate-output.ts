@@ -1,7 +1,7 @@
 import * as ts from 'typescript';
 
 import { packageVersion } from './helpers/package-version';
-import { modifiersToMap, recreateRootLevelNodeWithModifiers } from './helpers/typescript';
+import { getModifiers, modifiersToMap, recreateRootLevelNodeWithModifiers } from './helpers/typescript';
 
 export interface ModuleImportsSet {
 	defaultImports: Set<string>;
@@ -142,7 +142,7 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 					return node;
 				}
 
-				const modifiersMap = modifiersToMap(node.modifiers);
+				const modifiersMap = modifiersToMap(getModifiers(node));
 
 				if (
 					ts.isEnumDeclaration(node)
