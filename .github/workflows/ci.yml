@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+  schedule:
+    # https://crontab.guru/#0_10_*_*_0
+    - cron:  '0 10 * * 0'
   pull_request:
 
 jobs:
