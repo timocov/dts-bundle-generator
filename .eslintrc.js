@@ -2,6 +2,7 @@ module.exports = {
 	root: true,
 	plugins: [
 		'@typescript-eslint',
+		'eslint-plugin-deprecation',
 		'eslint-plugin-import',
 		'eslint-plugin-prefer-arrow',
 		'eslint-plugin-unicorn',
@@ -428,6 +429,8 @@ module.exports = {
 			},
 		],
 		'@typescript-eslint/unbound-method': 'off',
+
+		'deprecation/deprecation': 'error',
 
 		'import/no-default-export': 'error',
 
