@@ -7,4 +7,5 @@
         "tests/e2e/.tsc-out/**": true,
         "tests/unittests/.tsc-out/**": true,
     },
+    "typescript.tsdk": "./node_modules/ts-compiler/lib",
 }
