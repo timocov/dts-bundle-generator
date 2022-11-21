@@ -89,6 +89,11 @@ export class TypesUsageEvaluator {
 					continue;
 				}
 
+				// `{ propertyName: name }` - in this case we don't need to handle `propertyName` as it has no symbol
+				if (ts.isBindingElement(child.parent) && child.parent.propertyName === child) {
+					continue;
+				}
+
 				const childSymbols = splitTransientSymbol(this.getSymbol(child), this.typeChecker);
 
 				for (const childSymbol of childSymbols) {
@@ -110,7 +115,7 @@ export class TypesUsageEvaluator {
 	private getSymbol(node: ts.Node): ts.Symbol {
 		const nodeSymbol = this.typeChecker.getSymbolAtLocation(node);
 		if (nodeSymbol === undefined) {
-			throw new Error(`Cannot find symbol for node: ${node.getText()}`);
+			throw new Error(`Cannot find symbol for node "${node.getText()}" in "${node.parent.getText()}" from "${node.getSourceFile().fileName}"`);
 		}
 
 		return this.getActualSymbol(nodeSymbol);
