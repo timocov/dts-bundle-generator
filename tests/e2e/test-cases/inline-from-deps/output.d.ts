@@ -11,9 +11,9 @@ declare class SomeClass {
 	private x;
 	public constructor();
 }
-export declare type TestType = Interface | Type;
+export type TestType = Interface | Type;
 export declare class MyClass extends SomeClass {
 }
-export declare type ReExportedTypes = Derived;
+export type ReExportedTypes = Derived;
 
 export {};

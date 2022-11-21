@@ -8,7 +8,7 @@ declare enum Enum {
 declare function func(): void;
 interface Interface {
 }
-declare type Type = string;
+type Type = string;
 declare const enum ConstEnum2 {
 }
 declare enum Enum2 {

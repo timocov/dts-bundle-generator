@@ -12,6 +12,6 @@ export interface MyType {
 	field3: import("ora").Options;
 	field4: GenericType<number, string>;
 }
-export declare type MySecondType = MyType | number;
+export type MySecondType = MyType | number;
 
 export {};

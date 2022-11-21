@@ -20,7 +20,7 @@ export interface ExportedInterface {
 /**
  * ExportedType JSDoc
  */
-export declare type ExportedType = string | number;
+export type ExportedType = string | number;
 /**
  * ExportedConstEnum JSDoc
  */
