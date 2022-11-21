@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "dts-bundle-generator",
-  "version": "7.0.0",
+  "version": "7.1.0",
   "description": "DTS Bundle Generator",
   "main": "dist/bundle-generator.js",
   "typings": "dist/bundle-generator.d.ts",
