@@ -370,7 +370,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						return false;
 					}
 
-					return !updateResultCommonParams.getModuleInfo(resolvedModule).isExternal;
+					return updateResultCommonParams.getModuleInfo(resolvedModule).type === ModuleType.ShouldBeInlined;
 				},
 			},
 			{
