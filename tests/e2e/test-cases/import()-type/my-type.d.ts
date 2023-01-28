@@ -3,4 +3,5 @@ export interface MyType {
 	field2: typeof import('./custom-type').Namespace;
 	field3: import('ora').Options;
 	field4: import('./custom-type').GenericType<number, string>;
+	field5: import('fake-package').Interface;
 }
