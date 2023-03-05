@@ -332,7 +332,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						|| ts.isClassDeclaration(statement)
 						|| (ts.isEnumDeclaration(statement) && !hasNodeModifier(statement, ts.SyntaxKind.ConstKeyword))
 						|| ts.isFunctionDeclaration(statement)
-						|| ts.isVariableStatement(statement);
+						|| ts.isVariableStatement(statement)
+						|| ts.isModuleDeclaration(statement);
 
 					if (onlyDirectlyExportedShouldBeExported) {
 						// "valuable" statements must be re-exported from root source file
@@ -555,12 +556,8 @@ function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, para
 	let moduleInfo: ModuleInfo;
 
 	if (!ts.isStringLiteral(moduleDecl.name)) {
-		// this is an old behavior of handling `declare module Name` statements
-		// where Name is a identifier, not a string literal
-		// actually in this case I'd say we need to add a statement as-is without processing
-		// but it might be a breaking change to let's not break it yet
-		const moduleFileName = resolveModuleFileName(params.currentModule.fileName, moduleDecl.name.text);
-		moduleInfo = params.getModuleInfo(moduleFileName);
+		result.statements.push(moduleDecl);
+		return;
 	} else {
 		const referencedModule = params.resolveReferencedModule(moduleDecl);
 		if (referencedModule === null) {

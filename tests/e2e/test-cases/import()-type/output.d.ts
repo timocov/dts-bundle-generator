@@ -2,7 +2,7 @@ export interface CustomType {
 	foo: number;
 	bar: string;
 }
-export namespace Namespace {
+declare namespace Namespace {
 	export const baz: number;
 }
 export declare type GenericType<T, U> = {};

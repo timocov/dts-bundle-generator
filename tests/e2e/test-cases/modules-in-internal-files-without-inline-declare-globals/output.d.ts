@@ -1,5 +1,3 @@
-declare module "ambient-module" {
-}
 export interface Interface {
 	field: Interface;
 }

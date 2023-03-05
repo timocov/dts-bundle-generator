@@ -4,7 +4,7 @@ declare class SampleClass {
 }
 export interface ISample {
 }
-export namespace SampleNS { }
+declare namespace SampleNS { }
 export namespace Sample {
 	export { functionName };
 	export { variable };
