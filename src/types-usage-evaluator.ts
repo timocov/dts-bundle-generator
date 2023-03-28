@@ -75,8 +75,7 @@ export class TypesUsageEvaluator {
 	private computeUsagesRecursively(parent: ts.Node, parentSymbol: ts.Symbol): void {
 		const queue = parent.getChildren();
 		for (const child of queue) {
-			// eslint-disable-next-line deprecation/deprecation
-			if (child.kind === ts.SyntaxKind.JSDocComment) {
+			if (child.kind === ts.SyntaxKind.JSDoc) {
 				continue;
 			}
 

@@ -19,14 +19,14 @@ export function isNodeNamedDeclaration(node: ts.Node): node is ts.NamedDeclarati
 
 export function hasNodeModifier(node: ts.Node, modifier: ts.SyntaxKind): boolean {
 	const modifiers = getModifiers(node);
-	return Boolean(modifiers && modifiers.some((nodeModifier: NonNullable<ts.Node['modifiers']>[number]) => nodeModifier.kind === modifier));
+	return Boolean(modifiers && modifiers.some((nodeModifier: ts.Modifier) => nodeModifier.kind === modifier));
 }
 
 export function getNodeName(node: ts.Node): NodeName | undefined {
 	const nodeName = (node as unknown as ts.NamedDeclaration).name;
 	if (nodeName === undefined) {
 		const modifiers = getModifiers(node);
-		const defaultModifier = modifiers?.find((mod: NonNullable<ts.Node['modifiers']>[number]) => mod.kind === ts.SyntaxKind.DefaultKeyword);
+		const defaultModifier = modifiers?.find((mod: ts.Modifier) => mod.kind === ts.SyntaxKind.DefaultKeyword);
 		if (defaultModifier !== undefined) {
 			return defaultModifier as NodeName;
 		}
@@ -326,24 +326,6 @@ export function recreateRootLevelNodeWithModifiers(node: ts.Node, modifiersMap: 
 	return newNode;
 }
 
-function prependEmptyDecoratorsIfNeeded<
-	// eslint-disable-next-line space-before-function-paren, @typescript-eslint/no-shadow
-	T extends (decorators: readonly ts.Decorator[] | undefined, ...args: A) => R,
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	A extends any[],
-	R extends ts.Node,
->(func: T, ...args: A): R {
-	const tsVersion = parseFloat(ts.versionMajorMinor);
-	if (tsVersion < 4.8) {
-		// decorators don't exist in the declaration files anyway so we can ignore them
-		return func([], ...args);
-	} else {
-		// just pass args as is in
-		// eslint-disable-next-line prefer-spread
-		return func.apply(null, args as unknown as Parameters<typeof func>);
-	}
-}
-
 // eslint-disable-next-line complexity
 function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: ModifiersMap): ts.Node {
 	const modifiers = modifiersMapToArray(modifiersMap);
@@ -360,9 +342,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isClassDeclaration(node)) {
-		return prependEmptyDecoratorsIfNeeded(
-			// eslint-disable-next-line deprecation/deprecation
-			ts.factory.createClassDeclaration,
+		return ts.factory.createClassDeclaration(
 			modifiers,
 			node.name,
 			node.typeParameters,
@@ -372,9 +352,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isClassExpression(node)) {
-		return prependEmptyDecoratorsIfNeeded(
-			// eslint-disable-next-line deprecation/deprecation
-			ts.factory.createClassExpression,
+		return ts.factory.createClassExpression(
 			modifiers,
 			node.name,
 			node.typeParameters,
@@ -384,9 +362,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isEnumDeclaration(node)) {
-		return prependEmptyDecoratorsIfNeeded(
-			// eslint-disable-next-line deprecation/deprecation
-			ts.factory.createEnumDeclaration,
+		return ts.factory.createEnumDeclaration(
 			modifiers,
 			node.name,
 			node.members
@@ -394,9 +370,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isExportAssignment(node)) {
-		return prependEmptyDecoratorsIfNeeded(
-			// eslint-disable-next-line deprecation/deprecation
-			ts.factory.createExportAssignment,
+		return ts.factory.createExportAssignment(
 			modifiers,
 			node.isExportEquals,
 			node.expression
@@ -404,9 +378,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isExportDeclaration(node)) {
-		return prependEmptyDecoratorsIfNeeded(
-			// eslint-disable-next-line deprecation/deprecation
-			ts.factory.createExportDeclaration,
+		return ts.factory.createExportDeclaration(
 			modifiers,
 			node.isTypeOnly,
 			node.exportClause,
@@ -416,9 +388,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isFunctionDeclaration(node)) {
-		return prependEmptyDecoratorsIfNeeded(
-			// eslint-disable-next-line deprecation/deprecation
-			ts.factory.createFunctionDeclaration,
+		return ts.factory.createFunctionDeclaration(
 			modifiers,
 			node.asteriskToken,
 			node.name,
@@ -442,9 +412,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isImportDeclaration(node)) {
-		return prependEmptyDecoratorsIfNeeded(
-			// eslint-disable-next-line deprecation/deprecation
-			ts.factory.createImportDeclaration,
+		return ts.factory.createImportDeclaration(
 			modifiers,
 			node.importClause,
 			node.moduleSpecifier,
@@ -453,9 +421,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isImportEqualsDeclaration(node)) {
-		return prependEmptyDecoratorsIfNeeded(
-			// eslint-disable-next-line deprecation/deprecation
-			ts.factory.createImportEqualsDeclaration,
+		return ts.factory.createImportEqualsDeclaration(
 			modifiers,
 			node.isTypeOnly,
 			node.name,
@@ -464,9 +430,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isInterfaceDeclaration(node)) {
-		return prependEmptyDecoratorsIfNeeded(
-			// eslint-disable-next-line deprecation/deprecation
-			ts.factory.createInterfaceDeclaration,
+		return ts.factory.createInterfaceDeclaration(
 			modifiers,
 			node.name,
 			node.typeParameters,
@@ -476,9 +440,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isModuleDeclaration(node)) {
-		return prependEmptyDecoratorsIfNeeded(
-			// eslint-disable-next-line deprecation/deprecation
-			ts.factory.createModuleDeclaration,
+		return ts.factory.createModuleDeclaration(
 			modifiers,
 			node.name,
 			node.body,
@@ -487,9 +449,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isTypeAliasDeclaration(node)) {
-		return prependEmptyDecoratorsIfNeeded(
-			// eslint-disable-next-line deprecation/deprecation
-			ts.factory.createTypeAliasDeclaration,
+		return ts.factory.createTypeAliasDeclaration(
 			modifiers,
 			node.name,
 			node.typeParameters,
@@ -508,26 +468,10 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 If you're seeing this error, please report a bug on https://github.com/timocov/dts-bundle-generator/issues`);
 }
 
-interface TsCompatWith48 {
-	canHaveModifiers?(node: ts.Node): boolean;
-	getModifiers?(node: ts.Node): readonly ts.Modifier[] | undefined;
-}
-
-function canHaveModifiersCompat(node: ts.Node): boolean {
-	const compatTs = ts as TsCompatWith48;
-	return compatTs.canHaveModifiers !== undefined ? compatTs.canHaveModifiers(node) : true;
-}
-
-function getModifiersCompat(node: ts.Node): readonly ts.Modifier[] | undefined {
-	const compatTs = ts as TsCompatWith48;
-	// eslint-disable-next-line deprecation/deprecation
-	return compatTs.getModifiers !== undefined ? compatTs.getModifiers(node) : node.modifiers as readonly ts.Modifier[] | undefined;
-}
-
 export function getModifiers(node: ts.Node): readonly ts.Modifier[] | undefined {
-	if (!canHaveModifiersCompat(node)) {
+	if (!ts.canHaveModifiers(node)) {
 		throw new Error(`Node kind=${ts.SyntaxKind[node.kind]} cannot have modifiers`);
 	}
 
-	return getModifiersCompat(node);
+	return ts.getModifiers(node);
 }
