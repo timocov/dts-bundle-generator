@@ -62,10 +62,14 @@ export class TypesUsageEvaluator {
 			for (const statement of node.body.statements) {
 				this.computeUsageForNode(statement);
 			}
-		} else if (isNodeNamedDeclaration(node) && node.name) {
+		}
+
+		if (isNodeNamedDeclaration(node) && node.name) {
 			const childSymbol = this.getSymbol(node.name);
 			this.computeUsagesRecursively(node, childSymbol);
-		} else if (ts.isVariableStatement(node)) {
+		}
+
+		if (ts.isVariableStatement(node)) {
 			for (const varDeclaration of node.declarationList.declarations) {
 				this.computeUsageForNode(varDeclaration);
 			}
