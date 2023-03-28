@@ -38,9 +38,9 @@ export function compileDts(rootFiles: readonly string[], preferredConfigPath?: s
 		host.realpath = (p: string) => p;
 	}
 
-	host.resolveModuleNames = (moduleNames: string[], containingFile: string) => {
-		return moduleNames.map((moduleName: string) => {
-			const resolvedModule = ts.resolveModuleName(moduleName, containingFile, compilerOptions, host).resolvedModule;
+	host.resolveModuleNameLiterals = (moduleLiterals: readonly ts.StringLiteralLike[], containingFile: string): ts.ResolvedModuleWithFailedLookupLocations[] => {
+		return moduleLiterals.map((moduleLiteral: ts.StringLiteralLike): ts.ResolvedModuleWithFailedLookupLocations => {
+			const resolvedModule = ts.resolveModuleName(moduleLiteral.text, containingFile, compilerOptions, host).resolvedModule;
 			if (resolvedModule && !resolvedModule.isExternalLibraryImport && resolvedModule.extension !== ts.Extension.Dts) {
 				resolvedModule.extension = ts.Extension.Dts;
 
@@ -49,7 +49,7 @@ export function compileDts(rootFiles: readonly string[], preferredConfigPath?: s
 				resolvedModule.resolvedFileName = changeExtensionToDts(resolvedModule.resolvedFileName);
 			}
 
-			return resolvedModule as ts.ResolvedModule;
+			return { resolvedModule };
 		});
 	};
 

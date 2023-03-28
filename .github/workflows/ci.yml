@@ -32,7 +32,7 @@ jobs:
       with:
         node-version: 14
     - run: npm install
-    - run: npm install typescript@4.5.2
+    - run: npm install typescript@5.0.2
     - run: npm run tsc
 
   ts-current:
