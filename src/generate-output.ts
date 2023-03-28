@@ -176,6 +176,7 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 						|| ts.isFunctionDeclaration(node)
 						|| ts.isVariableStatement(node)
 						|| ts.isEnumDeclaration(node)
+						|| ts.isModuleDeclaration(node)
 					)
 				) {
 					modifiersMap[ts.SyntaxKind.DeclareKeyword] = true;
