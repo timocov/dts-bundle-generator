@@ -182,9 +182,17 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		};
 
 		const outputOptions: OutputOptions = entry.output || {};
+		const inlineDeclareGlobals = Boolean(outputOptions.inlineDeclareGlobals);
 
 		const updateResultCommonParams = {
-			isStatementUsed: (statement: ts.Statement | ts.SourceFile) => isNodeUsed(statement, rootFileExportSymbols, typesUsageEvaluator, typeChecker),
+			isStatementUsed: (statement: ts.Statement | ts.SourceFile) => isNodeUsed(
+				statement,
+				rootFileExportSymbols,
+				typesUsageEvaluator,
+				typeChecker,
+				criteria,
+				inlineDeclareGlobals
+			),
 			shouldStatementBeImported: (statement: ts.DeclarationStatement) => {
 				return shouldNodeBeImported(
 					statement,
@@ -192,10 +200,11 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					typesUsageEvaluator,
 					typeChecker,
 					program.isSourceFileDefaultLibrary.bind(program),
-					criteria
+					criteria,
+					inlineDeclareGlobals
 				);
 			},
-			shouldDeclareGlobalBeInlined: (currentModule: ModuleInfo) => Boolean(outputOptions.inlineDeclareGlobals) && currentModule.type === ModuleType.ShouldBeInlined,
+			shouldDeclareGlobalBeInlined: (currentModule: ModuleInfo) => inlineDeclareGlobals && currentModule.type === ModuleType.ShouldBeInlined,
 			shouldDeclareExternalModuleBeInlined: () => Boolean(outputOptions.inlineDeclareExternals),
 			getModuleInfo: (fileNameOrModuleLike: string | ts.SourceFile | ts.ModuleDeclaration) => {
 				if (typeof fileNameOrModuleLike !== 'string') {
@@ -220,7 +229,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					rootFileExportSymbols,
 					typesUsageEvaluator,
 					typeChecker,
-					criteria
+					criteria,
+					inlineDeclareGlobals
 				);
 			},
 			areDeclarationSame: (left: ts.NamedDeclaration, right: ts.NamedDeclaration) => {
@@ -659,10 +669,11 @@ function getDeclarationUsagesSourceFiles(
 	rootFileExports: readonly ts.Symbol[],
 	typesUsageEvaluator: TypesUsageEvaluator,
 	typeChecker: ts.TypeChecker,
-	criteria: ModuleCriteria
+	criteria: ModuleCriteria,
+	withGlobals: boolean
 ): Set<ts.SourceFile | ts.ModuleDeclaration> {
 	return new Set(
-		getExportedSymbolsUsingStatement(declaration, rootFileExports, typesUsageEvaluator, typeChecker, criteria)
+		getExportedSymbolsUsingStatement(declaration, rootFileExports, typesUsageEvaluator, typeChecker, criteria, withGlobals)
 			.map((symbol: ts.Symbol) => getDeclarationsForSymbol(symbol))
 			.reduce((acc: ts.Declaration[], val: ts.Declaration[]) => acc.concat(val), [])
 			.map(getClosestModuleLikeNode)
@@ -784,11 +795,31 @@ function getRootSourceFile(program: ts.Program, rootFileName: string): ts.Source
 	return sourceFile;
 }
 
+function getGlobalSymbolsUsingSymbol(
+	symbol: ts.Symbol,
+	typesUsageEvaluator: TypesUsageEvaluator,
+	criteria: ModuleCriteria
+): ts.Symbol[] {
+	return Array.from(typesUsageEvaluator.getSymbolsUsingSymbol(symbol) ?? []).filter((usedInSymbol: ts.Symbol) => {
+		if (usedInSymbol.escapedName !== ts.InternalSymbolName.Global) {
+			return false;
+		}
+
+		return getDeclarationsForSymbol(usedInSymbol).some((decl: ts.Declaration) => {
+			const closestModuleLike = getClosestModuleLikeNode(decl);
+			const moduleInfo = getModuleLikeInfo(closestModuleLike, criteria);
+			return moduleInfo.type === ModuleType.ShouldBeInlined;
+		});
+	});
+}
+
 function isNodeUsed(
 	node: ts.Node,
 	rootFileExports: readonly ts.Symbol[],
 	typesUsageEvaluator: TypesUsageEvaluator,
-	typeChecker: ts.TypeChecker
+	typeChecker: ts.TypeChecker,
+	criteria: ModuleCriteria,
+	withGlobals: boolean
 ): boolean {
 	if (isNodeNamedDeclaration(node) || ts.isSourceFile(node)) {
 		const nodeSymbol = getNodeSymbol(node, typeChecker);
@@ -796,23 +827,30 @@ function isNodeUsed(
 			return false;
 		}
 
-		return rootFileExports.some((rootExport: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(nodeSymbol, rootExport));
+		const nodeUsedByDirectExports = rootFileExports.some((rootExport: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(nodeSymbol, rootExport));
+		if (nodeUsedByDirectExports) {
+			return true;
+		}
+
+		return withGlobals && getGlobalSymbolsUsingSymbol(nodeSymbol, typesUsageEvaluator, criteria).length !== 0;
 	} else if (ts.isVariableStatement(node)) {
 		return node.declarationList.declarations.some((declaration: ts.VariableDeclaration) => {
-			return isNodeUsed(declaration, rootFileExports, typesUsageEvaluator, typeChecker);
+			return isNodeUsed(declaration, rootFileExports, typesUsageEvaluator, typeChecker, criteria, withGlobals);
 		});
 	}
 
 	return false;
 }
 
+// eslint-disable-next-line max-params
 function shouldNodeBeImported(
 	node: ts.NamedDeclaration,
 	rootFileExports: readonly ts.Symbol[],
 	typesUsageEvaluator: TypesUsageEvaluator,
 	typeChecker: ts.TypeChecker,
 	isDefaultLibrary: (sourceFile: ts.SourceFile) => boolean,
-	criteria: ModuleCriteria
+	criteria: ModuleCriteria,
+	withGlobals: boolean
 ): boolean {
 	const nodeSymbol = getNodeSymbol(node, typeChecker);
 	if (nodeSymbol === null) {
@@ -844,7 +882,8 @@ function shouldNodeBeImported(
 		rootFileExports,
 		typesUsageEvaluator,
 		typeChecker,
-		criteria
+		criteria,
+		withGlobals
 	).length !== 0;
 }
 
@@ -853,7 +892,8 @@ function getExportedSymbolsUsingStatement(
 	rootFileExports: readonly ts.Symbol[],
 	typesUsageEvaluator: TypesUsageEvaluator,
 	typeChecker: ts.TypeChecker,
-	criteria: ModuleCriteria
+	criteria: ModuleCriteria,
+	withGlobals: boolean
 ): readonly ts.Symbol[] {
 	const nodeSymbol = getNodeSymbol(node, typeChecker);
 	if (nodeSymbol === null) {
@@ -865,18 +905,22 @@ function getExportedSymbolsUsingStatement(
 		throw new Error('Something went wrong - value cannot be null');
 	}
 
-	// we should import only symbols which are used in types directly
-	return Array.from(symbolsUsingNode).filter((symbol: ts.Symbol) => {
-		const symbolsDeclarations = getDeclarationsForSymbol(symbol);
-		if (symbolsDeclarations.length === 0 || symbolsDeclarations.every((decl: ts.Declaration) => {
-			// we need to make sure that at least 1 declaration is inlined
-			return getModuleLikeInfo(getClosestModuleLikeNode(decl), criteria).type !== ModuleType.ShouldBeInlined;
-		})) {
-			return false;
-		}
+	return [
+		// symbols which are used in types directly
+		...Array.from(symbolsUsingNode).filter((symbol: ts.Symbol) => {
+			const symbolsDeclarations = getDeclarationsForSymbol(symbol);
+			if (symbolsDeclarations.length === 0 || symbolsDeclarations.every((decl: ts.Declaration) => {
+				// we need to make sure that at least 1 declaration is inlined
+				return getModuleLikeInfo(getClosestModuleLikeNode(decl), criteria).type !== ModuleType.ShouldBeInlined;
+			})) {
+				return false;
+			}
 
-		return rootFileExports.some((rootSymbol: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(symbol, rootSymbol));
-	});
+			return rootFileExports.some((rootSymbol: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(symbol, rootSymbol));
+		}),
+		// symbols which are used in global types i.e. in `declare global`s
+		...(withGlobals ? getGlobalSymbolsUsingSymbol(nodeSymbol, typesUsageEvaluator, criteria) : []),
+	];
 }
 
 function getNodeSymbol(node: ts.Node, typeChecker: ts.TypeChecker): ts.Symbol | null {
