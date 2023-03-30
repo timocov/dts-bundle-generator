@@ -1,5 +1,3 @@
-// tslint:disable:strict-type-predicates
-
 export interface PrimitiveValues {
 	boolean: false;
 	requiredBoolean: true;
