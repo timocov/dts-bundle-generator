@@ -229,13 +229,17 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				return leftSymbols.some((leftSymbol: ts.Symbol) => rightSymbols.includes(leftSymbol));
 			},
-			resolveReferencedModule: (node: ts.ExportDeclaration | ts.ModuleDeclaration | ts.ImportTypeNode) => {
+			resolveReferencedModule: (node: NodeWithReferencedModule) => {
 				let moduleName: ts.Expression | ts.LiteralTypeNode | undefined;
 
-				if (ts.isExportDeclaration(node)) {
+				if (ts.isExportDeclaration(node) || ts.isImportDeclaration(node)) {
 					moduleName = node.moduleSpecifier;
 				} else if (ts.isModuleDeclaration(node)) {
 					moduleName = node.name;
+				} else if (ts.isImportEqualsDeclaration(node)) {
+					if (ts.isExternalModuleReference(node.moduleReference)) {
+						moduleName = node.moduleReference.expression;
+					}
 				} else if (ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) {
 					moduleName = node.argument.literal;
 				}
@@ -390,6 +394,8 @@ interface CollectingResult {
 	renamedExports: string[];
 }
 
+type NodeWithReferencedModule = ts.ExportDeclaration | ts.ModuleDeclaration | ts.ImportTypeNode | ts.ImportEqualsDeclaration | ts.ImportDeclaration;
+
 interface UpdateParams {
 	currentModule: ModuleInfo;
 	statements: readonly ts.Statement[];
@@ -406,7 +412,7 @@ interface UpdateParams {
 	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
 	getDeclarationUsagesSourceFiles(declaration: ts.NamedDeclaration): Set<ts.SourceFile | ts.ModuleDeclaration>;
 	areDeclarationSame(a: ts.NamedDeclaration, b: ts.NamedDeclaration): boolean;
-	resolveReferencedModule(node: ts.ExportDeclaration | ts.ModuleDeclaration | ts.ImportTypeNode): ts.SourceFile | ts.ModuleDeclaration | null;
+	resolveReferencedModule(node: NodeWithReferencedModule): ts.SourceFile | ts.ModuleDeclaration | null;
 }
 
 const skippedNodes = [
@@ -548,6 +554,19 @@ function updateResultForExternalEqExportAssignment(exportAssignment: ts.ExportAs
 	}
 }
 
+function getReferencedModuleInfo(moduleDecl: NodeWithReferencedModule, params: UpdateParams): ModuleInfo | null {
+	const referencedModule = params.resolveReferencedModule(moduleDecl);
+	if (referencedModule === null) {
+		return null;
+	}
+
+	const moduleFilePath = ts.isSourceFile(referencedModule)
+		? referencedModule.fileName
+		: resolveModuleFileName(referencedModule.getSourceFile().fileName, referencedModule.name.text);
+
+	return params.getModuleInfo(moduleFilePath);
+}
+
 function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, params: UpdateParams, result: CollectingResult): void {
 	if (moduleDecl.body === undefined || !ts.isModuleBlock(moduleDecl.body)) {
 		return;
@@ -559,16 +578,12 @@ function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, para
 		result.statements.push(moduleDecl);
 		return;
 	} else {
-		const referencedModule = params.resolveReferencedModule(moduleDecl);
-		if (referencedModule === null) {
+		const referencedModuleInfo = getReferencedModuleInfo(moduleDecl, params);
+		if (referencedModuleInfo === null) {
 			return;
 		}
 
-		const moduleFilePath = ts.isSourceFile(referencedModule)
-			? referencedModule.fileName
-			: resolveModuleFileName(referencedModule.getSourceFile().fileName, referencedModule.name.text);
-
-		moduleInfo = params.getModuleInfo(moduleFilePath);
+		moduleInfo = referencedModuleInfo;
 	}
 
 	// if we have declaration of external module inside internal one
@@ -676,23 +691,29 @@ function getImportModuleName(imp: ts.ImportEqualsDeclaration | ts.ImportDeclarat
 	return null;
 }
 
-function addImport(statement: ts.DeclarationStatement, params: UpdateParams, imports: CollectingResult['imports']): void {
-	if (statement.name === undefined) {
+function addImport(statement: ts.DeclarationStatement | ts.SourceFile, params: UpdateParams, imports: CollectingResult['imports']): void {
+	if (!ts.isSourceFile(statement) && statement.name === undefined) {
 		throw new Error(`Import/usage unnamed declaration: ${statement.getText()}`);
 	}
 
 	params.getDeclarationUsagesSourceFiles(statement).forEach((sourceFile: ts.SourceFile | ts.ModuleDeclaration) => {
-		const statements = ts.isSourceFile(sourceFile)
+		const sourceFileStatements = ts.isSourceFile(sourceFile)
 			? sourceFile.statements
 			: (sourceFile.body as ts.ModuleBlock).statements;
 
-		statements.forEach((st: ts.Statement) => {
+		sourceFileStatements.forEach((st: ts.Statement) => {
 			if (!ts.isImportEqualsDeclaration(st) && !ts.isImportDeclaration(st)) {
 				return;
 			}
 
 			const importModuleSpecifier = getImportModuleName(st);
 			if (importModuleSpecifier === null) {
+				return;
+			}
+
+			const referencedModuleInfo = getReferencedModuleInfo(st, params);
+			// if a referenced module should be inlined we can just ignore it
+			if (referencedModuleInfo === null || referencedModuleInfo.type !== ModuleType.ShouldBeImported) {
 				return;
 			}
 
@@ -769,7 +790,7 @@ function isNodeUsed(
 	typesUsageEvaluator: TypesUsageEvaluator,
 	typeChecker: ts.TypeChecker
 ): boolean {
-	if (isNodeNamedDeclaration(node)) {
+	if (isNodeNamedDeclaration(node) || ts.isSourceFile(node)) {
 		const nodeSymbol = getNodeSymbol(node, typeChecker);
 		if (nodeSymbol === null) {
 			return false;
@@ -859,6 +880,16 @@ function getExportedSymbolsUsingStatement(
 }
 
 function getNodeSymbol(node: ts.Node, typeChecker: ts.TypeChecker): ts.Symbol | null {
+	if (ts.isSourceFile(node)) {
+		const fileSymbol = typeChecker.getSymbolAtLocation(node);
+		// a source file might not have a symbol in case of no exports in that file
+		if (fileSymbol === undefined) {
+			return null;
+		}
+
+		return getActualSymbol(fileSymbol, typeChecker);
+	}
+
 	const nodeName = getNodeName(node);
 	if (nodeName === undefined) {
 		return null;
