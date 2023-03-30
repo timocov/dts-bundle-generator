@@ -148,6 +148,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker);
 
+	let uniqueNameCounter = 1;
+
 	return entries.map((entry: EntryPointConfig) => {
 		normalLog(`Processing ${entry.filePath}`);
 
@@ -179,10 +181,23 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			imports: new Map(),
 			statements: [],
 			renamedExports: [],
+			declarationsRenaming: new Map(),
 		};
 
 		const outputOptions: OutputOptions = entry.output || {};
 		const inlineDeclareGlobals = Boolean(outputOptions.inlineDeclareGlobals);
+
+		const needStripDefaultKeywordForStatement = (statement: ts.Statement | ts.NamedDeclaration) => {
+			const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
+			// a statement should have a 'default' keyword only if it it declared in the root source file
+			// otherwise it will be re-exported via `export { name as default }`
+			const defaultExport = statementExports.find((exp: SourceFileExport) => exp.exportedName === 'default');
+
+			return {
+				needStrip: defaultExport === undefined || defaultExport.originalName !== 'default' && statement.getSourceFile() !== rootSourceFile,
+				newName: isNodeNamedDeclaration(statement) ? collectionResult.declarationsRenaming.get(statement) : undefined,
+			};
+		};
 
 		const updateResultCommonParams = {
 			isStatementUsed: (statement: ts.Statement | ts.SourceFile) => isNodeUsed(
@@ -213,7 +228,31 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				return getModuleInfo(fileNameOrModuleLike, criteria);
 			},
-			resolveIdentifier: (identifier: ts.Identifier) => resolveIdentifier(typeChecker, identifier),
+			resolveIdentifier: (identifier: ts.Identifier) => {
+				const resolvedDeclaration = resolveIdentifier(typeChecker, identifier);
+				if (resolvedDeclaration === undefined) {
+					return undefined;
+				}
+
+				const storedValue = collectionResult.declarationsRenaming.get(resolvedDeclaration);
+				if (storedValue !== undefined) {
+					return storedValue;
+				}
+
+				let identifierName = resolvedDeclaration.name?.getText();
+				if (
+					hasNodeModifier(resolvedDeclaration, ts.SyntaxKind.DefaultKeyword)
+					&& resolvedDeclaration.name === undefined
+					&& needStripDefaultKeywordForStatement(resolvedDeclaration).needStrip
+				) {
+					// this means that a node is default-exported from its module but from entry point it is exported with a different name(s)
+					// so we have to generate some random name and then re-export it with really exported names
+					identifierName = `__DTS_BUNDLE_GENERATOR__GENERATED_NAME$${uniqueNameCounter++}`;
+					collectionResult.declarationsRenaming.set(resolvedDeclaration, identifierName);
+				}
+
+				return identifierName;
+			},
 			getDeclarationsForExportedAssignment: (exportAssignment: ts.ExportAssignment) => {
 				const symbolForExpression = typeChecker.getSymbolAtLocation(exportAssignment.expression);
 				if (symbolForExpression === undefined) {
@@ -314,13 +353,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		return generateOutput(
 			{
 				...collectionResult,
-				needStripDefaultKeywordForStatement: (statement: ts.Statement) => {
-					const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
-					// a statement should have a 'default' keyword only if it it declared in the root source file
-					// otherwise it will be re-exported via `export { name as default }`
-					const defaultExport = statementExports.find((exp: SourceFileExport) => exp.exportedName === 'default');
-					return defaultExport === undefined || defaultExport.originalName !== 'default' && statement.getSourceFile() !== rootSourceFile;
-				},
+				needStripDefaultKeywordForStatement,
 				shouldStatementHasExportKeyword: (statement: ts.Statement) => {
 					const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
 
@@ -328,13 +361,13 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					// an export keyword (like interface, type, etc) otherwise, if there are
 					// only re-exports with renaming (like export { foo as bar }) we don't need
 					// to put export keyword for this statement because we'll re-export it in the way
-					const hasStatementedDefaultKeyword = hasNodeModifier(statement, ts.SyntaxKind.DefaultKeyword);
+					const hasStatementDefaultKeyword = hasNodeModifier(statement, ts.SyntaxKind.DefaultKeyword);
 					let result = statementExports.length === 0 || statementExports.find((exp: SourceFileExport) => {
 						// "directly" means "without renaming" or "without additional node/statement"
 						// for instance, `class A {} export default A;` - here `statement` is `class A {}`
 						// it's default exported by `export default A;`, but class' statement itself doesn't have `export` keyword
 						// so we shouldn't add this either
-						const shouldBeDefaultExportedDirectly = exp.exportedName === 'default' && hasStatementedDefaultKeyword && statement.getSourceFile() === rootSourceFile;
+						const shouldBeDefaultExportedDirectly = exp.exportedName === 'default' && hasStatementDefaultKeyword && statement.getSourceFile() === rootSourceFile;
 						return shouldBeDefaultExportedDirectly || exp.exportedName === exp.originalName;
 					}) !== undefined;
 
@@ -402,6 +435,7 @@ interface CollectingResult {
 	imports: Map<string, ModuleImportsSet>;
 	statements: ts.Statement[];
 	renamedExports: string[];
+	declarationsRenaming: Map<ts.NamedDeclaration, string>;
 }
 
 type NodeWithReferencedModule = ts.ExportDeclaration | ts.ModuleDeclaration | ts.ImportTypeNode | ts.ImportEqualsDeclaration | ts.ImportDeclaration;
@@ -418,7 +452,7 @@ interface UpdateParams {
 	 * Returns original name which is referenced by passed identifier.
 	 * Could be used to resolve "default" identifier in exports.
 	 */
-	resolveIdentifier(identifier: ts.NamedDeclaration['name']): ts.NamedDeclaration['name'];
+	resolveIdentifier(identifier: ts.NamedDeclaration['name']): string | undefined;
 	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
 	getDeclarationUsagesSourceFiles(declaration: ts.NamedDeclaration): Set<ts.SourceFile | ts.ModuleDeclaration>;
 	areDeclarationSame(a: ts.NamedDeclaration, b: ts.NamedDeclaration): boolean;
@@ -512,12 +546,11 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 				continue;
 			}
 
-			const exportedNameNode = params.resolveIdentifier(statement.expression);
-			if (exportedNameNode === undefined) {
+			const originalName = params.resolveIdentifier(statement.expression);
+			if (originalName === undefined) {
 				continue;
 			}
 
-			const originalName = exportedNameNode.getText();
 			result.renamedExports.push(`${originalName} as default`);
 			continue;
 		}
@@ -525,12 +558,11 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 		// export { foo, bar, baz as fooBar }
 		if (ts.isExportDeclaration(statement) && statement.exportClause !== undefined && ts.isNamedExports(statement.exportClause)) {
 			for (const exportItem of statement.exportClause.elements) {
-				const exportedNameNode = params.resolveIdentifier(exportItem.name);
-				if (exportedNameNode === undefined) {
+				const originalName = params.resolveIdentifier(exportItem.name);
+				if (originalName === undefined) {
 					continue;
 				}
 
-				const originalName = exportedNameNode.getText();
 				const exportedName = exportItem.name.getText();
 
 				if (originalName !== exportedName) {
