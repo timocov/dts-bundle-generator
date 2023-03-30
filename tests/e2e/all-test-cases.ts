@@ -15,6 +15,9 @@ interface TestCase {
 
 const testCasesDir = path.resolve(__dirname, 'test-cases');
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+const currentPackageVersion = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), { encoding: 'utf-8' })).version as string;
+
 function isDirectory(filePath: string): boolean {
 	return fs.lstatSync(path.resolve(testCasesDir, filePath)).isDirectory();
 }
@@ -45,7 +48,7 @@ function getTestCases(): TestCase[] {
 				inputFileName,
 				// eslint-disable-next-line @typescript-eslint/no-var-requires
 				config: require(path.resolve(testCaseDir, 'config.ts')) as TestCaseConfig,
-				outputFileContent: prepareString(fs.readFileSync(outputFileName, 'utf-8')),
+				outputFileContent: prepareString(fs.readFileSync(outputFileName, 'utf-8')).replace(/\$PACKAGE_CURRENT_VERSION/g, currentPackageVersion),
 			};
 
 			return result;
