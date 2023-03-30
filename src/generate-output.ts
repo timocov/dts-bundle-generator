@@ -17,9 +17,14 @@ export interface OutputParams extends OutputHelpers {
 	renamedExports: string[];
 }
 
+export interface NeedStripDefaultKeywordResult {
+	needStrip: boolean;
+	newName?: string;
+}
+
 export interface OutputHelpers {
 	shouldStatementHasExportKeyword(statement: ts.Statement): boolean;
-	needStripDefaultKeywordForStatement(statement: ts.Statement): boolean;
+	needStripDefaultKeywordForStatement(statement: ts.Statement): NeedStripDefaultKeywordResult;
 	needStripConstFromConstEnum(constEnum: ts.EnumDeclaration): boolean;
 	needStripImportFromImportTypeNode(importType: ts.ImportTypeNode): boolean;
 }
@@ -119,7 +124,6 @@ function compareStatementText(a: StatementText, b: StatementText): number {
 
 function getStatementText(statement: ts.Statement, includeSortingValue: boolean, helpers: OutputHelpers): StatementText {
 	const shouldStatementHasExportKeyword = helpers.shouldStatementHasExportKeyword(statement);
-	const needStripDefaultKeyword = helpers.needStripDefaultKeywordForStatement(statement);
 
 	const printer = ts.createPrinter(
 		{
@@ -152,13 +156,20 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 					modifiersMap[ts.SyntaxKind.ConstKeyword] = false;
 				}
 
+				let newName: string | undefined;
+
 				// strip the `default` keyword from node
-				if (modifiersMap[ts.SyntaxKind.DefaultKeyword] && needStripDefaultKeyword) {
-					// we need just to remove `default` from any node except class node
-					// for classes we need to replace `default` with `declare` instead
-					modifiersMap[ts.SyntaxKind.DefaultKeyword] = false;
-					if (ts.isClassDeclaration(node)) {
-						modifiersMap[ts.SyntaxKind.DeclareKeyword] = true;
+				if (modifiersMap[ts.SyntaxKind.DefaultKeyword]) {
+					const needStripDefaultKeywordResult = helpers.needStripDefaultKeywordForStatement(statement);
+					if (needStripDefaultKeywordResult.needStrip) {
+						// we need just to remove `default` from any node except class node
+						// for classes we need to replace `default` with `declare` instead
+						modifiersMap[ts.SyntaxKind.DefaultKeyword] = false;
+						if (ts.isClassDeclaration(node)) {
+							modifiersMap[ts.SyntaxKind.DeclareKeyword] = true;
+						}
+
+						newName = needStripDefaultKeywordResult.newName;
 					}
 				}
 
@@ -182,7 +193,7 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 					modifiersMap[ts.SyntaxKind.DeclareKeyword] = true;
 				}
 
-				return recreateRootLevelNodeWithModifiers(node, modifiersMap, shouldStatementHasExportKeyword);
+				return recreateRootLevelNodeWithModifiers(node, modifiersMap, newName, shouldStatementHasExportKeyword);
 			},
 		}
 	);

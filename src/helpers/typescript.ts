@@ -194,13 +194,13 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 		exp.symbol = getActualSymbol(exp.symbol, typeChecker);
 
 		const resolvedIdentifier = resolveIdentifierBySymbol(exp.symbol);
-		exp.originalName = resolvedIdentifier !== undefined ? resolvedIdentifier.getText() : exp.symbol.escapedName as string;
+		exp.originalName = resolvedIdentifier?.name !== undefined ? resolvedIdentifier.name.getText() : exp.symbol.escapedName as string;
 	});
 
 	return result;
 }
 
-export function resolveIdentifier(typeChecker: ts.TypeChecker, identifier: ts.Identifier): ts.NamedDeclaration['name'] {
+export function resolveIdentifier(typeChecker: ts.TypeChecker, identifier: ts.Identifier): ts.NamedDeclaration | undefined {
 	const symbol = getDeclarationNameSymbol(identifier, typeChecker);
 	if (symbol === null) {
 		return undefined;
@@ -209,7 +209,7 @@ export function resolveIdentifier(typeChecker: ts.TypeChecker, identifier: ts.Id
 	return resolveIdentifierBySymbol(symbol);
 }
 
-function resolveIdentifierBySymbol(identifierSymbol: ts.Symbol): ts.NamedDeclaration['name'] {
+function resolveIdentifierBySymbol(identifierSymbol: ts.Symbol): ts.NamedDeclaration | undefined {
 	const declarations = getDeclarationsForSymbol(identifierSymbol);
 	if (declarations.length === 0) {
 		return undefined;
@@ -220,13 +220,13 @@ function resolveIdentifierBySymbol(identifierSymbol: ts.Symbol): ts.NamedDeclara
 		return undefined;
 	}
 
-	return decl.name;
+	return decl;
 }
 
 export function getExportsForStatement(
 	exportedSymbols: readonly SourceFileExport[],
 	typeChecker: ts.TypeChecker,
-	statement: ts.Statement
+	statement: ts.Statement | ts.NamedDeclaration
 ): SourceFileExport[] {
 	if (ts.isVariableStatement(statement)) {
 		if (statement.declarationList.declarations.length === 0) {
@@ -316,8 +316,8 @@ export function modifiersMapToArray(modifiersMap: ModifiersMap): ts.Modifier[] {
 		});
 }
 
-export function recreateRootLevelNodeWithModifiers(node: ts.Node, modifiersMap: ModifiersMap, keepComments: boolean = true): ts.Node {
-	const newNode = recreateRootLevelNodeWithModifiersImpl(node, modifiersMap);
+export function recreateRootLevelNodeWithModifiers(node: ts.Node, modifiersMap: ModifiersMap, newName?: string, keepComments: boolean = true): ts.Node {
+	const newNode = recreateRootLevelNodeWithModifiersImpl(node, modifiersMap, newName);
 
 	if (keepComments) {
 		ts.setCommentRange(newNode, ts.getCommentRange(node));
@@ -327,7 +327,7 @@ export function recreateRootLevelNodeWithModifiers(node: ts.Node, modifiersMap: 
 }
 
 // eslint-disable-next-line complexity
-function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: ModifiersMap): ts.Node {
+function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: ModifiersMap, newName?: string): ts.Node {
 	const modifiers = modifiersMapToArray(modifiersMap);
 
 	if (ts.isArrowFunction(node)) {
@@ -344,7 +344,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isClassDeclaration(node)) {
 		return ts.factory.createClassDeclaration(
 			modifiers,
-			node.name,
+			newName || node.name,
 			node.typeParameters,
 			node.heritageClauses,
 			node.members
@@ -354,7 +354,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isClassExpression(node)) {
 		return ts.factory.createClassExpression(
 			modifiers,
-			node.name,
+			newName || node.name,
 			node.typeParameters,
 			node.heritageClauses,
 			node.members
@@ -364,7 +364,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isEnumDeclaration(node)) {
 		return ts.factory.createEnumDeclaration(
 			modifiers,
-			node.name,
+			newName || node.name,
 			node.members
 		);
 	}
@@ -391,7 +391,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 		return ts.factory.createFunctionDeclaration(
 			modifiers,
 			node.asteriskToken,
-			node.name,
+			newName || node.name,
 			node.typeParameters,
 			node.parameters,
 			node.type,
@@ -403,7 +403,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 		return ts.factory.createFunctionExpression(
 			modifiers,
 			node.asteriskToken,
-			node.name,
+			newName || node.name,
 			node.typeParameters,
 			node.parameters,
 			node.type,
@@ -424,7 +424,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 		return ts.factory.createImportEqualsDeclaration(
 			modifiers,
 			node.isTypeOnly,
-			node.name,
+			newName || node.name,
 			node.moduleReference
 		);
 	}
@@ -432,7 +432,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isInterfaceDeclaration(node)) {
 		return ts.factory.createInterfaceDeclaration(
 			modifiers,
-			node.name,
+			newName || node.name,
 			node.typeParameters,
 			node.heritageClauses,
 			node.members
@@ -451,7 +451,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isTypeAliasDeclaration(node)) {
 		return ts.factory.createTypeAliasDeclaration(
 			modifiers,
-			node.name,
+			newName || node.name,
 			node.typeParameters,
 			node.type
 		);
@@ -470,7 +470,7 @@ If you're seeing this error, please report a bug on https://github.com/timocov/d
 
 export function getModifiers(node: ts.Node): readonly ts.Modifier[] | undefined {
 	if (!ts.canHaveModifiers(node)) {
-		throw new Error(`Node kind=${ts.SyntaxKind[node.kind]} cannot have modifiers`);
+		return undefined;
 	}
 
 	return ts.getModifiers(node);
