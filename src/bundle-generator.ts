@@ -475,7 +475,14 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 
 		if (isDeclareModule(statement)) {
 			updateResultForModuleDeclaration(statement, params, result);
-			continue;
+
+			// if a statement is `declare module "module" {}` then don't process it below
+			// as it is handled already in `updateResultForModuleDeclaration`
+			// but if it is `declare module Module {}` then it can be used in types and imports
+			// so in this case it needs to be checked for "usages" below
+			if (ts.isStringLiteral(statement.name)) {
+				continue;
+			}
 		}
 
 		if (params.currentModule.type === ModuleType.ShouldBeUsedForModulesOnly) {
@@ -614,22 +621,13 @@ function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, para
 		return;
 	}
 
-	let moduleInfo: ModuleInfo;
-
-	if (!ts.isStringLiteral(moduleDecl.name)) {
-		result.statements.push(moduleDecl);
+	const referencedModuleInfo = getReferencedModuleInfo(moduleDecl, params);
+	if (referencedModuleInfo === null) {
 		return;
-	} else {
-		const referencedModuleInfo = getReferencedModuleInfo(moduleDecl, params);
-		if (referencedModuleInfo === null) {
-			return;
-		}
-
-		moduleInfo = referencedModuleInfo;
 	}
 
 	// if we have declaration of external module inside internal one
-	if (!params.currentModule.isExternal && moduleInfo.isExternal) {
+	if (!params.currentModule.isExternal && referencedModuleInfo.isExternal) {
 		// if it's allowed - we need to just add it to result without any processing
 		if (params.shouldDeclareExternalModuleBeInlined()) {
 			result.statements.push(moduleDecl);
@@ -641,7 +639,7 @@ function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, para
 	updateResult(
 		{
 			...params,
-			currentModule: moduleInfo,
+			currentModule: referencedModuleInfo,
 			statements: moduleDecl.body.statements,
 		},
 		result
