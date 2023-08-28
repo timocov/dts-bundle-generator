@@ -2,6 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as assert from 'assert';
 
+import * as ts from 'typescript';
+
 import { generateDtsBundle } from '../../src/bundle-generator';
 
 import { TestCaseConfig } from './test-cases/test-case-config';
@@ -55,7 +57,7 @@ function getTestCases(): TestCase[] {
 		});
 }
 
-describe('Functional tests', () => {
+describe(`Functional tests, typescript-v${ts.versionMajorMinor}`, () => {
 	for (const testCase of getTestCases()) {
 		it(testCase.name, () => {
 			const outputOptions = testCase.config.output || {};
