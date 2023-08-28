@@ -1,12 +1,12 @@
 export interface Interface {
 	field: Interface;
 }
-declare module ExportedModule {
+declare namespace ExportedModule {
 	type Foo = string;
 }
 export interface InterfaceInternal extends Interface {
 }
-export declare module ModuleName {
+export declare namespace ModuleName {
 	interface Interface extends InterfaceInternal {
 	}
 	type Bar = ExportedModule.Foo;

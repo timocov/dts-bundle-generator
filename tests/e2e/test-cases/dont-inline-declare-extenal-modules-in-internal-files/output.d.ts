@@ -3,7 +3,7 @@ export interface Interface {
 }
 export interface InterfaceInternal extends Interface {
 }
-export declare module ModuleName {
+export declare namespace ModuleName {
 	interface Interface extends InterfaceInternal {
 	}
 }
