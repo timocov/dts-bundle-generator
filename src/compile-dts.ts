@@ -41,6 +41,7 @@ export function compileDts(rootFiles: readonly string[], preferredConfigPath?: s
 	host.resolveModuleNameLiterals = (moduleLiterals: readonly ts.StringLiteralLike[], containingFile: string): ts.ResolvedModuleWithFailedLookupLocations[] => {
 		return moduleLiterals.map((moduleLiteral: ts.StringLiteralLike): ts.ResolvedModuleWithFailedLookupLocations => {
 			const resolvedModule = ts.resolveModuleName(moduleLiteral.text, containingFile, compilerOptions, host).resolvedModule;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
 			if (resolvedModule && !resolvedModule.isExternalLibraryImport && resolvedModule.extension !== ts.Extension.Dts) {
 				resolvedModule.extension = ts.Extension.Dts;
 

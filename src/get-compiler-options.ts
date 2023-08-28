@@ -34,8 +34,8 @@ export function getCompilerOptions(inputFileNames: readonly string[], preferredC
 
 	// we don't want to raise an error if no inputs found in a config file
 	// because this error is mostly for CLI, but we'll pass an inputs in createProgram
-	const diagnostics = compilerOptionsParseResult.errors
-		.filter((d: ts.Diagnostic) => d.code !== Constants.NoInputsWereFoundDiagnosticCode);
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+	const diagnostics = compilerOptionsParseResult.errors.filter((d: ts.Diagnostic) => d.code !== Constants.NoInputsWereFoundDiagnosticCode);
 
 	checkDiagnosticsErrors(diagnostics, 'Error while processing tsconfig compiler options');
 

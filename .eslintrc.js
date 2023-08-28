@@ -389,7 +389,6 @@ module.exports = {
 		'@typescript-eslint/no-loop-func': 'error',
 		'@typescript-eslint/no-namespace': 'off',
 		'@typescript-eslint/no-non-null-assertion': 'error',
-		'@typescript-eslint/no-parameter-properties': 'error',
 		'@typescript-eslint/no-require-imports': 'off',
 		'@typescript-eslint/no-shadow': 'error',
 		'@typescript-eslint/no-unnecessary-boolean-literal-compare': 'off',
@@ -399,13 +398,14 @@ module.exports = {
 		'@typescript-eslint/no-unused-expressions': 'error',
 		'@typescript-eslint/no-unused-vars': 'off',
 		'@typescript-eslint/no-use-before-define': 'off',
+		'@typescript-eslint/parameter-properties': ['error', { prefer: 'class-property' }],
 		'@typescript-eslint/prefer-for-of': 'off',
 		'@typescript-eslint/prefer-function-type': 'error',
 		'@typescript-eslint/prefer-readonly': 'off', // TODO
 		'@typescript-eslint/promise-function-async': 'off',
-		'@typescript-eslint/restrict-template-expressions': 'off',
 		'@typescript-eslint/quotes': ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }],
 		'@typescript-eslint/restrict-plus-operands': 'off',
+		'@typescript-eslint/restrict-template-expressions': 'off',
 		'@typescript-eslint/semi': [
 			'error',
 			'always',
