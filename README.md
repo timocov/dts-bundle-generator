@@ -165,7 +165,8 @@ but:
 
 ## Known limitations
 
-1. All your types should have different names inside a bundle. If you have 2 `interface Options {}` they will be merged by `TypeScript` and you will get wrong definitions.
+1. All your types should have different names inside a bundle. If you have 2 `interface Options {}` they will be merged by `TypeScript` and you will get wrong definitions (see https://github.com/timocov/dts-bundle-generator/issues/116 and https://github.com/timocov/dts-bundle-generator/issues/130)
+1. Importing and exporting with renaming in modules outside of entry points is limited/not supported as yet (see https://github.com/timocov/dts-bundle-generator/issues/184)
 
 [ci-img]: https://github.com/timocov/dts-bundle-generator/workflows/CI%20Test/badge.svg?branch=master
 [ci-link]: https://github.com/timocov/dts-bundle-generator/actions?query=branch%3Amaster
