@@ -1,4 +1,3 @@
-import * as path from 'path';
 import * as ts from 'typescript';
 
 import { verboseLog, warnLog } from './logger';
@@ -11,6 +10,25 @@ export interface CompileDtsResult {
 	program: ts.Program;
 	rootFilesRemapping: Map<string, string>;
 }
+
+const declarationExtsRemapping: Record<string, ts.Extension> = {
+	[ts.Extension.Js]: ts.Extension.Js,
+	[ts.Extension.Jsx]: ts.Extension.Jsx,
+	[ts.Extension.Json]: ts.Extension.Json,
+	[ts.Extension.TsBuildInfo]: ts.Extension.TsBuildInfo,
+	[ts.Extension.Mjs]: ts.Extension.Mjs,
+	[ts.Extension.Cjs]: ts.Extension.Cjs,
+
+	[ts.Extension.Ts]: ts.Extension.Dts,
+	[ts.Extension.Tsx]: ts.Extension.Dts,
+	[ts.Extension.Dts]: ts.Extension.Dts,
+
+	[ts.Extension.Mts]: ts.Extension.Dmts,
+	[ts.Extension.Dmts]: ts.Extension.Dmts,
+
+	[ts.Extension.Cts]: ts.Extension.Dcts,
+	[ts.Extension.Dcts]: ts.Extension.Dcts,
+} satisfies Record<ts.Extension, ts.Extension>;
 
 export function compileDts(rootFiles: readonly string[], preferredConfigPath?: string, followSymlinks: boolean = true): CompileDtsResult {
 	const compilerOptions = getCompilerOptions(rootFiles, preferredConfigPath);
@@ -41,13 +59,16 @@ export function compileDts(rootFiles: readonly string[], preferredConfigPath?: s
 	host.resolveModuleNameLiterals = (moduleLiterals: readonly ts.StringLiteralLike[], containingFile: string): ts.ResolvedModuleWithFailedLookupLocations[] => {
 		return moduleLiterals.map((moduleLiteral: ts.StringLiteralLike): ts.ResolvedModuleWithFailedLookupLocations => {
 			const resolvedModule = ts.resolveModuleName(moduleLiteral.text, containingFile, compilerOptions, host).resolvedModule;
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
-			if (resolvedModule && !resolvedModule.isExternalLibraryImport && resolvedModule.extension !== ts.Extension.Dts) {
-				resolvedModule.extension = ts.Extension.Dts;
+			if (resolvedModule && !resolvedModule.isExternalLibraryImport) {
+				const newExt = declarationExtsRemapping[resolvedModule.extension];
 
-				verboseLog(`Change module from .ts to .d.ts: ${resolvedModule.resolvedFileName}`);
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+				if (newExt !== resolvedModule.extension) {
+					verboseLog(`Changing module from ${resolvedModule.extension} to ${newExt} for ${resolvedModule.resolvedFileName}`);
 
-				resolvedModule.resolvedFileName = changeExtensionToDts(resolvedModule.resolvedFileName);
+					resolvedModule.extension = newExt;
+					resolvedModule.resolvedFileName = changeExtensionToDts(resolvedModule.resolvedFileName);
+				}
 			}
 
 			return { resolvedModule };
@@ -82,13 +103,28 @@ export function compileDts(rootFiles: readonly string[], preferredConfigPath?: s
 }
 
 function changeExtensionToDts(fileName: string): string {
-	if (fileName.slice(-5) === '.d.ts') {
+	let ext: ts.Extension | undefined;
+
+	// `path.extname` doesn't handle `.d.ts` cases (it returns `.ts` instead of `.d.ts`)
+	if (fileName.endsWith(ts.Extension.Dts)) {
 		return fileName;
 	}
 
-	// .ts, .tsx
-	const ext = path.extname(fileName);
-	return fileName.slice(0, -ext.length) + '.d.ts';
+	if (fileName.endsWith(ts.Extension.Cts)) {
+		ext = ts.Extension.Cts;
+	} else if (fileName.endsWith(ts.Extension.Mts)) {
+		ext = ts.Extension.Mts;
+	} else if (fileName.endsWith(ts.Extension.Ts)) {
+		ext = ts.Extension.Ts;
+	} else if (fileName.endsWith(ts.Extension.Tsx)) {
+		ext = ts.Extension.Tsx;
+	}
+
+	if (ext === undefined) {
+		return fileName;
+	}
+
+	return fileName.slice(0, -ext.length) + declarationExtsRemapping[ext];
 }
 
 /**

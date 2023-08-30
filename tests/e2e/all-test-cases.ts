@@ -28,6 +28,30 @@ function prepareString(str: string): string {
 	return str.trim().replace(/\r\n/g, '\n');
 }
 
+function findInputFile(testCaseDir: string): string {
+	const tsFilePath = path.join(testCaseDir, 'input.ts');
+	if (fs.existsSync(tsFilePath)) {
+		return tsFilePath;
+	}
+
+	const dtsFilePath = path.join(testCaseDir, 'input.d.ts');
+	if (fs.existsSync(dtsFilePath)) {
+		return dtsFilePath;
+	}
+
+	const mtsFilePath = path.join(testCaseDir, 'input.mts');
+	if (fs.existsSync(mtsFilePath)) {
+		return mtsFilePath;
+	}
+
+	const ctsFilePath = path.join(testCaseDir, 'input.cts');
+	if (fs.existsSync(ctsFilePath)) {
+		return ctsFilePath;
+	}
+
+	throw new Error(`Cannot find input file in ${testCaseDir}`);
+}
+
 function getTestCases(): TestCase[] {
 	return fs.readdirSync(testCasesDir)
 		.filter((filePath: string) => {
@@ -35,14 +59,10 @@ function getTestCases(): TestCase[] {
 		})
 		.map((directoryName: string) => {
 			const testCaseDir = path.resolve(testCasesDir, directoryName);
+
+			const inputFileName = findInputFile(testCaseDir);
+
 			const outputFileName = path.resolve(testCaseDir, 'output.d.ts');
-
-			const tsFilePath = path.relative(process.cwd(), path.resolve(testCaseDir, 'input.ts'));
-			const dtsFilePath = path.relative(process.cwd(), path.resolve(testCaseDir, 'input.d.ts'));
-
-			const inputFileName = fs.existsSync(tsFilePath) ? tsFilePath : dtsFilePath;
-
-			assert(fs.existsSync(inputFileName), `Input file doesn't exist for ${directoryName}`);
 			assert(fs.existsSync(outputFileName), `Output file doesn't exist for ${directoryName}`);
 
 			const result: TestCase = {
