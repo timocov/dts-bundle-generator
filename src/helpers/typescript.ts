@@ -9,6 +9,8 @@ const namedDeclarationKinds = [
 	ts.SyntaxKind.FunctionDeclaration,
 	ts.SyntaxKind.VariableDeclaration,
 	ts.SyntaxKind.PropertySignature,
+	ts.SyntaxKind.NamespaceExport,
+	ts.SyntaxKind.ExportSpecifier,
 ];
 
 export type NodeName = ts.DeclarationName | ts.DefaultKeyword;
@@ -111,13 +113,6 @@ export function isDeclareModule(node: ts.Node): node is ts.ModuleDeclaration {
  */
 export function isDeclareGlobalStatement(statement: ts.Statement): statement is ts.ModuleDeclaration {
 	return ts.isModuleDeclaration(statement) && isGlobalScopeAugmentation(statement);
-}
-
-/**
- * Returns whether node is `namespace` ModuleDeclaration
- */
-export function isNamespaceStatement(node: ts.Node): node is ts.ModuleDeclaration {
-	return ts.isModuleDeclaration(node) && Boolean(node.flags & ts.NodeFlags.Namespace);
 }
 
 export function getDeclarationsForSymbol(symbol: ts.Symbol): ts.Declaration[] {

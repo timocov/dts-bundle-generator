@@ -14,7 +14,6 @@ import {
 	isAmbientModule,
 	isDeclareGlobalStatement,
 	isDeclareModule,
-	isNamespaceStatement,
 	isNodeNamedDeclaration,
 	resolveIdentifier,
 	SourceFileExport,
@@ -253,8 +252,13 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				return identifierName;
 			},
-			getDeclarationsForExportedAssignment: (exportAssignment: ts.ExportAssignment) => {
-				const symbolForExpression = typeChecker.getSymbolAtLocation(exportAssignment.expression);
+			getDeclarationsForExportedValues: (exp: ts.ExportAssignment | ts.ExportDeclaration) => {
+				const nodeForSymbol = ts.isExportAssignment(exp) ? exp.expression : exp.moduleSpecifier;
+				if (nodeForSymbol === undefined) {
+					return [];
+				}
+
+				const symbolForExpression = typeChecker.getSymbolAtLocation(nodeForSymbol);
 				if (symbolForExpression === undefined) {
 					return [];
 				}
@@ -453,14 +457,13 @@ interface UpdateParams {
 	 * Could be used to resolve "default" identifier in exports.
 	 */
 	resolveIdentifier(identifier: ts.NamedDeclaration['name']): string | undefined;
-	getDeclarationsForExportedAssignment(exportAssignment: ts.ExportAssignment): ts.Declaration[];
+	getDeclarationsForExportedValues(exp: ts.ExportAssignment | ts.ExportDeclaration): ts.Declaration[];
 	getDeclarationUsagesSourceFiles(declaration: ts.NamedDeclaration): Set<ts.SourceFile | ts.ModuleDeclaration>;
 	areDeclarationSame(a: ts.NamedDeclaration, b: ts.NamedDeclaration): boolean;
 	resolveReferencedModule(node: NodeWithReferencedModule): ts.SourceFile | ts.ModuleDeclaration | null;
 }
 
 const skippedNodes = [
-	ts.SyntaxKind.ExportDeclaration,
 	ts.SyntaxKind.ImportDeclaration,
 	ts.SyntaxKind.ImportEqualsDeclaration,
 ];
@@ -468,7 +471,7 @@ const skippedNodes = [
 // eslint-disable-next-line complexity
 function updateResult(params: UpdateParams, result: CollectingResult): void {
 	for (const statement of params.statements) {
-		// we should skip import and exports statements
+		// we should skip import statements
 		if (skippedNodes.indexOf(statement.kind) !== -1) {
 			continue;
 		}
@@ -494,13 +497,30 @@ function updateResult(params: UpdateParams, result: CollectingResult): void {
 			continue;
 		}
 
+		if (ts.isExportDeclaration(statement)) {
+			if (!params.currentModule.isExternal) {
+				continue;
+			}
+
+			// `export * from`
+			if (statement.exportClause === undefined) {
+				updateResultForExternalExport(statement, params, result);
+				continue;
+			}
+
+			// `export { val }`
+			if (ts.isNamedExports(statement.exportClause) && params.currentModule.type === ModuleType.ShouldBeImported) {
+				updateImportsForStatement(statement, params, result);
+				continue;
+			}
+		}
+
 		if (ts.isExportAssignment(statement) && statement.isExportEquals && params.currentModule.isExternal) {
-			updateResultForExternalEqExportAssignment(statement, params, result);
+			updateResultForExternalExport(statement, params, result);
 			continue;
 		}
 
 		if (!params.isStatementUsed(statement)) {
-			verboseLog(`Skip file member: ${statement.getText().replace(/(\n|\r)/g, '').slice(0, 50)}...`);
 			continue;
 		}
 
@@ -580,23 +600,25 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 	}
 }
 
-function updateResultForExternalEqExportAssignment(exportAssignment: ts.ExportAssignment, params: UpdateParams, result: CollectingResult): void {
-	const moduleDeclarations = params.getDeclarationsForExportedAssignment(exportAssignment)
-		.filter(isNamespaceStatement)
-		.filter((s: ts.ModuleDeclaration) => s.getSourceFile() === exportAssignment.getSourceFile());
-
-	// if we have `export =` somewhere so we can decide that every declaration of exported symbol in this way
+function updateResultForExternalExport(exportAssignment: ts.ExportAssignment | ts.ExportDeclaration, params: UpdateParams, result: CollectingResult): void {
+	// if we have `export =` or `export * from` somewhere so we can decide that every declaration of exported symbol in this way
 	// is "part of the exported module" and we need to update result according every member of each declaration
 	// but treat they as current module (we do not need to update module info)
-	for (const moduleDeclaration of moduleDeclarations) {
-		if (moduleDeclaration.body === undefined || !ts.isModuleBlock(moduleDeclaration.body)) {
-			continue;
+	for (const declaration of params.getDeclarationsForExportedValues(exportAssignment)) {
+		let exportedDeclarations: readonly ts.Statement[] = [];
+
+		if (ts.isModuleDeclaration(declaration)) {
+			if (declaration.body !== undefined && ts.isModuleBlock(declaration.body)) {
+				exportedDeclarations = declaration.body.statements;
+			}
+		} else {
+			exportedDeclarations = [declaration as unknown as ts.Statement];
 		}
 
 		updateResult(
 			{
 				...params,
-				statements: moduleDeclaration.body.statements,
+				statements: exportedDeclarations,
 			},
 			result
 		);
@@ -657,12 +679,19 @@ function addTypesReference(library: string, typesReferences: Set<string>): void 
 	}
 }
 
-function updateImportsForStatement(statement: ts.Statement | ts.SourceFile, params: UpdateParams, result: CollectingResult): void {
+function updateImportsForStatement(statement: ts.Statement | ts.SourceFile | ts.ExportSpecifier, params: UpdateParams, result: CollectingResult): void {
 	if (params.currentModule.type !== ModuleType.ShouldBeImported) {
 		return;
 	}
 
-	const statementsToImport = ts.isVariableStatement(statement) ? statement.declarationList.declarations : [statement];
+	const statementsToImport = ts.isVariableStatement(statement)
+		? statement.declarationList.declarations
+		: ts.isExportDeclaration(statement) && statement.exportClause !== undefined
+			? ts.isNamespaceExport(statement.exportClause)
+				? [statement.exportClause]
+				: statement.exportClause.elements
+			: [statement];
+
 	for (const statementToImport of statementsToImport) {
 		if (params.shouldStatementBeImported(statementToImport as ts.DeclarationStatement)) {
 			addImport(statementToImport as ts.DeclarationStatement, params, result.imports);
@@ -867,6 +896,8 @@ function isNodeUsed(
 		return node.declarationList.declarations.some((declaration: ts.VariableDeclaration) => {
 			return isNodeUsed(declaration, rootFileExports, typesUsageEvaluator, typeChecker, criteria, withGlobals);
 		});
+	} else if (ts.isExportDeclaration(node) && node.exportClause !== undefined && ts.isNamespaceExport(node.exportClause)) {
+		return isNodeUsed(node.exportClause, rootFileExports, typesUsageEvaluator, typeChecker, criteria, withGlobals);
 	}
 
 	return false;
