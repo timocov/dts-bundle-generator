@@ -4,12 +4,13 @@ import * as path from 'path';
 import { compileDts } from './compile-dts';
 import { TypesUsageEvaluator } from './types-usage-evaluator';
 import {
-	getNodeName,
 	getActualSymbol,
-	getDeclarationNameSymbol,
+	getClosestModuleLikeNode,
 	getDeclarationsForSymbol,
 	getExportsForSourceFile,
 	getExportsForStatement,
+	getNodeSymbol,
+	getRootSourceFile,
 	hasNodeModifier,
 	isAmbientModule,
 	isDeclareGlobalStatement,
@@ -713,16 +714,6 @@ function updateImportsForStatement(statement: ts.Statement | ts.SourceFile | ts.
 	}
 }
 
-function getClosestModuleLikeNode(node: ts.Node): ts.SourceFile | ts.ModuleDeclaration {
-	while (!ts.isModuleBlock(node) && !ts.isSourceFile(node)) {
-		node = node.parent;
-	}
-
-	// we need to find a module block and return its module declaration
-	// we don't need to handle empty modules/modules with jsdoc/etc
-	return ts.isSourceFile(node) ? node : node.parent;
-}
-
 function getDeclarationUsagesSourceFiles(
 	declaration: ts.NamedDeclaration,
 	rootFileExports: readonly ts.Symbol[],
@@ -839,19 +830,6 @@ function addImport(statement: ts.DeclarationStatement | ts.SourceFile, params: U
 			}
 		});
 	});
-}
-
-function getRootSourceFile(program: ts.Program, rootFileName: string): ts.SourceFile {
-	if (program.getRootFileNames().indexOf(rootFileName) === -1) {
-		throw new Error(`There is no such root file ${rootFileName}`);
-	}
-
-	const sourceFile = program.getSourceFile(rootFileName);
-	if (sourceFile === undefined) {
-		throw new Error(`Cannot get source file for root file ${rootFileName}`);
-	}
-
-	return sourceFile;
 }
 
 function getGlobalSymbolsUsingSymbol(
@@ -982,25 +960,6 @@ function getExportedSymbolsUsingStatement(
 		// symbols which are used in global types i.e. in `declare global`s
 		...(withGlobals ? getGlobalSymbolsUsingSymbol(nodeSymbol, typesUsageEvaluator, criteria) : []),
 	];
-}
-
-function getNodeSymbol(node: ts.Node, typeChecker: ts.TypeChecker): ts.Symbol | null {
-	if (ts.isSourceFile(node)) {
-		const fileSymbol = typeChecker.getSymbolAtLocation(node);
-		// a source file might not have a symbol in case of no exports in that file
-		if (fileSymbol === undefined) {
-			return null;
-		}
-
-		return getActualSymbol(fileSymbol, typeChecker);
-	}
-
-	const nodeName = getNodeName(node);
-	if (nodeName === undefined) {
-		return null;
-	}
-
-	return getDeclarationNameSymbol(nodeName, typeChecker);
 }
 
 function getModuleLikeInfo(moduleLike: ts.SourceFile | ts.ModuleDeclaration, criteria: ModuleCriteria): ModuleInfo {

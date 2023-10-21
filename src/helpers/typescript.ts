@@ -24,7 +24,7 @@ export function hasNodeModifier(node: ts.Node, modifier: ts.SyntaxKind): boolean
 	return Boolean(modifiers && modifiers.some((nodeModifier: ts.Modifier) => nodeModifier.kind === modifier));
 }
 
-export function getNodeName(node: ts.Node): NodeName | undefined {
+function getNodeName(node: ts.Node): NodeName | undefined {
 	const nodeName = (node as unknown as ts.NamedDeclaration).name;
 	if (nodeName === undefined) {
 		const modifiers = getModifiers(node);
@@ -45,7 +45,7 @@ export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker):
 	return symbol;
 }
 
-export function getDeclarationNameSymbol(name: NodeName, typeChecker: ts.TypeChecker): ts.Symbol | null {
+function getDeclarationNameSymbol(name: NodeName, typeChecker: ts.TypeChecker): ts.Symbol | null {
 	const symbol = typeChecker.getSymbolAtLocation(name);
 	if (symbol === undefined) {
 		return null;
@@ -469,4 +469,46 @@ export function getModifiers(node: ts.Node): readonly ts.Modifier[] | undefined 
 	}
 
 	return ts.getModifiers(node);
+}
+
+export function getRootSourceFile(program: ts.Program, rootFileName: string): ts.SourceFile {
+	if (program.getRootFileNames().indexOf(rootFileName) === -1) {
+		throw new Error(`There is no such root file ${rootFileName}`);
+	}
+
+	const sourceFile = program.getSourceFile(rootFileName);
+	if (sourceFile === undefined) {
+		throw new Error(`Cannot get source file for root file ${rootFileName}`);
+	}
+
+	return sourceFile;
+}
+
+export function getNodeSymbol(node: ts.Node, typeChecker: ts.TypeChecker): ts.Symbol | null {
+	if (ts.isSourceFile(node)) {
+		const fileSymbol = typeChecker.getSymbolAtLocation(node);
+		// a source file might not have a symbol in case of no exports in that file
+		if (fileSymbol === undefined) {
+			return null;
+		}
+
+		return getActualSymbol(fileSymbol, typeChecker);
+	}
+
+	const nodeName = getNodeName(node);
+	if (nodeName === undefined) {
+		return null;
+	}
+
+	return getDeclarationNameSymbol(nodeName, typeChecker);
+}
+
+export function getClosestModuleLikeNode(node: ts.Node): ts.SourceFile | ts.ModuleDeclaration {
+	while (!ts.isModuleBlock(node) && !ts.isSourceFile(node)) {
+		node = node.parent;
+	}
+
+	// we need to find a module block and return its module declaration
+	// we don't need to handle empty modules/modules with jsdoc/etc
+	return ts.isSourceFile(node) ? node : node.parent;
 }
