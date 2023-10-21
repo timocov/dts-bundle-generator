@@ -329,10 +329,9 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			const params: UpdateParams = {
 				...updateResultCommonParams,
 				currentModule,
-				statements: sourceFile.statements,
 			};
 
-			updateFn(params, collectionResult);
+			updateFn(sourceFile.statements, params, collectionResult);
 
 			// handle `import * as module` usage if it's used as whole module
 			if (currentModule.type === ModuleType.ShouldBeImported && updateResultCommonParams.isStatementUsed(sourceFile)) {
@@ -447,7 +446,6 @@ type NodeWithReferencedModule = ts.ExportDeclaration | ts.ModuleDeclaration | ts
 
 interface UpdateParams {
 	currentModule: ModuleInfo;
-	statements: readonly ts.Statement[];
 	isStatementUsed(statement: ts.Statement): boolean;
 	shouldStatementBeImported(statement: ts.DeclarationStatement): boolean;
 	shouldDeclareGlobalBeInlined(currentModule: ModuleInfo, statement: ts.ModuleDeclaration): boolean;
@@ -469,80 +467,117 @@ const skippedNodes = [
 	ts.SyntaxKind.ImportEqualsDeclaration,
 ];
 
-// eslint-disable-next-line complexity
-function updateResult(params: UpdateParams, result: CollectingResult): void {
-	for (const statement of params.statements) {
-		// we should skip import statements
-		if (skippedNodes.indexOf(statement.kind) !== -1) {
-			continue;
-		}
+function updateResult(statements: readonly ts.Statement[], params: UpdateParams, result: CollectingResult): void {
+	// contains a set of modules that were visited already
+	// can be used to prevent infinite recursion in updating results in re-exports
+	const visitedModules = new Set<string>();
 
-		if (isDeclareModule(statement)) {
-			updateResultForModuleDeclaration(statement, params, result);
+	function updateResultForExternalExport(exportAssignment: ts.ExportAssignment | ts.ExportDeclaration): void {
+		// if we have `export =` or `export * from` somewhere so we can decide that every declaration of exported symbol in this way
+		// is "part of the exported module" and we need to update result according every member of each declaration
+		// but treat they as current module (we do not need to update module info)
+		for (const declaration of params.getDeclarationsForExportedValues(exportAssignment)) {
+			let exportedDeclarations: readonly ts.Statement[] = [];
 
-			// if a statement is `declare module "module" {}` then don't process it below
-			// as it is handled already in `updateResultForModuleDeclaration`
-			// but if it is `declare module Module {}` then it can be used in types and imports
-			// so in this case it needs to be checked for "usages" below
-			if (ts.isStringLiteral(statement.name)) {
-				continue;
-			}
-		}
+			// TODO add test for regular packages with cyclic re-export
+			if (ts.isModuleDeclaration(declaration)) {
+				if (declaration.body !== undefined && ts.isModuleBlock(declaration.body)) {
+					const referencedModule = getReferencedModuleInfo(declaration, params);
+					if (referencedModule !== null) {
+						if (visitedModules.has(referencedModule.fileName)) {
+							continue;
+						}
 
-		if (params.currentModule.type === ModuleType.ShouldBeUsedForModulesOnly) {
-			continue;
-		}
+						visitedModules.add(referencedModule.fileName);
+					}
 
-		if (isDeclareGlobalStatement(statement) && params.shouldDeclareGlobalBeInlined(params.currentModule, statement)) {
-			result.statements.push(statement);
-			continue;
-		}
-
-		if (ts.isExportDeclaration(statement)) {
-			if (!params.currentModule.isExternal) {
-				continue;
+					exportedDeclarations = declaration.body.statements;
+				}
+			} else {
+				exportedDeclarations = [declaration as unknown as ts.Statement];
 			}
 
-			// `export * from`
-			if (statement.exportClause === undefined) {
-				updateResultForExternalExport(statement, params, result);
-				continue;
-			}
-
-			// `export { val }`
-			if (ts.isNamedExports(statement.exportClause) && params.currentModule.type === ModuleType.ShouldBeImported) {
-				updateImportsForStatement(statement, params, result);
-				continue;
-			}
-		}
-
-		if (ts.isExportAssignment(statement) && statement.isExportEquals && params.currentModule.isExternal) {
-			updateResultForExternalExport(statement, params, result);
-			continue;
-		}
-
-		if (!params.isStatementUsed(statement)) {
-			continue;
-		}
-
-		switch (params.currentModule.type) {
-			case ModuleType.ShouldBeReferencedAsTypes:
-				addTypesReference(params.currentModule.typesLibraryName, result.typesReferences);
-				break;
-
-			case ModuleType.ShouldBeImported:
-				updateImportsForStatement(statement, params, result);
-				break;
-
-			case ModuleType.ShouldBeInlined:
-				result.statements.push(statement);
-				break;
+			updateResultImpl(exportedDeclarations);
 		}
 	}
+
+	// eslint-disable-next-line complexity
+	function updateResultImpl(statementsToProcess: readonly ts.Statement[]): void {
+		for (const statement of statementsToProcess) {
+			// we should skip import statements
+			if (skippedNodes.indexOf(statement.kind) !== -1) {
+				continue;
+			}
+
+			if (isDeclareModule(statement)) {
+				updateResultForModuleDeclaration(statement, params, result);
+
+				// if a statement is `declare module "module" {}` then don't process it below
+				// as it is handled already in `updateResultForModuleDeclaration`
+				// but if it is `declare module Module {}` then it can be used in types and imports
+				// so in this case it needs to be checked for "usages" below
+				if (ts.isStringLiteral(statement.name)) {
+					continue;
+				}
+			}
+
+			if (params.currentModule.type === ModuleType.ShouldBeUsedForModulesOnly) {
+				continue;
+			}
+
+			if (isDeclareGlobalStatement(statement) && params.shouldDeclareGlobalBeInlined(params.currentModule, statement)) {
+				result.statements.push(statement);
+				continue;
+			}
+
+			if (ts.isExportDeclaration(statement)) {
+				if (!params.currentModule.isExternal) {
+					continue;
+				}
+
+				// `export * from`
+				if (statement.exportClause === undefined) {
+					updateResultForExternalExport(statement);
+					continue;
+				}
+
+				// `export { val }`
+				if (ts.isNamedExports(statement.exportClause) && params.currentModule.type === ModuleType.ShouldBeImported) {
+					updateImportsForStatement(statement, params, result);
+					continue;
+				}
+			}
+
+			if (ts.isExportAssignment(statement) && statement.isExportEquals && params.currentModule.isExternal) {
+				updateResultForExternalExport(statement);
+				continue;
+			}
+
+			if (!params.isStatementUsed(statement)) {
+				continue;
+			}
+
+			switch (params.currentModule.type) {
+				case ModuleType.ShouldBeReferencedAsTypes:
+					addTypesReference(params.currentModule.typesLibraryName, result.typesReferences);
+					break;
+
+				case ModuleType.ShouldBeImported:
+					updateImportsForStatement(statement, params, result);
+					break;
+
+				case ModuleType.ShouldBeInlined:
+					result.statements.push(statement);
+					break;
+			}
+		}
+	}
+
+	updateResultImpl(statements);
 }
 
 // eslint-disable-next-line complexity
-function updateResultForRootSourceFile(params: UpdateParams, result: CollectingResult): void {
+function updateResultForRootSourceFile(statements: readonly ts.Statement[], params: UpdateParams, result: CollectingResult): void {
 	function isReExportFromImportableModule(statement: ts.Statement): boolean {
 		if (!ts.isExportDeclaration(statement)) {
 			return false;
@@ -556,10 +591,10 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 		return params.getModuleInfo(resolvedModule).type === ModuleType.ShouldBeImported;
 	}
 
-	updateResult(params, result);
+	updateResult(statements, params, result);
 
 	// add skipped by `updateResult` exports
-	for (const statement of params.statements) {
+	for (const statement of statements) {
 		// "export =" or "export {} from 'importable-package'"
 		if (ts.isExportAssignment(statement) && statement.isExportEquals || isReExportFromImportableModule(statement)) {
 			result.statements.push(statement);
@@ -601,31 +636,6 @@ function updateResultForRootSourceFile(params: UpdateParams, result: CollectingR
 	}
 }
 
-function updateResultForExternalExport(exportAssignment: ts.ExportAssignment | ts.ExportDeclaration, params: UpdateParams, result: CollectingResult): void {
-	// if we have `export =` or `export * from` somewhere so we can decide that every declaration of exported symbol in this way
-	// is "part of the exported module" and we need to update result according every member of each declaration
-	// but treat they as current module (we do not need to update module info)
-	for (const declaration of params.getDeclarationsForExportedValues(exportAssignment)) {
-		let exportedDeclarations: readonly ts.Statement[] = [];
-
-		if (ts.isModuleDeclaration(declaration)) {
-			if (declaration.body !== undefined && ts.isModuleBlock(declaration.body)) {
-				exportedDeclarations = declaration.body.statements;
-			}
-		} else {
-			exportedDeclarations = [declaration as unknown as ts.Statement];
-		}
-
-		updateResult(
-			{
-				...params,
-				statements: exportedDeclarations,
-			},
-			result
-		);
-	}
-}
-
 function getReferencedModuleInfo(moduleDecl: NodeWithReferencedModule, params: UpdateParams): ModuleInfo | null {
 	const referencedModule = params.resolveReferencedModule(moduleDecl);
 	if (referencedModule === null) {
@@ -660,10 +670,10 @@ function updateResultForModuleDeclaration(moduleDecl: ts.ModuleDeclaration, para
 	}
 
 	updateResult(
+		moduleDecl.body.statements,
 		{
 			...params,
 			currentModule: referencedModuleInfo,
-			statements: moduleDecl.body.statements,
 		},
 		result
 	);
