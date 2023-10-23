@@ -479,7 +479,6 @@ function updateResult(statements: readonly ts.Statement[], params: UpdateParams,
 		for (const declaration of params.getDeclarationsForExportedValues(exportAssignment)) {
 			let exportedDeclarations: readonly ts.Statement[] = [];
 
-			// TODO add test for regular packages with cyclic re-export
 			if (ts.isModuleDeclaration(declaration)) {
 				if (declaration.body !== undefined && ts.isModuleBlock(declaration.body)) {
 					const referencedModule = getReferencedModuleInfo(declaration, params);
