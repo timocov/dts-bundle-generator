@@ -37,12 +37,18 @@ function getNodeName(node: ts.Node): NodeName | undefined {
 	return nodeName;
 }
 
+interface TypeCheckerCompat extends ts.TypeChecker {
+	// this method will be added in the further typescript releases
+	// see https://github.com/microsoft/TypeScript/pull/56193
+	getMergedSymbol(symbol: ts.Symbol): ts.Symbol;
+}
+
 export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker): ts.Symbol {
 	if (symbol.flags & ts.SymbolFlags.Alias) {
 		symbol = typeChecker.getAliasedSymbol(symbol);
 	}
 
-	return symbol;
+	return (typeChecker as TypeCheckerCompat).getMergedSymbol(symbol);
 }
 
 function getDeclarationNameSymbol(name: NodeName, typeChecker: ts.TypeChecker): ts.Symbol | null {
