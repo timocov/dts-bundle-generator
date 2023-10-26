@@ -62,20 +62,20 @@ export function getDeclarationNameSymbol(name: NodeName, typeChecker: ts.TypeChe
 	return getActualSymbol(symbol, typeChecker);
 }
 
-export function splitTransientSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker): ts.Symbol[] {
+export function splitTransientSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker): Set<ts.Symbol> {
 	// actually I think we even don't need to operate/use "Transient" symbols anywhere
 	// it's kind of aliased symbol, but just merged
 	// but it's hard to refractor everything to use array of symbols instead of just symbol
 	// so let's fix it for some places
 	if ((symbol.flags & ts.SymbolFlags.Transient) === 0) {
-		return [symbol];
+		return new Set([symbol]);
 	}
 
 	// "Transient" symbol is kinda "merged" symbol
 	// I don't really know is this way to "split" is correct
 	// but it seems that it works for now ¯\_(ツ)_/¯
 	const declarations = getDeclarationsForSymbol(symbol);
-	const result: ts.Symbol[] = [];
+	const result = new Set<ts.Symbol>();
 	for (const declaration of declarations) {
 		if (!isNodeNamedDeclaration(declaration) || declaration.name === undefined) {
 			continue;
@@ -86,7 +86,7 @@ export function splitTransientSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChec
 			continue;
 		}
 
-		result.push(getActualSymbol(sym, typeChecker));
+		result.add(getActualSymbol(sym, typeChecker));
 	}
 
 	return result;

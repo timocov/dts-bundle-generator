@@ -616,7 +616,13 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			const leftSymbols = splitTransientSymbol(getNodeSymbol(left, typeChecker) as ts.Symbol, typeChecker);
 			const rightSymbols = splitTransientSymbol(getNodeSymbol(right, typeChecker) as ts.Symbol, typeChecker);
 
-			return leftSymbols.some((leftSymbol: ts.Symbol) => rightSymbols.includes(leftSymbol));
+			for (const leftSymbol of leftSymbols) {
+				if (rightSymbols.has(leftSymbol)) {
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		function getDeclarationsForExportedValues(exp: ts.ExportAssignment | ts.ExportDeclaration): ts.Declaration[] {
