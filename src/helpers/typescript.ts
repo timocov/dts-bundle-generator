@@ -279,6 +279,8 @@ function getExportsForName(
 
 export type ModifiersMap = Record<ts.ModifierSyntaxKind, boolean>;
 
+export type StatementRenaming = (string | undefined)[];
+
 const modifiersPriority: Partial<Record<ts.ModifierSyntaxKind, number>> = {
 	[ts.SyntaxKind.ExportKeyword]: 4,
 	[ts.SyntaxKind.DefaultKeyword]: 3,
@@ -317,8 +319,8 @@ export function modifiersMapToArray(modifiersMap: ModifiersMap): ts.Modifier[] {
 		});
 }
 
-export function recreateRootLevelNodeWithModifiers(node: ts.Node, modifiersMap: ModifiersMap, newName?: string, keepComments: boolean = true): ts.Node {
-	const newNode = recreateRootLevelNodeWithModifiersImpl(node, modifiersMap, newName);
+export function recreateRootLevelNodeWithModifiers(node: ts.Node, modifiersMap: ModifiersMap, renaming?: StatementRenaming, keepComments: boolean = true): ts.Node {
+	const newNode = recreateRootLevelNodeWithModifiersImpl(node, modifiersMap, renaming);
 
 	if (keepComments) {
 		ts.setCommentRange(newNode, ts.getCommentRange(node));
@@ -328,7 +330,7 @@ export function recreateRootLevelNodeWithModifiers(node: ts.Node, modifiersMap: 
 }
 
 // eslint-disable-next-line complexity
-function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: ModifiersMap, newName?: string): ts.Node {
+function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: ModifiersMap, renaming: StatementRenaming = []): ts.Node {
 	const modifiers = modifiersMapToArray(modifiersMap);
 
 	if (ts.isArrowFunction(node)) {
@@ -345,7 +347,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isClassDeclaration(node)) {
 		return ts.factory.createClassDeclaration(
 			modifiers,
-			newName || node.name,
+			renaming[0] || node.name,
 			node.typeParameters,
 			node.heritageClauses,
 			node.members
@@ -355,7 +357,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isClassExpression(node)) {
 		return ts.factory.createClassExpression(
 			modifiers,
-			newName || node.name,
+			renaming[0] || node.name,
 			node.typeParameters,
 			node.heritageClauses,
 			node.members
@@ -365,7 +367,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isEnumDeclaration(node)) {
 		return ts.factory.createEnumDeclaration(
 			modifiers,
-			newName || node.name,
+			renaming[0] || node.name,
 			node.members
 		);
 	}
@@ -392,7 +394,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 		return ts.factory.createFunctionDeclaration(
 			modifiers,
 			node.asteriskToken,
-			newName || node.name,
+			renaming[0] || node.name,
 			node.typeParameters,
 			node.parameters,
 			node.type,
@@ -404,7 +406,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 		return ts.factory.createFunctionExpression(
 			modifiers,
 			node.asteriskToken,
-			newName || node.name,
+			renaming[0] || node.name,
 			node.typeParameters,
 			node.parameters,
 			node.type,
@@ -425,7 +427,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 		return ts.factory.createImportEqualsDeclaration(
 			modifiers,
 			node.isTypeOnly,
-			newName || node.name,
+			renaming[0] || node.name,
 			node.moduleReference
 		);
 	}
@@ -433,7 +435,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isInterfaceDeclaration(node)) {
 		return ts.factory.createInterfaceDeclaration(
 			modifiers,
-			newName || node.name,
+			renaming[0] || node.name,
 			node.typeParameters,
 			node.heritageClauses,
 			node.members
@@ -452,21 +454,45 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isTypeAliasDeclaration(node)) {
 		return ts.factory.createTypeAliasDeclaration(
 			modifiers,
-			newName || node.name,
+			renaming[0] || node.name,
 			node.typeParameters,
 			node.type
 		);
 	}
 
 	if (ts.isVariableStatement(node)) {
-		return ts.factory.createVariableStatement(
-			modifiers,
-			node.declarationList
-		);
+		return createVariableStatement(node, modifiers, renaming);
 	}
 
 	throw new Error(`Unknown top-level node kind (with modifiers): ${ts.SyntaxKind[node.kind]}.
 If you're seeing this error, please report a bug on https://github.com/timocov/dts-bundle-generator/issues`);
+}
+
+function createVariableStatement(node: ts.VariableStatement, modifiers: ts.Modifier[], renaming: StatementRenaming): ts.Node {
+	const renamedDeclarations = node.declarationList.declarations.map((declaration, i) => {
+		const name = renaming[i];
+		if (!name) {
+			return declaration;
+		}
+
+		const identifier = ts.factory.createIdentifier(name);
+		return ts.factory.updateVariableDeclaration(
+			declaration,
+			identifier,
+			declaration.exclamationToken,
+			declaration.type,
+			declaration.initializer
+		);
+	});
+	const declarationList = ts.factory.updateVariableDeclarationList(
+		node.declarationList,
+		renamedDeclarations
+	);
+
+	return ts.factory.createVariableStatement(
+		modifiers,
+		declarationList
+	);
 }
 
 export function getModifiers(node: ts.Node): readonly ts.Modifier[] | undefined {
