@@ -541,7 +541,13 @@ export function getClosestSourceFileLikeNode(node: ts.Node): ts.SourceFile | ts.
 	return ts.isSourceFile(node) ? node : node.parent;
 }
 
-export type NodeWithReferencedModule = ts.ExportDeclaration | ts.ModuleDeclaration | ts.ImportTypeNode | ts.ImportEqualsDeclaration | ts.ImportDeclaration;
+export type NodeWithReferencedModule =
+	| ts.ExportDeclaration
+	| ts.ImportDeclaration
+	| ts.ImportEqualsDeclaration
+	| ts.ImportTypeNode
+	| ts.ModuleDeclaration
+;
 
 export function resolveReferencedModule(node: NodeWithReferencedModule, typeChecker: ts.TypeChecker): ts.SourceFile | ts.ModuleDeclaration | null {
 	let moduleName: ts.Expression | ts.LiteralTypeNode | undefined;
