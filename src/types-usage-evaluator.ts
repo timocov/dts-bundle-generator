@@ -78,17 +78,19 @@ export class TypesUsageEvaluator {
 
 		// `export * as ns from 'mod'`
 		if (ts.isExportDeclaration(node) && node.moduleSpecifier !== undefined && node.exportClause !== undefined && ts.isNamespaceExport(node.exportClause)) {
-			const currentModuleSymbol = this.getSymbol(node.exportClause.name);
-			const referencedSourceFileSymbol = this.getSymbol(node.moduleSpecifier);
-			this.updateParentsMap(referencedSourceFileSymbol, currentModuleSymbol);
+			this.addUsagesForNamespacedModule(node.exportClause, node.moduleSpecifier as ts.StringLiteral);
 		}
 
 		// `import * as ns from 'mod'`
 		if (ts.isImportDeclaration(node) && node.moduleSpecifier !== undefined && node.importClause !== undefined && node.importClause.namedBindings !== undefined && ts.isNamespaceImport(node.importClause.namedBindings)) {
-			const currentModuleSymbol = this.getSymbol(node.importClause.namedBindings.name);
-			const referencedSourceFileSymbol = this.getSymbol(node.moduleSpecifier);
-			this.updateParentsMap(referencedSourceFileSymbol, currentModuleSymbol);
+			this.addUsagesForNamespacedModule(node.importClause.namedBindings, node.moduleSpecifier as ts.StringLiteral);
 		}
+	}
+
+	private addUsagesForNamespacedModule(namespaceNode: ts.NamespaceImport | ts.NamespaceExport, moduleSpecifier: ts.StringLiteral): void {
+		const namespaceSymbol = this.getSymbol(namespaceNode.name);
+		const referencedSourceFileSymbol = this.getSymbol(moduleSpecifier);
+		this.addUsages(referencedSourceFileSymbol, namespaceSymbol);
 	}
 
 	private computeUsagesRecursively(parent: ts.Node, parentSymbol: ts.Symbol): void {
@@ -112,12 +114,12 @@ export class TypesUsageEvaluator {
 					continue;
 				}
 
-				this.updateParentsMap(this.getSymbol(child), parentSymbol);
+				this.addUsages(this.getSymbol(child), parentSymbol);
 			}
 		}
 	}
 
-	private updateParentsMap(childSymbol: ts.Symbol, parentSymbol: ts.Symbol): void {
+	private addUsages(childSymbol: ts.Symbol, parentSymbol: ts.Symbol): void {
 		const childSymbols = splitTransientSymbol(childSymbol, this.typeChecker);
 
 		for (const childSplitSymbol of childSymbols) {
@@ -135,12 +137,16 @@ export class TypesUsageEvaluator {
 	}
 
 	private getSymbol(node: ts.Node): ts.Symbol {
+		return this.getActualSymbol(this.getNodeOwnSymbol(node));
+	}
+
+	private getNodeOwnSymbol(node: ts.Node): ts.Symbol {
 		const nodeSymbol = this.typeChecker.getSymbolAtLocation(node);
 		if (nodeSymbol === undefined) {
 			throw new Error(`Cannot find symbol for node "${node.getText()}" in "${node.parent.getText()}" from "${node.getSourceFile().fileName}"`);
 		}
 
-		return this.getActualSymbol(nodeSymbol);
+		return nodeSymbol;
 	}
 
 	private getActualSymbol(symbol: ts.Symbol): ts.Symbol {
