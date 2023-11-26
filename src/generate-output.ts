@@ -1,7 +1,12 @@
 import * as ts from 'typescript';
 
 import { packageVersion } from './helpers/package-version';
-import { getModifiers, modifiersToMap, recreateRootLevelNodeWithModifiers } from './helpers/typescript';
+import {
+	getModifiers,
+	modifiersToMap,
+	recreateRootLevelNodeWithModifiers,
+	StatementRenaming,
+} from './helpers/typescript';
 
 export interface ModuleImportsSet {
 	defaultImports: Set<string>;
@@ -24,6 +29,7 @@ export interface NeedStripDefaultKeywordResult {
 
 export interface OutputHelpers {
 	shouldStatementHasExportKeyword(statement: ts.Statement): boolean;
+	getStatementRenaming(statement: ts.Statement): StatementRenaming;
 	needStripDefaultKeywordForStatement(statement: ts.Statement): NeedStripDefaultKeywordResult;
 	needStripConstFromConstEnum(constEnum: ts.EnumDeclaration): boolean;
 	needStripImportFromImportTypeNode(importType: ts.ImportTypeNode): boolean;
@@ -156,8 +162,11 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 					modifiersMap[ts.SyntaxKind.ConstKeyword] = false;
 				}
 
-				let newName: string | undefined;
+				let renaming: StatementRenaming = [];
 
+				if (modifiersMap[ts.SyntaxKind.DeclareKeyword]) {
+					renaming = helpers.getStatementRenaming(statement);
+				}
 				// strip the `default` keyword from node
 				if (modifiersMap[ts.SyntaxKind.DefaultKeyword]) {
 					const needStripDefaultKeywordResult = helpers.needStripDefaultKeywordForStatement(statement);
@@ -169,7 +178,7 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 							modifiersMap[ts.SyntaxKind.DeclareKeyword] = true;
 						}
 
-						newName = needStripDefaultKeywordResult.newName;
+						renaming = [needStripDefaultKeywordResult.newName];
 					}
 				}
 
@@ -193,7 +202,7 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 					modifiersMap[ts.SyntaxKind.DeclareKeyword] = true;
 				}
 
-				return recreateRootLevelNodeWithModifiers(node, modifiersMap, newName, shouldStatementHasExportKeyword);
+				return recreateRootLevelNodeWithModifiers(node, modifiersMap, renaming, shouldStatementHasExportKeyword);
 			},
 		}
 	);

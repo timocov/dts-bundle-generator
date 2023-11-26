@@ -19,6 +19,7 @@ import {
 	resolveIdentifier,
 	SourceFileExport,
 	splitTransientSymbol,
+	StatementRenaming,
 } from './helpers/typescript';
 
 import { fixPath } from './helpers/fix-path';
@@ -182,6 +183,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			statements: [],
 			renamedExports: [],
 			declarationsRenaming: new Map(),
+			nameCollision: new Map(),
 		};
 
 		const outputOptions: OutputOptions = entry.output || {};
@@ -197,6 +199,15 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				needStrip: defaultExport === undefined || defaultExport.originalName !== 'default' && statement.getSourceFile() !== rootSourceFile,
 				newName: isNodeNamedDeclaration(statement) ? collectionResult.declarationsRenaming.get(statement) : undefined,
 			};
+		};
+
+		const getStatementRenaming = (statement: ts.Statement): StatementRenaming => {
+			if (ts.isVariableStatement(statement)) {
+				return statement.declarationList.declarations.map(declaration => {
+					return collectionResult.declarationsRenaming.get(declaration);
+				});
+			}
+			return [];
 		};
 
 		const updateResultCommonParams = {
@@ -249,6 +260,18 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					// so we have to generate some random name and then re-export it with really exported names
 					identifierName = `__DTS_BUNDLE_GENERATOR__GENERATED_NAME$${uniqueNameCounter++}`;
 					collectionResult.declarationsRenaming.set(resolvedDeclaration, identifierName);
+				} else if (
+					ts.isVariableDeclaration(resolvedDeclaration)
+					&& identifierName
+				) {
+					const collision = collectionResult.nameCollision.get(identifierName);
+					if (!collision) {
+						collectionResult.nameCollision.set(identifierName, new Set([resolvedDeclaration]));
+					} else if (!collision.has(resolvedDeclaration)) {
+						collision.add(resolvedDeclaration);
+						identifierName = `${identifierName}$${collision.size}`;
+						collectionResult.declarationsRenaming.set(resolvedDeclaration, identifierName);
+					}
 				}
 
 				return identifierName;
@@ -358,6 +381,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			{
 				...collectionResult,
 				needStripDefaultKeywordForStatement,
+				getStatementRenaming,
 				shouldStatementHasExportKeyword: (statement: ts.Statement) => {
 					const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
 
@@ -440,6 +464,7 @@ interface CollectingResult {
 	statements: ts.Statement[];
 	renamedExports: string[];
 	declarationsRenaming: Map<ts.NamedDeclaration, string>;
+	nameCollision: Map<string, Set<ts.NamedDeclaration>>;
 }
 
 type NodeWithReferencedModule = ts.ExportDeclaration | ts.ModuleDeclaration | ts.ImportTypeNode | ts.ImportEqualsDeclaration | ts.ImportDeclaration;

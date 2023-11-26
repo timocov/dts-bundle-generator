@@ -6,6 +6,11 @@ declare class __DTS_BUNDLE_GENERATOR__GENERATED_NAME$3 {
 declare class __DTS_BUNDLE_GENERATOR__GENERATED_NAME$4 {
 	second: number;
 }
+declare const _default: 0;
+declare const _default$2: "";
+declare const _default$3: {
+	type: string;
+};
 
 export {
 	__DTS_BUNDLE_GENERATOR__GENERATED_NAME$1 as myFunc1,
@@ -16,6 +21,9 @@ export {
 	__DTS_BUNDLE_GENERATOR__GENERATED_NAME$3 as myClass2,
 	__DTS_BUNDLE_GENERATOR__GENERATED_NAME$4 as myClass3,
 	__DTS_BUNDLE_GENERATOR__GENERATED_NAME$4 as myClass4,
+	_default as number,
+	_default$2 as string,
+	_default$3 as object,
 };
 
 export {};

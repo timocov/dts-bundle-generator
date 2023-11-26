@@ -7,3 +7,7 @@ export { default as myClass1 } from './class';
 export { default as myClass2 } from './class';
 export { default as myClass3 } from './another-class';
 export { default as myClass4 } from './another-class';
+
+export { default as number } from './number';
+export { default as string } from './string';
+export { default as object } from './object';
