@@ -472,7 +472,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						return;
 					}
 
-					const importClause = st.importClause as ts.ImportClause;
+					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+					const importClause = st.importClause!;
 					if (importClause.name !== undefined && areDeclarationSame(statement, importClause)) {
 						// import name from 'module';
 						importItem.defaultImports.add(collisionsResolver.addTopLevelIdentifier(importClause.name));
