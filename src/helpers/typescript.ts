@@ -197,7 +197,7 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 		exp.symbol = getActualSymbol(exp.symbol, typeChecker);
 
 		const resolvedIdentifier = resolveDeclarationByIdentifierSymbol(exp.symbol);
-		exp.originalName = resolvedIdentifier?.name !== undefined ? resolvedIdentifier.name.getText() : exp.symbol.name as string;
+		exp.originalName = resolvedIdentifier?.name !== undefined ? resolvedIdentifier.name.getText() : exp.symbol.name;
 	});
 
 	return result;
