@@ -1,0 +1,10 @@
+{
+	"extends": "./tsconfig.options.json",
+	"compilerOptions": {
+		"allowJs": true,
+		"noEmit": true
+	},
+	"include": [
+		"./dts-config.js"
+	]
+}

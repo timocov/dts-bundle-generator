@@ -49,7 +49,7 @@
   "scripts": {
     "clean": "rimraf dist/ dts-out/",
     "lint": "eslint --format=unix --ext .ts ./",
-    "check-dts-config": "node ./node_modules/ts-compiler/bin/tsc --lib es2015 --allowJs --noEmit ./dts-config.js",
+    "check-dts-config": "node ./node_modules/ts-compiler/bin/tsc -p tsconfig.dts-config.json",
     "bundle-dts": "npm run check-dts-config && node ./dist/bin/dts-bundle-generator.js --config dts-config.js --silent",
     "tsc": "node ./node_modules/ts-compiler/bin/tsc --version && node ./node_modules/ts-compiler/bin/tsc -b ./tsconfig.json",
     "verify": "npm-run-all clean tsc -p bundle-dts lint -s test",
