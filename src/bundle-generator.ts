@@ -675,7 +675,6 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		for (const sourceFile of sourceFiles) {
 			verboseLog(`\n\n======= Preparing file: ${sourceFile.fileName} =======`);
 
-			const prevStatementsCount = collectionResult.statements.length;
 			const updateFn = sourceFile === rootSourceFile ? updateResultForRootModule : updateResultForAnyModule;
 			const currentModule = getFileModuleInfo(sourceFile.fileName, criteria);
 
@@ -684,10 +683,6 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			// handle `import * as module` usage if it's used as whole module
 			if (currentModule.type === ModuleType.ShouldBeImported && isNodeUsed(sourceFile)) {
 				updateImportsForStatement(sourceFile);
-			}
-
-			if (collectionResult.statements.length === prevStatementsCount) {
-				verboseLog(`No output for file: ${sourceFile.fileName}`);
 			}
 		}
 
