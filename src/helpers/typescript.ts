@@ -164,7 +164,7 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 					symbol,
 					type: ExportType.CommonJS,
 					exportedName: '',
-					originalName: symbol.escapedName as string,
+					originalName: symbol.name,
 				},
 			];
 		}
@@ -172,7 +172,7 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 
 	const result: SourceFileExport[] = typeChecker
 		.getExportsOfModule(sourceFileSymbol)
-		.map((symbol: ts.Symbol) => ({ symbol, exportedName: symbol.escapedName as string, type: ExportType.ES6Named, originalName: '' }));
+		.map((symbol: ts.Symbol) => ({ symbol, exportedName: symbol.name, type: ExportType.ES6Named, originalName: '' }));
 
 	if (sourceFileSymbol.exports !== undefined) {
 		const defaultExportSymbol = sourceFileSymbol.exports.get(ts.InternalSymbolName.Default);
@@ -197,7 +197,7 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 		exp.symbol = getActualSymbol(exp.symbol, typeChecker);
 
 		const resolvedIdentifier = resolveDeclarationByIdentifierSymbol(exp.symbol);
-		exp.originalName = resolvedIdentifier?.name !== undefined ? resolvedIdentifier.name.getText() : exp.symbol.escapedName as string;
+		exp.originalName = resolvedIdentifier?.name !== undefined ? resolvedIdentifier.name.getText() : exp.symbol.name as string;
 	});
 
 	return result;
