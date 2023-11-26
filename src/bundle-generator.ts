@@ -591,7 +591,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		function getExportedSymbolsUsingSymbol(nodeSymbol: ts.Symbol): readonly ts.Symbol[] {
 			const symbolsUsingNode = typesUsageEvaluator.getSymbolsUsingSymbol(nodeSymbol);
 			if (symbolsUsingNode === null) {
-				throw new Error('Something went wrong - value cannot be null');
+				throw new Error(`Something went wrong - getSymbolsUsingSymbol returned null but expected to be a set of symbols (symbol=${nodeSymbol.name})`);
 			}
 
 			return [
