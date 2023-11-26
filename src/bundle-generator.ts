@@ -207,7 +207,18 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				for (const declaration of getDeclarationsForExportedValues(exportAssignment)) {
 					let exportedDeclarations: readonly ts.Statement[] = [];
 
-					if (ts.isModuleDeclaration(declaration)) {
+					if (ts.isExportDeclaration(exportAssignment) && ts.isSourceFile(declaration)) {
+						const referencedModule = getReferencedModuleInfo(exportAssignment, criteria, typeChecker);
+						if (referencedModule !== null) {
+							if (visitedModules.has(referencedModule.fileName)) {
+								continue;
+							}
+
+							visitedModules.add(referencedModule.fileName);
+						}
+
+						exportedDeclarations = declaration.statements;
+					} else if (ts.isModuleDeclaration(declaration)) {
 						if (declaration.body !== undefined && ts.isModuleBlock(declaration.body)) {
 							const referencedModule = getReferencedModuleInfo(declaration, criteria, typeChecker);
 							if (referencedModule !== null) {
@@ -258,7 +269,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					}
 
 					if (ts.isExportDeclaration(statement)) {
-						if (!currentModule.isExternal) {
+						if (currentModule.type === ModuleType.ShouldBeInlined) {
 							continue;
 						}
 
