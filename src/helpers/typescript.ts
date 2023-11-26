@@ -381,12 +381,17 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isExportDeclaration(node)) {
+		interface Ts53CompatExportDeclaration extends ts.ExportDeclaration {
+			attributes?: ts.ExportDeclaration['assertClause'];
+		}
+
 		return ts.factory.createExportDeclaration(
 			modifiers,
 			node.isTypeOnly,
 			node.exportClause,
 			node.moduleSpecifier,
-			node.assertClause
+			// eslint-disable-next-line deprecation/deprecation
+			(node as Ts53CompatExportDeclaration).attributes || node.assertClause
 		);
 	}
 
@@ -415,11 +420,16 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isImportDeclaration(node)) {
+		interface Ts53CompatImportDeclaration extends ts.ImportDeclaration {
+			attributes?: ts.ImportDeclaration['assertClause'];
+		}
+
 		return ts.factory.createImportDeclaration(
 			modifiers,
 			node.importClause,
 			node.moduleSpecifier,
-			node.assertClause
+			// eslint-disable-next-line deprecation/deprecation
+			(node as Ts53CompatImportDeclaration).attributes || node.assertClause
 		);
 	}
 
