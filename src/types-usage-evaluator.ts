@@ -57,6 +57,7 @@ export class TypesUsageEvaluator {
 		}
 	}
 
+	// eslint-disable-next-line complexity
 	private computeUsageForNode(node: ts.Node): void {
 		if (isDeclareModule(node) && node.body !== undefined && ts.isModuleBlock(node.body)) {
 			for (const statement of node.body.statements) {
@@ -73,6 +74,20 @@ export class TypesUsageEvaluator {
 			for (const varDeclaration of node.declarationList.declarations) {
 				this.computeUsageForNode(varDeclaration);
 			}
+		}
+
+		// `export * as ns from 'mod'`
+		if (ts.isExportDeclaration(node) && node.moduleSpecifier !== undefined && node.exportClause !== undefined && ts.isNamespaceExport(node.exportClause)) {
+			const currentModuleSymbol = this.getSymbol(node.exportClause.name);
+			const referencedSourceFileSymbol = this.getSymbol(node.moduleSpecifier);
+			this.updateParentsMap(referencedSourceFileSymbol, currentModuleSymbol);
+		}
+
+		// `import * as ns from 'mod'`
+		if (ts.isImportDeclaration(node) && node.moduleSpecifier !== undefined && node.importClause !== undefined && node.importClause.namedBindings !== undefined && ts.isNamespaceImport(node.importClause.namedBindings)) {
+			const currentModuleSymbol = this.getSymbol(node.importClause.namedBindings.name);
+			const referencedSourceFileSymbol = this.getSymbol(node.moduleSpecifier);
+			this.updateParentsMap(referencedSourceFileSymbol, currentModuleSymbol);
 		}
 	}
 
@@ -97,20 +112,24 @@ export class TypesUsageEvaluator {
 					continue;
 				}
 
-				const childSymbols = splitTransientSymbol(this.getSymbol(child), this.typeChecker);
+				this.updateParentsMap(this.getSymbol(child), parentSymbol);
+			}
+		}
+	}
 
-				for (const childSymbol of childSymbols) {
-					let symbols = this.nodesParentsMap.get(childSymbol);
-					if (symbols === undefined) {
-						symbols = new Set<ts.Symbol>();
-						this.nodesParentsMap.set(childSymbol, symbols);
-					}
+	private updateParentsMap(childSymbol: ts.Symbol, parentSymbol: ts.Symbol): void {
+		const childSymbols = splitTransientSymbol(childSymbol, this.typeChecker);
 
-					// to avoid infinite recursion
-					if (childSymbol !== parentSymbol) {
-						symbols.add(parentSymbol);
-					}
-				}
+		for (const childSplitSymbol of childSymbols) {
+			let symbols = this.nodesParentsMap.get(childSplitSymbol);
+			if (symbols === undefined) {
+				symbols = new Set<ts.Symbol>();
+				this.nodesParentsMap.set(childSplitSymbol, symbols);
+			}
+
+			// to avoid infinite recursion
+			if (childSplitSymbol !== parentSymbol) {
+				symbols.add(parentSymbol);
 			}
 		}
 	}
