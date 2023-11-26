@@ -1,5 +1,7 @@
 import * as ts from 'typescript';
 
+import { warnLog } from '../logger';
+
 const namedDeclarationKinds = [
 	ts.SyntaxKind.InterfaceDeclaration,
 	ts.SyntaxKind.ClassDeclaration,
@@ -13,7 +15,7 @@ const namedDeclarationKinds = [
 	ts.SyntaxKind.ExportSpecifier,
 ];
 
-export type NodeName = ts.DeclarationName | ts.DefaultKeyword;
+export type NodeName = ts.DeclarationName | ts.DefaultKeyword | ts.QualifiedName | ts.PropertyAccessExpression;
 
 export function isNodeNamedDeclaration(node: ts.Node): node is ts.NamedDeclaration {
 	return namedDeclarationKinds.indexOf(node.kind) !== -1;
@@ -24,7 +26,7 @@ export function hasNodeModifier(node: ts.Node, modifier: ts.SyntaxKind): boolean
 	return Boolean(modifiers && modifiers.some((nodeModifier: ts.Modifier) => nodeModifier.kind === modifier));
 }
 
-function getNodeName(node: ts.Node): NodeName | undefined {
+export function getNodeName(node: ts.Node): NodeName | undefined {
 	const nodeName = (node as unknown as ts.NamedDeclaration).name;
 	if (nodeName === undefined) {
 		const modifiers = getModifiers(node);
@@ -51,7 +53,7 @@ export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker):
 	return (typeChecker as TypeCheckerCompat).getMergedSymbol(symbol);
 }
 
-function getDeclarationNameSymbol(name: NodeName, typeChecker: ts.TypeChecker): ts.Symbol | null {
+export function getDeclarationNameSymbol(name: NodeName, typeChecker: ts.TypeChecker): ts.Symbol | null {
 	const symbol = typeChecker.getSymbolAtLocation(name);
 	if (symbol === undefined) {
 		return null;
@@ -194,7 +196,7 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 	result.forEach((exp: SourceFileExport) => {
 		exp.symbol = getActualSymbol(exp.symbol, typeChecker);
 
-		const resolvedIdentifier = resolveIdentifierBySymbol(exp.symbol);
+		const resolvedIdentifier = resolveDeclarationByIdentifierSymbol(exp.symbol);
 		exp.originalName = resolvedIdentifier?.name !== undefined ? resolvedIdentifier.name.getText() : exp.symbol.escapedName as string;
 	});
 
@@ -207,10 +209,10 @@ export function resolveIdentifier(typeChecker: ts.TypeChecker, identifier: ts.Id
 		return undefined;
 	}
 
-	return resolveIdentifierBySymbol(symbol);
+	return resolveDeclarationByIdentifierSymbol(symbol);
 }
 
-function resolveIdentifierBySymbol(identifierSymbol: ts.Symbol): ts.NamedDeclaration | undefined {
+function resolveDeclarationByIdentifierSymbol(identifierSymbol: ts.Symbol): ts.NamedDeclaration | undefined {
 	const declarations = getDeclarationsForSymbol(identifierSymbol);
 	if (declarations.length === 0) {
 		return undefined;
@@ -279,8 +281,6 @@ function getExportsForName(
 
 export type ModifiersMap = Record<ts.ModifierSyntaxKind, boolean>;
 
-export type StatementRenaming = (string | undefined)[];
-
 const modifiersPriority: Partial<Record<ts.ModifierSyntaxKind, number>> = {
 	[ts.SyntaxKind.ExportKeyword]: 4,
 	[ts.SyntaxKind.DefaultKeyword]: 3,
@@ -319,8 +319,8 @@ export function modifiersMapToArray(modifiersMap: ModifiersMap): ts.Modifier[] {
 		});
 }
 
-export function recreateRootLevelNodeWithModifiers(node: ts.Node, modifiersMap: ModifiersMap, renaming?: StatementRenaming, keepComments: boolean = true): ts.Node {
-	const newNode = recreateRootLevelNodeWithModifiersImpl(node, modifiersMap, renaming);
+export function recreateRootLevelNodeWithModifiers(node: ts.Node, modifiersMap: ModifiersMap, newName?: string, keepComments: boolean = true): ts.Node {
+	const newNode = recreateRootLevelNodeWithModifiersImpl(node, modifiersMap, newName);
 
 	if (keepComments) {
 		ts.setCommentRange(newNode, ts.getCommentRange(node));
@@ -330,7 +330,7 @@ export function recreateRootLevelNodeWithModifiers(node: ts.Node, modifiersMap: 
 }
 
 // eslint-disable-next-line complexity
-function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: ModifiersMap, renaming: StatementRenaming = []): ts.Node {
+function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: ModifiersMap, newName?: string): ts.Node {
 	const modifiers = modifiersMapToArray(modifiersMap);
 
 	if (ts.isArrowFunction(node)) {
@@ -347,7 +347,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isClassDeclaration(node)) {
 		return ts.factory.createClassDeclaration(
 			modifiers,
-			renaming[0] || node.name,
+			newName || node.name,
 			node.typeParameters,
 			node.heritageClauses,
 			node.members
@@ -357,7 +357,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isClassExpression(node)) {
 		return ts.factory.createClassExpression(
 			modifiers,
-			renaming[0] || node.name,
+			newName || node.name,
 			node.typeParameters,
 			node.heritageClauses,
 			node.members
@@ -367,7 +367,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isEnumDeclaration(node)) {
 		return ts.factory.createEnumDeclaration(
 			modifiers,
-			renaming[0] || node.name,
+			newName || node.name,
 			node.members
 		);
 	}
@@ -394,7 +394,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 		return ts.factory.createFunctionDeclaration(
 			modifiers,
 			node.asteriskToken,
-			renaming[0] || node.name,
+			newName || node.name,
 			node.typeParameters,
 			node.parameters,
 			node.type,
@@ -406,7 +406,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 		return ts.factory.createFunctionExpression(
 			modifiers,
 			node.asteriskToken,
-			renaming[0] || node.name,
+			newName || node.name,
 			node.typeParameters,
 			node.parameters,
 			node.type,
@@ -427,7 +427,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 		return ts.factory.createImportEqualsDeclaration(
 			modifiers,
 			node.isTypeOnly,
-			renaming[0] || node.name,
+			newName || node.name,
 			node.moduleReference
 		);
 	}
@@ -435,7 +435,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isInterfaceDeclaration(node)) {
 		return ts.factory.createInterfaceDeclaration(
 			modifiers,
-			renaming[0] || node.name,
+			newName || node.name,
 			node.typeParameters,
 			node.heritageClauses,
 			node.members
@@ -454,45 +454,21 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	if (ts.isTypeAliasDeclaration(node)) {
 		return ts.factory.createTypeAliasDeclaration(
 			modifiers,
-			renaming[0] || node.name,
+			newName || node.name,
 			node.typeParameters,
 			node.type
 		);
 	}
 
 	if (ts.isVariableStatement(node)) {
-		return createVariableStatement(node, modifiers, renaming);
+		return ts.factory.createVariableStatement(
+			modifiers,
+			node.declarationList
+		);
 	}
 
 	throw new Error(`Unknown top-level node kind (with modifiers): ${ts.SyntaxKind[node.kind]}.
 If you're seeing this error, please report a bug on https://github.com/timocov/dts-bundle-generator/issues`);
-}
-
-function createVariableStatement(node: ts.VariableStatement, modifiers: ts.Modifier[], renaming: StatementRenaming): ts.Node {
-	const renamedDeclarations = node.declarationList.declarations.map((declaration, i) => {
-		const name = renaming[i];
-		if (!name) {
-			return declaration;
-		}
-
-		const identifier = ts.factory.createIdentifier(name);
-		return ts.factory.updateVariableDeclaration(
-			declaration,
-			identifier,
-			declaration.exclamationToken,
-			declaration.type,
-			declaration.initializer
-		);
-	});
-	const declarationList = ts.factory.updateVariableDeclarationList(
-		node.declarationList,
-		renamedDeclarations
-	);
-
-	return ts.factory.createVariableStatement(
-		modifiers,
-		declarationList
-	);
 }
 
 export function getModifiers(node: ts.Node): readonly ts.Modifier[] | undefined {
@@ -536,11 +512,79 @@ export function getNodeSymbol(node: ts.Node, typeChecker: ts.TypeChecker): ts.Sy
 }
 
 export function getClosestModuleLikeNode(node: ts.Node): ts.SourceFile | ts.ModuleDeclaration {
+	// we need to find a module block and return its module declaration
+	// we don't need to handle empty modules/modules with jsdoc/etc
 	while (!ts.isModuleBlock(node) && !ts.isSourceFile(node)) {
 		node = node.parent;
 	}
 
+	return ts.isSourceFile(node) ? node : node.parent;
+}
+
+export function getClosestSourceFileLikeNode(node: ts.Node): ts.SourceFile | ts.ModuleDeclaration {
 	// we need to find a module block and return its module declaration
 	// we don't need to handle empty modules/modules with jsdoc/etc
+	while (!(ts.isModuleBlock(node) && ts.isStringLiteral(node.parent.name)) && !ts.isSourceFile(node)) {
+		node = node.parent;
+	}
+
 	return ts.isSourceFile(node) ? node : node.parent;
+}
+
+export type NodeWithReferencedModule = ts.ExportDeclaration | ts.ModuleDeclaration | ts.ImportTypeNode | ts.ImportEqualsDeclaration | ts.ImportDeclaration;
+
+export function resolveReferencedModule(node: NodeWithReferencedModule, typeChecker: ts.TypeChecker): ts.SourceFile | ts.ModuleDeclaration | null {
+	let moduleName: ts.Expression | ts.LiteralTypeNode | undefined;
+
+	if (ts.isExportDeclaration(node) || ts.isImportDeclaration(node)) {
+		moduleName = node.moduleSpecifier;
+	} else if (ts.isModuleDeclaration(node)) {
+		moduleName = node.name;
+	} else if (ts.isImportEqualsDeclaration(node)) {
+		if (ts.isExternalModuleReference(node.moduleReference)) {
+			moduleName = node.moduleReference.expression;
+		}
+	} else if (ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) {
+		moduleName = node.argument.literal;
+	}
+
+	if (moduleName === undefined) {
+		return null;
+	}
+
+	const moduleSymbol = typeChecker.getSymbolAtLocation(moduleName);
+	if (moduleSymbol === undefined) {
+		return null;
+	}
+
+	const symbol = getActualSymbol(moduleSymbol, typeChecker);
+	if (symbol.valueDeclaration === undefined) {
+		return null;
+	}
+
+	return ts.isSourceFile(symbol.valueDeclaration) || ts.isModuleDeclaration(symbol.valueDeclaration)
+		? symbol.valueDeclaration
+		: null;
+}
+
+export function getImportModuleName(imp: ts.ImportEqualsDeclaration | ts.ImportDeclaration): string | null {
+	if (ts.isImportDeclaration(imp)) {
+		const importClause = imp.importClause;
+		if (importClause === undefined) {
+			return null;
+		}
+
+		return (imp.moduleSpecifier as ts.StringLiteral).text;
+	}
+
+	if (ts.isExternalModuleReference(imp.moduleReference)) {
+		if (!ts.isStringLiteral(imp.moduleReference.expression)) {
+			warnLog(`Cannot handle non string-literal-like import expression: ${imp.moduleReference.expression.getText()}`);
+			return null;
+		}
+
+		return imp.moduleReference.expression.text;
+	}
+
+	return null;
 }

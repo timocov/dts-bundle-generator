@@ -1,29 +1,29 @@
-declare function __DTS_BUNDLE_GENERATOR__GENERATED_NAME$1(first: number): void;
-declare function __DTS_BUNDLE_GENERATOR__GENERATED_NAME$2(second: number): void;
-declare class __DTS_BUNDLE_GENERATOR__GENERATED_NAME$3 {
+declare function _default(first: number): void;
+declare function _default$1(second: number): void;
+declare class _default$2 {
 	first: number;
 }
-declare class __DTS_BUNDLE_GENERATOR__GENERATED_NAME$4 {
+declare class _default$3 {
 	second: number;
 }
-declare const _default: 0;
-declare const _default$2: "";
-declare const _default$3: {
+declare const _default$4: 0;
+declare const _default$5: "";
+declare const _default$6: {
 	type: string;
 };
 
 export {
-	__DTS_BUNDLE_GENERATOR__GENERATED_NAME$1 as myFunc1,
-	__DTS_BUNDLE_GENERATOR__GENERATED_NAME$1 as myFunc2,
-	__DTS_BUNDLE_GENERATOR__GENERATED_NAME$2 as myFunc3,
-	__DTS_BUNDLE_GENERATOR__GENERATED_NAME$2 as myFunc4,
-	__DTS_BUNDLE_GENERATOR__GENERATED_NAME$3 as myClass1,
-	__DTS_BUNDLE_GENERATOR__GENERATED_NAME$3 as myClass2,
-	__DTS_BUNDLE_GENERATOR__GENERATED_NAME$4 as myClass3,
-	__DTS_BUNDLE_GENERATOR__GENERATED_NAME$4 as myClass4,
-	_default as number,
-	_default$2 as string,
-	_default$3 as object,
+	_default as myFunc1,
+	_default as myFunc2,
+	_default$1 as myFunc3,
+	_default$1 as myFunc4,
+	_default$2 as myClass1,
+	_default$2 as myClass2,
+	_default$3 as myClass3,
+	_default$3 as myClass4,
+	_default$4 as number,
+	_default$5 as string,
+	_default$6 as object,
 };
 
 export {};

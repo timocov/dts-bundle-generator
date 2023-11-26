@@ -1,11 +1,14 @@
 import * as path from 'path';
 
+import * as ts from 'typescript';
+
 import {
 	getLibraryName,
 	getTypesLibraryName,
 } from './helpers/node-modules';
 
 import { fixPath } from './helpers/fix-path';
+import { NodeWithReferencedModule, resolveReferencedModule } from './helpers/typescript';
 
 export const enum ModuleType {
 	ShouldBeInlined,
@@ -48,8 +51,35 @@ export interface ModuleCriteria {
 	typeRoots?: string[];
 }
 
-export function getModuleInfo(fileName: string, criteria: ModuleCriteria): ModuleInfo {
+export function getFileModuleInfo(fileName: string, criteria: ModuleCriteria): ModuleInfo {
 	return getModuleInfoImpl(fileName, fileName, criteria);
+}
+
+export function getReferencedModuleInfo(moduleDecl: NodeWithReferencedModule, criteria: ModuleCriteria, typeChecker: ts.TypeChecker): ModuleInfo | null {
+	const referencedModule = resolveReferencedModule(moduleDecl, typeChecker);
+	if (referencedModule === null) {
+		return null;
+	}
+
+	const moduleFilePath = ts.isSourceFile(referencedModule)
+		? referencedModule.fileName
+		: resolveModuleFileName(referencedModule.getSourceFile().fileName, referencedModule.name.text);
+
+	return getFileModuleInfo(moduleFilePath, criteria);
+}
+
+export function getModuleLikeModuleInfo(moduleLike: ts.SourceFile | ts.ModuleDeclaration, criteria: ModuleCriteria, typeChecker: ts.TypeChecker): ModuleInfo {
+	const resolvedModuleLike = ts.isSourceFile(moduleLike) ? moduleLike : resolveReferencedModule(moduleLike, typeChecker) ?? moduleLike;
+
+	const fileName = ts.isSourceFile(resolvedModuleLike)
+		? resolvedModuleLike.fileName
+		: resolveModuleFileName(resolvedModuleLike.getSourceFile().fileName, resolvedModuleLike.name.text);
+
+	return getFileModuleInfo(fileName, criteria);
+}
+
+function resolveModuleFileName(currentFileName: string, moduleName: string): string {
+	return moduleName.startsWith('.') ? fixPath(path.join(currentFileName, '..', moduleName)) : `node_modules/${moduleName}/`;
 }
 
 /**

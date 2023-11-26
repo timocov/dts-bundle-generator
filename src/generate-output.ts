@@ -1,12 +1,7 @@
 import * as ts from 'typescript';
 
 import { packageVersion } from './helpers/package-version';
-import {
-	getModifiers,
-	modifiersToMap,
-	recreateRootLevelNodeWithModifiers,
-	StatementRenaming,
-} from './helpers/typescript';
+import { getModifiers, getNodeName, modifiersToMap, recreateRootLevelNodeWithModifiers } from './helpers/typescript';
 
 export interface ModuleImportsSet {
 	defaultImports: Set<string>;
@@ -29,10 +24,9 @@ export interface NeedStripDefaultKeywordResult {
 
 export interface OutputHelpers {
 	shouldStatementHasExportKeyword(statement: ts.Statement): boolean;
-	getStatementRenaming(statement: ts.Statement): StatementRenaming;
-	needStripDefaultKeywordForStatement(statement: ts.Statement): NeedStripDefaultKeywordResult;
 	needStripConstFromConstEnum(constEnum: ts.EnumDeclaration): boolean;
 	needStripImportFromImportTypeNode(importType: ts.ImportTypeNode): boolean;
+	resolveIdentifierName(identifier: ts.Identifier | ts.QualifiedName | ts.PropertyAccessEntityNameExpression): string | null;
 }
 
 export interface OutputOptions {
@@ -131,6 +125,9 @@ function compareStatementText(a: StatementText, b: StatementText): number {
 function getStatementText(statement: ts.Statement, includeSortingValue: boolean, helpers: OutputHelpers): StatementText {
 	const shouldStatementHasExportKeyword = helpers.shouldStatementHasExportKeyword(statement);
 
+	// re-export statements do not contribute to top-level names scope so we don't need to resolve their identifiers
+	const needResolveIdentifiers = !ts.isExportDeclaration(statement) || statement.moduleSpecifier === undefined;
+
 	const printer = ts.createPrinter(
 		{
 			newLine: ts.NewLineKind.LineFeed,
@@ -139,6 +136,53 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 		{
 			// eslint-disable-next-line complexity
 			substituteNode: (hint: ts.EmitHint, node: ts.Node) => {
+				if (node.parent === undefined) {
+					return node;
+				}
+
+				if (needResolveIdentifiers) {
+					if (ts.isPropertyAccessExpression(node) || ts.isQualifiedName(node)) {
+						const resolvedName = helpers.resolveIdentifierName(node as ts.PropertyAccessEntityNameExpression | ts.QualifiedName);
+						if (resolvedName !== null && resolvedName !== node.getText()) {
+							const identifiers = resolvedName.split('.');
+
+							let result: ts.PropertyAccessExpression | ts.QualifiedName | ts.Identifier = ts.factory.createIdentifier(identifiers[0]);
+
+							for (let index = 1; index < identifiers.length; index += 1) {
+								if (ts.isQualifiedName(node)) {
+									result = ts.factory.createQualifiedName(
+										result as ts.QualifiedName,
+										ts.factory.createIdentifier(identifiers[index])
+									);
+								} else {
+									result = ts.factory.createPropertyAccessExpression(
+										result as ts.PropertyAccessExpression,
+										ts.factory.createIdentifier(identifiers[index])
+									);
+								}
+							}
+
+							return result;
+						}
+
+						return node;
+					}
+
+					if (ts.isIdentifier(node)) {
+						// PropertyAccessExpression and QualifiedName are handled above already
+						if (ts.isPropertyAccessExpression(node.parent) || ts.isQualifiedName(node.parent)) {
+							return node;
+						}
+
+						const resolvedName = helpers.resolveIdentifierName(node);
+						if (resolvedName !== null && resolvedName !== node.getText()) {
+							return ts.factory.createIdentifier(resolvedName);
+						}
+
+						return node;
+					}
+				}
+
 				// `import('module').Qualifier` or `typeof import('module').Qualifier`
 				if (ts.isImportTypeNode(node) && node.qualifier !== undefined && helpers.needStripImportFromImportTypeNode(node)) {
 					if (node.isTypeOf) {
@@ -162,23 +206,16 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 					modifiersMap[ts.SyntaxKind.ConstKeyword] = false;
 				}
 
-				let renaming: StatementRenaming = [];
+				const nodeName = getNodeName(node);
 
-				if (modifiersMap[ts.SyntaxKind.DeclareKeyword]) {
-					renaming = helpers.getStatementRenaming(statement);
-				}
-				// strip the `default` keyword from node
+				const resolvedStatementName = nodeName !== undefined ? helpers.resolveIdentifierName(nodeName as ts.Identifier) || undefined : undefined;
+
+				// strip the `default` keyword from node regardless
 				if (modifiersMap[ts.SyntaxKind.DefaultKeyword]) {
-					const needStripDefaultKeywordResult = helpers.needStripDefaultKeywordForStatement(statement);
-					if (needStripDefaultKeywordResult.needStrip) {
-						// we need just to remove `default` from any node except class node
-						// for classes we need to replace `default` with `declare` instead
-						modifiersMap[ts.SyntaxKind.DefaultKeyword] = false;
-						if (ts.isClassDeclaration(node)) {
-							modifiersMap[ts.SyntaxKind.DeclareKeyword] = true;
-						}
-
-						renaming = [needStripDefaultKeywordResult.newName];
+					modifiersMap[ts.SyntaxKind.DefaultKeyword] = false;
+					if (ts.isClassDeclaration(node)) {
+						// for classes we need to replace `default` with `declare` instead otherwise it will produce an invalid syntax
+						modifiersMap[ts.SyntaxKind.DeclareKeyword] = true;
 					}
 				}
 
@@ -202,7 +239,7 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 					modifiersMap[ts.SyntaxKind.DeclareKeyword] = true;
 				}
 
-				return recreateRootLevelNodeWithModifiers(node, modifiersMap, renaming, shouldStatementHasExportKeyword);
+				return recreateRootLevelNodeWithModifiers(node, modifiersMap, resolvedStatementName, shouldStatementHasExportKeyword);
 			},
 		}
 	);

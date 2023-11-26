@@ -1,3 +1,9 @@
+const path = require('path');
+
+// override tsconfig for tests
+process.env.TS_NODE_PROJECT = path.resolve(__dirname, './tsconfig.options.json');
+process.env.TS_NODE_TRANSPILE_ONLY = 'true';
+
 const config = {
 	require: [
 		'ts-node/register',
