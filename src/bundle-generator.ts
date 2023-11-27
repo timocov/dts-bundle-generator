@@ -332,17 +332,9 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		}
 
 		function updateResultForRootModule(statements: readonly ts.Statement[], currentModule: ModuleInfo): void {
-			function isReExportFromImportableModule(statement: ts.Statement): boolean {
-				if (!ts.isExportDeclaration(statement)) {
-					return false;
-				}
-
-				const resolvedModuleInfo = getReferencedModuleInfo(statement, criteria, typeChecker);
-				if (resolvedModuleInfo === null) {
-					return false;
-				}
-
-				return resolvedModuleInfo.type === ModuleType.ShouldBeImported;
+			// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+			function isReExportFromImportableModule(statement: ts.ExportDeclaration): boolean {
+				return getReferencedModuleInfo(statement, criteria, typeChecker)?.type === ModuleType.ShouldBeImported;
 			}
 
 			updateResultForAnyModule(statements, currentModule);
@@ -350,7 +342,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			// add skipped by `updateResult` exports
 			for (const statement of statements) {
 				// "export =" or "export {} from 'importable-package'"
-				if (ts.isExportAssignment(statement) && statement.isExportEquals || isReExportFromImportableModule(statement)) {
+				if (ts.isExportAssignment(statement) && statement.isExportEquals || ts.isExportDeclaration(statement) && isReExportFromImportableModule(statement)) {
 					collectionResult.statements.push(statement);
 					continue;
 				}
