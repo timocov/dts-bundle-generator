@@ -163,10 +163,6 @@ but:
 1. `A` is not used at all and most probably you do not want to export it.
 1. If you bundle your code in a way when all modules are merged (like when using Webpack or Rollup) then there should be no such modules as `a` or `b` (actually `entry` too) in the resulting file.
 
-## Known limitations
-
-1. Importing and exporting with renaming in modules outside of entry points is limited/not supported as yet (see https://github.com/timocov/dts-bundle-generator/issues/184)
-
 [ci-img]: https://github.com/timocov/dts-bundle-generator/workflows/CI%20Test/badge.svg?branch=master
 [ci-link]: https://github.com/timocov/dts-bundle-generator/actions?query=branch%3Amaster
 
