@@ -6,7 +6,7 @@ import { getModifiers, getNodeName, modifiersToMap, recreateRootLevelNodeWithMod
 export interface ModuleImportsSet {
 	defaultImports: Set<string>;
 	starImports: Set<string>;
-	namedImports: Set<string>;
+	namedImports: Map<string, string>;
 	requireImports: Set<string>;
 }
 
@@ -14,7 +14,7 @@ export interface OutputParams extends OutputHelpers {
 	typesReferences: Set<string>;
 	imports: Map<string, ModuleImportsSet>;
 	statements: readonly ts.Statement[];
-	renamedExports: string[];
+	renamedExports: Map<string, string>;
 }
 
 export interface NeedStripDefaultKeywordResult {
@@ -77,8 +77,13 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 		resultOutput += `\n\n${statementsTextToString(statements)}`;
 	}
 
-	if (params.renamedExports.length !== 0) {
-		resultOutput += `\n\nexport {\n\t${params.renamedExports.sort().join(',\n\t')},\n};`;
+	if (params.renamedExports.size !== 0) {
+		resultOutput += `\n\nexport {\n\t${
+			Array.from(params.renamedExports.entries())
+				.map(([exportedName, localName]: [string, string]) => exportedName !== localName ? `${localName} as ${exportedName}` : exportedName)
+				.sort()
+				.join(',\n\t')
+		},\n};`;
 	}
 
 	if (options.umdModuleName !== undefined) {
@@ -275,7 +280,12 @@ function generateImports(libraryName: string, imports: ModuleImportsSet): string
 	Array.from(imports.defaultImports).sort().forEach((importName: string) => result.push(`import ${importName} ${fromEnding}`));
 
 	if (imports.namedImports.size !== 0) {
-		result.push(`import { ${Array.from(imports.namedImports).sort().join(', ')} } ${fromEnding}`);
+		result.push(`import { ${
+			Array.from(imports.namedImports.entries())
+				.map(([localName, importedName]: [string, string]) => localName !== importedName ? `${importedName} as ${localName}` : importedName)
+				.sort()
+				.join(', ')
+		} } ${fromEnding}`);
 	}
 
 	return result;

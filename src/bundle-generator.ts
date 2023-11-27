@@ -187,7 +187,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			typesReferences: new Set(),
 			imports: new Map(),
 			statements: [],
-			renamedExports: [],
+			renamedExports: new Map(),
 		};
 
 		const outputOptions: OutputOptions = entryConfig.output || {};
@@ -467,7 +467,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					if (importItem === undefined) {
 						importItem = {
 							defaultImports: new Set(),
-							namedImports: new Set(),
+							namedImports: new Map(),
 							starImports: new Set(),
 							requireImports: new Set(),
 						};
@@ -499,7 +499,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 									const newLocalName = collisionsResolver.addTopLevelIdentifier(specifier.name);
 									const importedName = (specifier.propertyName || specifier.name).text;
 									// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-									importItem!.namedImports.add(newLocalName === importedName ? importedName : `${importedName} as ${newLocalName}`);
+									importItem!.namedImports.set(newLocalName, importedName);
 								});
 						} else {
 							// import * as name from 'module';
@@ -679,8 +679,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				// usually all "local" names should have only one known name
 				// but having multiple names is possible with imports - you can import the same node with different names
 				// and we want to preserve the source input as much as we can that's why we re-use them
-				const symbolName = Array.from(symbolKnownNames)[0];
-				collectionResult.renamedExports.push(`${symbolName} as ${exp.exportedName}`);
+				collectionResult.renamedExports.set(exp.exportedName, Array.from(symbolKnownNames)[0]);
 			}
 		}
 
