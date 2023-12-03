@@ -27,3 +27,4 @@ export {
 
 export { Inter } from './import-star-1';
 export { Inter2 } from './import-star-2';
+export { MyType } from './type';

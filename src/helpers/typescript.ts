@@ -12,6 +12,7 @@ const namedDeclarationKinds = [
 	ts.SyntaxKind.VariableDeclaration,
 	ts.SyntaxKind.PropertySignature,
 	ts.SyntaxKind.NamespaceExport,
+	ts.SyntaxKind.NamespaceImport,
 	ts.SyntaxKind.ExportSpecifier,
 ];
 
@@ -577,14 +578,19 @@ export function resolveReferencedModule(node: NodeWithReferencedModule, typeChec
 		: null;
 }
 
-export function getImportModuleName(imp: ts.ImportEqualsDeclaration | ts.ImportDeclaration): string | null {
+export function getImportModuleName(imp: ts.ImportEqualsDeclaration | ts.ImportDeclaration | ts.ExportDeclaration): string | null {
 	if (ts.isImportDeclaration(imp)) {
-		const importClause = imp.importClause;
-		if (importClause === undefined) {
-			return null;
-		}
+		return imp.importClause === undefined
+			? null
+			: (imp.moduleSpecifier as ts.StringLiteral).text
+		;
+	}
 
-		return (imp.moduleSpecifier as ts.StringLiteral).text;
+	if (ts.isExportDeclaration(imp)) {
+		return imp.moduleSpecifier === undefined || imp.exportClause === undefined
+			? null
+			: (imp.moduleSpecifier as ts.StringLiteral).text
+		;
 	}
 
 	if (ts.isExternalModuleReference(imp.moduleReference)) {

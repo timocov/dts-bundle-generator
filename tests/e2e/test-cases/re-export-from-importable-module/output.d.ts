@@ -1,3 +1,6 @@
+import { Server } from 'http';
+import { default as _default } from 'package-with-default-export';
+
 export interface SomeInterface {
 	field: string;
 }
@@ -13,14 +16,14 @@ declare function funcName(): void;
 declare function defaultFunction(): void;
 export declare class MyClass {
 }
-export { Server } from "http";
 export * from "fs";
-export { default } from "package-with-default-export";
 
 export {
 	AnotherInterface as Int2,
 	DefaultInterface as DefInterface,
+	Server,
 	SomeInterface as Int1,
+	_default as default,
 	constName as cName,
 	defaultFunction as defFunction,
 	funcName as fName,

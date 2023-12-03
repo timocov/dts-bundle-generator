@@ -5,7 +5,7 @@ import { getModifiers, getNodeName, modifiersToMap, recreateRootLevelNodeWithMod
 
 export interface ModuleImportsSet {
 	defaultImports: Set<string>;
-	starImports: Set<string>;
+	starImport: string | null;
 	namedImports: Map<string, string>;
 	requireImports: Set<string>;
 }
@@ -176,8 +176,8 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 					}
 
 					if (ts.isIdentifier(node)) {
-						// PropertyAccessExpression and QualifiedName are handled above already
-						if (ts.isPropertyAccessExpression(node.parent) || ts.isQualifiedName(node.parent)) {
+						// QualifiedName and PropertyAccessExpression are handled above already
+						if (ts.isQualifiedName(node.parent) || ts.isPropertyAccessExpression(node.parent)) {
 							return node;
 						}
 
@@ -275,7 +275,10 @@ function generateImports(libraryName: string, imports: ModuleImportsSet): string
 	const result: string[] = [];
 
 	// sort to make output more "stable"
-	Array.from(imports.starImports).sort().forEach((importName: string) => result.push(`import * as ${importName} ${fromEnding}`));
+	if (imports.starImport !== null) {
+		result.push(`import * as ${imports.starImport} ${fromEnding}`);
+	}
+
 	Array.from(imports.requireImports).sort().forEach((importName: string) => result.push(`import ${importName} = require('${libraryName}');`));
 	Array.from(imports.defaultImports).sort().forEach((importName: string) => result.push(`import ${importName} ${fromEnding}`));
 

@@ -11,3 +11,5 @@ export { default as myClass4 } from './another-class';
 export { default as number } from './number';
 export { default as string } from './string';
 export { default as object } from './object';
+
+export { default as myClass5 } from 'package-with-default-export';

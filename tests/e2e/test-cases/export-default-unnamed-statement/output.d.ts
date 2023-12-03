@@ -1,3 +1,5 @@
+import { default as myClass5 } from 'package-with-default-export';
+
 declare function _default(first: number): void;
 declare function _default$1(second: number): void;
 declare class _default$2 {
@@ -24,6 +26,7 @@ export {
 	_default$4 as number,
 	_default$5 as string,
 	_default$6 as object,
+	myClass5,
 };
 
 export {};

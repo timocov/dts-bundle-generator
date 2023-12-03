@@ -1,6 +1,7 @@
 import * as ts from 'typescript';
 import {
 	getActualSymbol,
+	getNodeName,
 	isDeclareModule,
 	isNodeNamedDeclaration,
 	splitTransientSymbol,
@@ -65,9 +66,14 @@ export class TypesUsageEvaluator {
 			}
 		}
 
-		if (isNodeNamedDeclaration(node) && node.name) {
-			const childSymbol = this.getSymbol(node.name);
-			this.computeUsagesRecursively(node, childSymbol);
+		if (isNodeNamedDeclaration(node)) {
+			const nodeName = getNodeName(node);
+			if (nodeName !== undefined) {
+				const childSymbol = this.getSymbol(nodeName);
+				if (childSymbol !== null) {
+					this.computeUsagesRecursively(node, childSymbol);
+				}
+			}
 		}
 
 		if (ts.isVariableStatement(node)) {
@@ -85,10 +91,23 @@ export class TypesUsageEvaluator {
 		if (ts.isImportDeclaration(node) && node.moduleSpecifier !== undefined && node.importClause !== undefined && node.importClause.namedBindings !== undefined && ts.isNamespaceImport(node.importClause.namedBindings)) {
 			this.addUsagesForNamespacedModule(node.importClause.namedBindings, node.moduleSpecifier as ts.StringLiteral);
 		}
+
+		// `export {}` or `export {} from 'mod'`
+		if (ts.isExportDeclaration(node) && node.exportClause !== undefined && ts.isNamedExports(node.exportClause)) {
+			for (const exportElement of node.exportClause.elements) {
+				const parentSymbol = this.getNodeOwnSymbol(exportElement.name);
+				const childSymbol = this.getSymbol(exportElement.propertyName || exportElement.name);
+				this.addUsages(childSymbol, parentSymbol);
+			}
+		}
 	}
 
 	private addUsagesForNamespacedModule(namespaceNode: ts.NamespaceImport | ts.NamespaceExport, moduleSpecifier: ts.StringLiteral): void {
-		const namespaceSymbol = this.getSymbol(namespaceNode.name);
+		// note that we shouldn't resolve the actual symbol for the namespace
+		// as in some circumstances it will be resolved to the source file
+		// i.e. namespaceSymbol would become referencedModuleSymbol so it would be no-op
+		// but we want to add this module's usage to the map
+		const namespaceSymbol = this.getNodeOwnSymbol(namespaceNode.name);
 		const referencedSourceFileSymbol = this.getSymbol(moduleSpecifier);
 		this.addUsages(referencedSourceFileSymbol, namespaceSymbol);
 	}
@@ -102,7 +121,7 @@ export class TypesUsageEvaluator {
 
 			queue.push(...child.getChildren());
 
-			if (ts.isIdentifier(child)) {
+			if (ts.isIdentifier(child) || child.kind === ts.SyntaxKind.DefaultKeyword) {
 				// identifiers in labelled tuples don't have symbols for their labels
 				// so let's just skip them from collecting
 				if (ts.isNamedTupleMember(child.parent) && child.parent.name === child) {

@@ -1,3 +1,7 @@
-export * as Foobar from "package-with-namespaced-import-export";
+import * as Foobar from 'package-with-namespaced-import-export';
+
+export {
+	Foobar,
+};
 
 export {};

@@ -80,7 +80,15 @@ export class CollisionsResolver {
 			return identifierText;
 		}
 
-		return Array.from(namesForSymbol)[0] || null;
+		const namesArray = Array.from(namesForSymbol);
+		for (const name of namesArray) {
+			// attempt to find a generated name first to provide identifiers close to the original code as much as possible
+			if (name.startsWith(`${identifierText}$`)) {
+				return name;
+			}
+		}
+
+		return namesArray[0] || null;
 	}
 
 	/**
