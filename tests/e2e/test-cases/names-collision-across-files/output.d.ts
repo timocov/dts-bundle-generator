@@ -1,5 +1,4 @@
 import * as fakePackage from 'fake-package';
-import * as fakePackageButDifferent from 'fake-package';
 import { Interface as FPI1, Interface as FPI2, Interface as Interface$2 } from 'fake-package';
 
 declare const TEMPLATE = "template1";
@@ -45,17 +44,18 @@ export interface Inter {
 	field4: AnotherInterface;
 	field5: fakePackage.Interface;
 	field6: FPI1;
-	field7: FPI1;
+	field7: Interface$2;
 }
 export interface Inter2 {
 	field: Interface;
 	field2: AnotherInterface$1;
 	field3: TypeName;
 	field4: AnotherInterface;
-	field5: fakePackageButDifferent.Interface;
+	field5: fakePackage.Interface;
 	field6: FPI2;
-	field7: FPI1;
+	field7: Interface$2;
 }
+export type MyType = Interface$2;
 
 export {
 	AnotherInterface as AI1,
