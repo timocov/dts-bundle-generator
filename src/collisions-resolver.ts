@@ -2,7 +2,9 @@ import * as ts from 'typescript';
 
 import {
 	getActualSymbol,
+	getClosestModuleLikeNode,
 	getDeclarationNameSymbol,
+	getDeclarationsForSymbol,
 } from './helpers/typescript';
 import { verboseLog } from './logger';
 
@@ -64,6 +66,8 @@ export class CollisionsResolver {
 	 * Resolves given {@link referencedIdentifier} to a name.
 	 * It assumes that a symbol for this identifier has been registered before by calling {@link addTopLevelIdentifier} method.
 	 * Otherwise it will return `null`.
+	 *
+	 * Note that a returned value might be of a different type of the identifier (e.g. {@link ts.QualifiedName} for a given {@link ts.Identifier})
 	 */
 	public resolveReferencedIdentifier(referencedIdentifier: ts.Identifier): string | null {
 		const identifierSymbol = getDeclarationNameSymbol(referencedIdentifier, this.typeChecker);
@@ -73,22 +77,55 @@ export class CollisionsResolver {
 			return null;
 		}
 
-		const namesForSymbol = this.namesForSymbol(identifierSymbol);
-		const identifierText = referencedIdentifier.getText();
-		if (namesForSymbol.has(identifierText)) {
-			// if the set of already registered names contains the one that is requested then lets use it
-			return identifierText;
+		// we assume that all symbols for a given identifier will be in the same scope (i.e. defined in the same namespaces-chain)
+		// so we can use any declaration to find that scope as they all will have the same scope
+		const symbolScopePath = this.getNodeScope(getDeclarationsForSymbol(identifierSymbol)[0]);
+
+		// this scope defines where the current identifier is located
+		const currentIdentifierScope = this.getNodeScope(referencedIdentifier);
+
+		if (symbolScopePath.length > 0 && currentIdentifierScope.length > 0 && symbolScopePath[0] === currentIdentifierScope[0]) {
+			// if a referenced symbol is declared in the same scope where it is located
+			// then just return its reference as is without any modification
+			// also note that in this method we're working with identifiers only (i.e. it cannot be a qualified name)
+			return referencedIdentifier.getText();
 		}
 
-		const namesArray = Array.from(namesForSymbol);
-		for (const name of namesArray) {
-			// attempt to find a generated name first to provide identifiers close to the original code as much as possible
-			if (name.startsWith(`${identifierText}$`)) {
-				return name;
+		const topLevelIdentifierSymbol = symbolScopePath.length === 0 ? identifierSymbol : symbolScopePath[0];
+
+		const namesForTopLevelSymbol = this.namesForSymbol(topLevelIdentifierSymbol);
+		if (namesForTopLevelSymbol.size === 0) {
+			return null;
+		}
+
+		let topLevelName = symbolScopePath.length === 0 ? referencedIdentifier.getText() : topLevelIdentifierSymbol.getName();
+		if (!namesForTopLevelSymbol.has(topLevelName)) {
+			// if the set of already registered names does not contain the one that is requested
+
+			const topLevelNamesArray = Array.from(namesForTopLevelSymbol);
+
+			// lets find more suitable name for a top level symbol
+			let suitableTopLevelName = topLevelNamesArray[0];
+			for (const name of topLevelNamesArray) {
+				// attempt to find a generated name first to provide identifiers close to the original code as much as possible
+				if (name.startsWith(`${topLevelName}$`)) {
+					suitableTopLevelName = name;
+					break;
+				}
 			}
+
+			topLevelName = suitableTopLevelName;
 		}
 
-		return namesArray[0] || null;
+		const newIdentifierParts = [
+			...symbolScopePath.map((symbol: ts.Symbol) => symbol.getName()),
+			referencedIdentifier.getText(),
+		];
+
+		// we don't need to rename any symbol but top level only as only it can collide with other symbols
+		newIdentifierParts[0] = topLevelName;
+
+		return newIdentifierParts.join('.');
 	}
 
 	/**
@@ -138,9 +175,33 @@ export class CollisionsResolver {
 		const identifierParts = referencedIdentifier.getText().split('.');
 
 		// update top level part as it could get renamed above
+		// note that `topLevelName` might be a qualified name (e.g. with `.` in the name)
+		// but this is fine as we join with `.` below anyway
+		// but it is worth it to mention here ¯\_(ツ)_/¯
 		identifierParts[0] = topLevelName;
 
 		return identifierParts.join('.');
+	}
+
+	/**
+	 * Returns a node's scope where it is located in terms of namespaces/modules.
+	 * E.g. A scope for `Opt` in `declare module foo { type Opt = number; }` is `[Symbol(foo)]`
+	 */
+	private getNodeScope(node: ts.Node): ts.Symbol[] {
+		const scopeIdentifiersPath: ts.Symbol[] = [];
+
+		let currentNode: ts.Node = getClosestModuleLikeNode(node);
+		while (ts.isModuleDeclaration(currentNode) && ts.isIdentifier(currentNode.name)) {
+			const nameSymbol = getDeclarationNameSymbol(currentNode.name, this.typeChecker);
+			if (nameSymbol === null) {
+				throw new Error(`Cannot find symbol for identifier '${currentNode.name.getText()}'`);
+			}
+
+			scopeIdentifiersPath.push(nameSymbol);
+			currentNode = getClosestModuleLikeNode(currentNode.parent);
+		}
+
+		return scopeIdentifiersPath.reverse();
 	}
 
 	private registerSymbol(identifierSymbol: ts.Symbol, preferredName: string): string | null {

@@ -2,8 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as assert from 'assert';
 
-import * as ts from 'typescript';
-
 import { generateDtsBundle } from '../../../src/bundle-generator';
 
 import { TestCaseConfig } from './test-case-config';

@@ -15,6 +15,7 @@ export interface OutputParams extends OutputHelpers {
 	imports: Map<string, ModuleImportsSet>;
 	statements: readonly ts.Statement[];
 	renamedExports: Map<string, string>;
+	wrappedNamespaces: Map<string, Map<string, string>>;
 }
 
 export interface NeedStripDefaultKeywordResult {
@@ -77,10 +78,25 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 		resultOutput += `\n\n${statementsTextToString(statements)}`;
 	}
 
+	if (params.wrappedNamespaces.size !== 0) {
+		resultOutput += `\n\n${
+			Array.from(params.wrappedNamespaces.entries())
+				.map(([namespaceName, exportedNames]: [string, Map<string, string>]) => {
+					return `declare namespace ${namespaceName} {\n\texport { ${
+						Array.from(exportedNames.entries())
+							.map(([exportedName, localName]: [string, string]) => renamedExportValue(exportedName, localName))
+							.sort()
+							.join(', ')
+					} };\n}`;
+				})
+				.join('\n')
+		}`;
+	}
+
 	if (params.renamedExports.size !== 0) {
 		resultOutput += `\n\nexport {\n\t${
 			Array.from(params.renamedExports.entries())
-				.map(([exportedName, localName]: [string, string]) => exportedName !== localName ? `${localName} as ${exportedName}` : exportedName)
+				.map(([exportedName, localName]: [string, string]) => renamedExportValue(exportedName, localName))
 				.sort()
 				.join(',\n\t')
 		},\n};`;
@@ -105,6 +121,14 @@ interface StatementText {
 function statementsTextToString(statements: StatementText[]): string {
 	const statementsText = statements.map(statement => statement.text).join('\n');
 	return spacesToTabs(prettifyStatementsText(statementsText));
+}
+
+function renamedExportValue(exportedName: string, localName: string): string {
+	return exportedName !== localName ? `${localName} as ${exportedName}` : exportedName;
+}
+
+function renamedImportValue(importedName: string, localName: string): string {
+	return importedName !== localName ? `${importedName} as ${localName}` : importedName;
 }
 
 function prettifyStatementsText(statementsText: string): string {
@@ -148,25 +172,18 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 				}
 
 				if (needResolveIdentifiers) {
-					if (ts.isPropertyAccessExpression(node) || ts.isQualifiedName(node)) {
-						const resolvedName = helpers.resolveIdentifierName(node as ts.PropertyAccessEntityNameExpression | ts.QualifiedName);
+					if (ts.isPropertyAccessExpression(node)) {
+						const resolvedName = helpers.resolveIdentifierName(node as ts.PropertyAccessEntityNameExpression);
 						if (resolvedName !== null && resolvedName !== node.getText()) {
 							const identifiers = resolvedName.split('.');
 
-							let result: ts.PropertyAccessExpression | ts.QualifiedName | ts.Identifier = ts.factory.createIdentifier(identifiers[0]);
+							let result: ts.PropertyAccessExpression | ts.Identifier = ts.factory.createIdentifier(identifiers[0]);
 
 							for (let index = 1; index < identifiers.length; index += 1) {
-								if (ts.isQualifiedName(node)) {
-									result = ts.factory.createQualifiedName(
-										result as ts.QualifiedName,
-										ts.factory.createIdentifier(identifiers[index])
-									);
-								} else {
-									result = ts.factory.createPropertyAccessExpression(
-										result as ts.PropertyAccessExpression,
-										ts.factory.createIdentifier(identifiers[index])
-									);
-								}
+								result = ts.factory.createPropertyAccessExpression(
+									result as ts.PropertyAccessExpression,
+									ts.factory.createIdentifier(identifiers[index])
+								);
 							}
 
 							return result;
@@ -175,15 +192,26 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 						return node;
 					}
 
-					if (ts.isIdentifier(node)) {
-						// QualifiedName and PropertyAccessExpression are handled above already
-						if (ts.isQualifiedName(node.parent) || ts.isPropertyAccessExpression(node.parent)) {
+					if (ts.isIdentifier(node) || ts.isQualifiedName(node)) {
+						// QualifiedName and PropertyAccessExpression are handled separately
+						if (ts.isIdentifier(node) && (ts.isQualifiedName(node.parent) || ts.isPropertyAccessExpression(node.parent))) {
 							return node;
 						}
 
 						const resolvedName = helpers.resolveIdentifierName(node);
 						if (resolvedName !== null && resolvedName !== node.getText()) {
-							return ts.factory.createIdentifier(resolvedName);
+							const identifiers = resolvedName.split('.');
+
+							let result: ts.QualifiedName | ts.Identifier = ts.factory.createIdentifier(identifiers[0]);
+
+							for (let index = 1; index < identifiers.length; index += 1) {
+								result = ts.factory.createQualifiedName(
+									result,
+									ts.factory.createIdentifier(identifiers[index])
+								);
+							}
+
+							return result;
 						}
 
 						return node;
@@ -285,7 +313,7 @@ function generateImports(libraryName: string, imports: ModuleImportsSet): string
 	if (imports.namedImports.size !== 0) {
 		result.push(`import { ${
 			Array.from(imports.namedImports.entries())
-				.map(([localName, importedName]: [string, string]) => localName !== importedName ? `${importedName} as ${localName}` : importedName)
+				.map(([localName, importedName]: [string, string]) => renamedImportValue(importedName, localName))
 				.sort()
 				.join(', ')
 		} } ${fromEnding}`);
