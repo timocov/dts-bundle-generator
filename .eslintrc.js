@@ -9,21 +9,189 @@ module.exports = {
 	],
 	extends: [
 		'eslint:recommended',
-		'plugin:@typescript-eslint/eslint-recommended',
-		'plugin:@typescript-eslint/recommended',
-		'plugin:@typescript-eslint/recommended-requiring-type-checking',
-		'plugin:import/typescript',
 	],
 	env: {
 		browser: false,
 		es6: true,
 		node: true,
 	},
-	parser: '@typescript-eslint/parser',
 	parserOptions: {
-		project: 'tsconfig.options.json',
+		ecmaVersion: 2020,
 		sourceType: 'module',
 	},
+	overrides: [
+		{
+			// rules specific for js files only
+			files: ['**/*.js'],
+			rules: {
+				// enforces no braces where they can be omitted
+				// http://eslint.org/docs/rules/arrow-body-style
+				'arrow-body-style': ['error', 'as-needed'],
+
+				// enforce one true brace style
+				'brace-style': ['error', '1tbs', { allowSingleLine: true }],
+
+				// require camel case names
+				camelcase: 'error',
+
+				// encourages use of dot notation whenever possible
+				'dot-notation': ['error', { allowKeywords: true }],
+
+				// this option sets a specific tab width for your code
+				// https://github.com/eslint/eslint/blob/master/docs/rules/indent.md
+				indent: ['error', 'tab', { SwitchCase: 1, VariableDeclarator: 1 }],
+
+				// disallow creation of functions within loops
+				'no-loop-func': 'error',
+
+				// disallow variable declarations from shadowing variables declared in the outer scope
+				'no-shadow': 'error',
+
+				// disallow use of undeclared variables unless mentioned in a /*global */ block
+				'no-undef': 'error',
+
+				// disallow usage of expressions in statement position
+				'no-unused-expressions': 'error',
+
+				// disallow declaration of variables that are not used in the code
+				'no-unused-vars': ['error', { vars: 'local', args: 'none', ignoreRestSiblings: true }],
+
+				// specify whether double or single quotes should be used
+				quotes: ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }],
+
+				// require or disallow use of semicolons instead of ASI
+				semi: ['error', 'always'],
+			},
+		},
+		{
+			files: ['**/*.ts'],
+			extends: [
+				'plugin:@typescript-eslint/eslint-recommended',
+				'plugin:@typescript-eslint/recommended',
+				'plugin:@typescript-eslint/recommended-requiring-type-checking',
+				'plugin:import/typescript',
+			],
+			parser: '@typescript-eslint/parser',
+			parserOptions: {
+				project: 'tsconfig.options.json',
+				sourceType: 'module',
+			},
+			rules: {
+				'@typescript-eslint/array-type': [
+					'error',
+					{
+						default: 'array',
+					},
+				],
+				'@typescript-eslint/brace-style': ['error', '1tbs', { allowSingleLine: true }],
+				'@typescript-eslint/consistent-type-assertions': [
+					'error',
+					{
+						assertionStyle: 'as',
+						objectLiteralTypeAssertions: 'never',
+					},
+				],
+				'@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
+				'@typescript-eslint/dot-notation': 'error',
+				'@typescript-eslint/explicit-member-accessibility': [
+					'error',
+					{
+						accessibility: 'explicit',
+						overrides: {
+							accessors: 'explicit',
+							constructors: 'explicit',
+						},
+					},
+				],
+				'@typescript-eslint/indent': ['error', 'tab'],
+				'@typescript-eslint/member-delimiter-style': 'error',
+				'@typescript-eslint/member-ordering': [
+					'error',
+					{
+						default: [
+							'signature',
+							'public-static-field',
+							'protected-static-field',
+							'private-static-field',
+							'public-instance-field',
+							'protected-instance-field',
+							'private-instance-field',
+							'constructor',
+							'public-instance-method',
+							'public-static-method',
+							'protected-instance-method',
+							'protected-static-method',
+							'private-instance-method',
+							'private-static-method',
+						],
+					},
+				],
+				'@typescript-eslint/naming-convention': [
+					'error',
+					{ selector: 'default', format: ['camelCase'], leadingUnderscore: 'forbid', trailingUnderscore: 'forbid' },
+					{ selector: 'typeLike', format: ['PascalCase'] },
+					{ selector: 'enumMember', format: ['PascalCase'] },
+				],
+				'@typescript-eslint/no-empty-interface': 'off',
+				'@typescript-eslint/no-empty-function': 'off',
+				'@typescript-eslint/no-explicit-any': 'error',
+				'@typescript-eslint/no-extraneous-class': 'error',
+				'@typescript-eslint/no-inferrable-types': [
+					'error',
+					{
+						ignoreParameters: true,
+						ignoreProperties: true,
+					},
+				],
+				'@typescript-eslint/no-invalid-void-type': 'error',
+				'@typescript-eslint/no-loop-func': 'error',
+				'@typescript-eslint/no-namespace': 'off',
+				'@typescript-eslint/no-non-null-assertion': 'error',
+				'@typescript-eslint/no-require-imports': 'off',
+				'@typescript-eslint/no-shadow': 'error',
+				'@typescript-eslint/no-unnecessary-boolean-literal-compare': 'off',
+				'@typescript-eslint/no-unnecessary-qualifier': 'error',
+				'@typescript-eslint/no-unnecessary-type-arguments': 'off',
+				'@typescript-eslint/no-unsafe-assignment': 'off',
+				'@typescript-eslint/no-unused-expressions': 'error',
+				'@typescript-eslint/no-unused-vars': 'off',
+				'@typescript-eslint/no-use-before-define': 'off',
+				'@typescript-eslint/parameter-properties': ['error', { prefer: 'class-property' }],
+				'@typescript-eslint/prefer-for-of': 'off',
+				'@typescript-eslint/prefer-function-type': 'error',
+				'@typescript-eslint/prefer-readonly': 'off', // TODO
+				'@typescript-eslint/promise-function-async': 'off',
+				'@typescript-eslint/quotes': ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }],
+				'@typescript-eslint/restrict-plus-operands': 'off',
+				'@typescript-eslint/restrict-template-expressions': 'off',
+				'@typescript-eslint/semi': [
+					'error',
+					'always',
+				],
+				'@typescript-eslint/strict-boolean-expressions': 'off',
+				'@typescript-eslint/triple-slash-reference': [
+					'off',
+					{
+						path: 'never',
+						types: 'prefer-import',
+						lib: 'never',
+					},
+				],
+				'@typescript-eslint/type-annotation-spacing': 'error',
+				'@typescript-eslint/typedef': [
+					'error',
+					{
+						parameter: true,
+						propertyDeclaration: true,
+						memberVariableDeclaration: true,
+					},
+				],
+				'@typescript-eslint/unbound-method': 'off',
+
+				'deprecation/deprecation': 'error',
+			},
+		},
+	],
 	rules: {
 		// enforces return statements in callbacks of array's methods
 		// http://eslint.org/docs/rules/array-callback-return
@@ -318,119 +486,6 @@ module.exports = {
 			exceptions: ['-', '+'],
 			markers: ['=', '!', '/'], // space here to support sprockets directives
 		}],
-
-		'@typescript-eslint/array-type': [
-			'error',
-			{
-				default: 'array',
-			},
-		],
-		'@typescript-eslint/brace-style': ['error', '1tbs', { allowSingleLine: true }],
-		'@typescript-eslint/consistent-type-assertions': [
-			'error',
-			{
-				assertionStyle: 'as',
-				objectLiteralTypeAssertions: 'never',
-			},
-		],
-		'@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
-		'@typescript-eslint/dot-notation': 'error',
-		'@typescript-eslint/explicit-member-accessibility': [
-			'error',
-			{
-				accessibility: 'explicit',
-				overrides: {
-					accessors: 'explicit',
-					constructors: 'explicit',
-				},
-			},
-		],
-		'@typescript-eslint/indent': ['error', 'tab'],
-		'@typescript-eslint/member-delimiter-style': 'error',
-		'@typescript-eslint/member-ordering': [
-			'error',
-			{
-				default: [
-					'signature',
-					'public-static-field',
-					'protected-static-field',
-					'private-static-field',
-					'public-instance-field',
-					'protected-instance-field',
-					'private-instance-field',
-					'constructor',
-					'public-instance-method',
-					'public-static-method',
-					'protected-instance-method',
-					'protected-static-method',
-					'private-instance-method',
-					'private-static-method',
-				],
-			},
-		],
-		'@typescript-eslint/naming-convention': [
-			'error',
-			{ selector: 'default', format: ['camelCase'], leadingUnderscore: 'forbid', trailingUnderscore: 'forbid' },
-			{ selector: 'typeLike', format: ['PascalCase'] },
-			{ selector: 'enumMember', format: ['PascalCase'] },
-		],
-		'@typescript-eslint/no-empty-interface': 'off',
-		'@typescript-eslint/no-empty-function': 'off',
-		'@typescript-eslint/no-explicit-any': 'error',
-		'@typescript-eslint/no-extraneous-class': 'error',
-		'@typescript-eslint/no-inferrable-types': [
-			'error',
-			{
-				ignoreParameters: true,
-				ignoreProperties: true,
-			},
-		],
-		'@typescript-eslint/no-invalid-void-type': 'error',
-		'@typescript-eslint/no-loop-func': 'error',
-		'@typescript-eslint/no-namespace': 'off',
-		'@typescript-eslint/no-non-null-assertion': 'error',
-		'@typescript-eslint/no-require-imports': 'off',
-		'@typescript-eslint/no-shadow': 'error',
-		'@typescript-eslint/no-unnecessary-boolean-literal-compare': 'off',
-		'@typescript-eslint/no-unnecessary-qualifier': 'error',
-		'@typescript-eslint/no-unnecessary-type-arguments': 'off',
-		'@typescript-eslint/no-unsafe-assignment': 'off',
-		'@typescript-eslint/no-unused-expressions': 'error',
-		'@typescript-eslint/no-unused-vars': 'off',
-		'@typescript-eslint/no-use-before-define': 'off',
-		'@typescript-eslint/parameter-properties': ['error', { prefer: 'class-property' }],
-		'@typescript-eslint/prefer-for-of': 'off',
-		'@typescript-eslint/prefer-function-type': 'error',
-		'@typescript-eslint/prefer-readonly': 'off', // TODO
-		'@typescript-eslint/promise-function-async': 'off',
-		'@typescript-eslint/quotes': ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }],
-		'@typescript-eslint/restrict-plus-operands': 'off',
-		'@typescript-eslint/restrict-template-expressions': 'off',
-		'@typescript-eslint/semi': [
-			'error',
-			'always',
-		],
-		'@typescript-eslint/strict-boolean-expressions': 'off',
-		'@typescript-eslint/triple-slash-reference': [
-			'off',
-			{
-				path: 'never',
-				types: 'prefer-import',
-				lib: 'never',
-			},
-		],
-		'@typescript-eslint/type-annotation-spacing': 'error',
-		'@typescript-eslint/typedef': [
-			'error',
-			{
-				parameter: true,
-				propertyDeclaration: true,
-				memberVariableDeclaration: true,
-			},
-		],
-		'@typescript-eslint/unbound-method': 'off',
-
-		'deprecation/deprecation': 'error',
 
 		'import/no-default-export': 'error',
 

@@ -48,12 +48,12 @@
   },
   "scripts": {
     "clean": "rimraf dist/ dts-out/",
-    "lint": "eslint --format=unix --ext .ts ./",
+    "lint": "eslint --format=unix ./",
     "check-dts-config": "node ./node_modules/ts-compiler/bin/tsc -p tsconfig.dts-config.json",
     "bundle-dts": "npm run check-dts-config && node ./dist/bin/dts-bundle-generator.js --config dts-config.js --silent",
     "tsc": "node ./node_modules/ts-compiler/bin/tsc --version && node ./node_modules/ts-compiler/bin/tsc -b ./tsconfig.json",
     "verify": "npm-run-all clean tsc -p bundle-dts lint -s test",
     "prepare-release": "npm-run-all clean tsc bundle-dts && node scripts/clean-package-json.js",
-    "test": "mocha tests/unittests/**/*.spec.ts tests/e2e/all-test-cases.ts"
+    "test": "mocha --recursive -p --reporter list tests/"
   }
 }

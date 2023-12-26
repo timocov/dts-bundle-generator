@@ -10,7 +10,8 @@ const config = {
 	require: [
 		'ts-node/register',
 	],
-	extension: ['ts'],
+	extension: ['.spec.ts', '.spec.js'],
+	ignore: '**/.tsc-out/**',
 	checkLeaks: true,
 	recursive: true,
 	diff: true,
