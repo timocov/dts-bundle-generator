@@ -153,6 +153,26 @@ function compareStatementText(a: StatementText, b: StatementText): number {
 	return 0;
 }
 
+function recreateEntityName(node: ts.EntityName, helpers: OutputHelpers): ts.EntityName {
+	const resolvedName = helpers.resolveIdentifierName(node);
+	if (resolvedName !== null && resolvedName !== node.getText()) {
+		const identifiers = resolvedName.split('.');
+
+		let result: ts.EntityName = ts.factory.createIdentifier(identifiers[0]);
+
+		for (let index = 1; index < identifiers.length; index += 1) {
+			result = ts.factory.createQualifiedName(
+				result,
+				ts.factory.createIdentifier(identifiers[index])
+			);
+		}
+
+		return result;
+	}
+
+	return node;
+}
+
 function getStatementText(statement: ts.Statement, includeSortingValue: boolean, helpers: OutputHelpers): StatementText {
 	const shouldStatementHasExportKeyword = helpers.shouldStatementHasExportKeyword(statement);
 
@@ -198,33 +218,23 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 							return node;
 						}
 
-						const resolvedName = helpers.resolveIdentifierName(node);
-						if (resolvedName !== null && resolvedName !== node.getText()) {
-							const identifiers = resolvedName.split('.');
-
-							let result: ts.QualifiedName | ts.Identifier = ts.factory.createIdentifier(identifiers[0]);
-
-							for (let index = 1; index < identifiers.length; index += 1) {
-								result = ts.factory.createQualifiedName(
-									result,
-									ts.factory.createIdentifier(identifiers[index])
-								);
-							}
-
-							return result;
+						if (ts.isIdentifier(node) && ts.isImportTypeNode(node.parent) && node.parent.qualifier === node) {
+							// identifiers in dynamic imports should be ignored as they don't use local scope
+							return node;
 						}
 
-						return node;
+						return recreateEntityName(node, helpers);
 					}
 				}
 
 				// `import('module').Qualifier` or `typeof import('module').Qualifier`
 				if (ts.isImportTypeNode(node) && node.qualifier !== undefined && helpers.needStripImportFromImportTypeNode(node)) {
+					const newQualifier = recreateEntityName(node.qualifier, helpers);
 					if (node.isTypeOf) {
-						return ts.factory.createTypeQueryNode(node.qualifier);
+						return ts.factory.createTypeQueryNode(newQualifier);
 					}
 
-					return ts.factory.createTypeReferenceNode(node.qualifier, node.typeArguments);
+					return ts.factory.createTypeReferenceNode(newQualifier, node.typeArguments);
 				}
 
 				if (node !== statement) {

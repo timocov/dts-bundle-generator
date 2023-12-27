@@ -1,3 +1,5 @@
+import { NonDefaultInterface as DFI } from 'package-with-default-export';
+
 export interface CustomType {
 	foo: number;
 	bar: string;
@@ -18,7 +20,8 @@ export interface MyType {
 	field4: GenericType<number, string>;
 	field5: Interface;
 	field6: typeof Namespace$1;
+	field7: import("package-with-default-export").NonDefaultInterface;
 }
-export type MySecondType = MyType | number;
+export type MySecondType = MyType | number | DFI;
 
 export {};

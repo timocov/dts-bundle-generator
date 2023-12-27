@@ -5,4 +5,5 @@ export interface MyType {
 	field4: import('./custom-type').GenericType<number, string>;
 	field5: import('fake-package').Interface;
 	field6: typeof import('./namespace').Namespace;
+	field7: import('package-with-default-export').NonDefaultInterface;
 }
