@@ -1,6 +1,7 @@
 {
 	"extends": "../tsconfig.json",
 	"compilerOptions": {
+		"types": ["fake-types-lib-2"],
 		"typeRoots": [
 			"node_modules/@types",
 			"./types"

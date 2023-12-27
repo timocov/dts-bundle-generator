@@ -4,10 +4,10 @@ declare namespace MyModule {
 		field2: number;
 	}
 }
-interface ExportedInterface {
+interface LibInterface {
 	field: number;
 }
-export const myLib: ExportedInterface;
+export const myLib: LibInterface;
 
 export {
 	MyModule as newName,
