@@ -5,6 +5,7 @@ import {
 	getClosestModuleLikeNode,
 	getDeclarationNameSymbol,
 	getDeclarationsForSymbol,
+	hasGlobalName,
 } from './helpers/typescript';
 import { verboseLog } from './logger';
 
@@ -31,7 +32,7 @@ export interface ResolverIdentifier {
 export class CollisionsResolver {
 	private typeChecker: ts.TypeChecker;
 
-	private collisionsMap: Map<string, ts.Symbol[]> = new Map();
+	private collisionsMap: Map<string, Map<ts.Symbol, string>> = new Map();
 	private generatedNames: Map<ts.Symbol, Set<string>> = new Map();
 
 	public constructor(typeChecker: ts.TypeChecker) {
@@ -224,19 +225,25 @@ export class CollisionsResolver {
 		}
 
 		const collisionsKey = symbolName;
-		let nameSymbols = this.collisionsMap.get(collisionsKey);
-		if (nameSymbols === undefined) {
-			nameSymbols = [identifierSymbol];
-			this.collisionsMap.set(collisionsKey, nameSymbols);
+		let collisionSymbols = this.collisionsMap.get(collisionsKey);
+		if (collisionSymbols === undefined) {
+			collisionSymbols = new Map();
+			this.collisionsMap.set(collisionsKey, collisionSymbols);
 		}
 
-		let symbolIndex = nameSymbols.indexOf(identifierSymbol);
-		if (symbolIndex === -1) {
-			nameSymbols.push(identifierSymbol);
-			symbolIndex = nameSymbols.length - 1;
+		const storedSymbolName = collisionSymbols.get(identifierSymbol);
+		if (storedSymbolName !== undefined) {
+			return storedSymbolName;
 		}
 
-		const newName = symbolIndex === 0 ? symbolName : `${symbolName}$${symbolIndex}`;
+		let nameIndex = collisionSymbols.size;
+		let newName = collisionSymbols.size === 0 ? symbolName : `${symbolName}$${nameIndex}`;
+		while (hasGlobalName(this.typeChecker, newName)) {
+			nameIndex += 1;
+			newName = `${symbolName}$${nameIndex}`;
+		}
+
+		collisionSymbols.set(identifierSymbol, newName);
 
 		let symbolNames = this.generatedNames.get(identifierSymbol);
 		if (symbolNames === undefined) {

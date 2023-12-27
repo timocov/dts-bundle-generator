@@ -659,3 +659,16 @@ export function getDeclarationsForExportedValues(exp: ts.ExportAssignment | ts.E
 	const symbol = getActualSymbol(symbolForExpression, typeChecker);
 	return getDeclarationsForSymbol(symbol);
 }
+
+export function hasGlobalName(typeChecker: ts.TypeChecker, name: string): boolean {
+	interface TsInternalEmitResolver {
+		hasGlobalName(name: string): boolean;
+	}
+
+	interface Ts54CompatTypeChecker extends ts.TypeChecker {
+		getEmitResolver(): TsInternalEmitResolver;
+	}
+
+	// see https://github.com/microsoft/TypeScript/issues/46793
+	return (typeChecker as Ts54CompatTypeChecker).getEmitResolver().hasGlobalName(name);
+}
