@@ -4,16 +4,19 @@ import { compileDts } from './compile-dts';
 import { TypesUsageEvaluator } from './types-usage-evaluator';
 import {
 	ExportType,
-	getActualSymbol,
 	getClosestModuleLikeNode,
 	getClosestSourceFileLikeNode,
+	getDeclarationsForExportedValues,
 	getDeclarationsForSymbol,
+	getExportReferencedSymbol,
 	getExportsForSourceFile,
 	getExportsForStatement,
 	getImportModuleName,
 	getNodeName,
+	getNodeOwnSymbol,
 	getNodeSymbol,
 	getRootSourceFile,
+	getSymbolExportStarDeclaration,
 	hasNodeModifier,
 	isAmbientModule,
 	isDeclareGlobalStatement,
@@ -176,11 +179,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		const rootFileExports = getExportsForSourceFile(typeChecker, rootSourceFileSymbol);
 		const rootFileExportSymbols = rootFileExports.map((exp: SourceFileExport) => exp.symbol);
 
-		interface CollectingResult {
-			typesReferences: Set<string>;
-			imports: Map<string, ModuleImportsSet>;
+		interface CollectingResult extends Pick<OutputParams, 'typesReferences' | 'imports' | 'renamedExports' | 'wrappedNamespaces'> {
 			statements: ts.Statement[];
-			renamedExports: OutputParams['renamedExports'];
 		}
 
 		const collectionResult: CollectingResult = {
@@ -188,6 +188,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			imports: new Map(),
 			statements: [],
 			renamedExports: new Map(),
+			wrappedNamespaces: new Map(),
 		};
 
 		const outputOptions: OutputOptions = entryConfig.output || {};
@@ -204,7 +205,12 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				// if we have `export =` or `export * from` somewhere so we can decide that every declaration of exported symbol in this way
 				// is "part of the exported module" and we need to update result according every member of each declaration
 				// but treat they as current module (we do not need to update module info)
-				for (const declaration of getDeclarationsForExportedValues(exportAssignment)) {
+				for (const declaration of getDeclarationsForExportedValues(exportAssignment, typeChecker)) {
+					if (ts.isVariableDeclaration(declaration)) {
+						// variables will be processed separately anyway so no need to process them again here
+						continue;
+					}
+
 					let exportedDeclarations: readonly ts.Statement[] = [];
 
 					if (ts.isExportDeclaration(exportAssignment) && ts.isSourceFile(declaration)) {
@@ -286,7 +292,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						}
 					}
 
-					if (ts.isExportAssignment(statement) && statement.isExportEquals && currentModule.isExternal) {
+					if (ts.isExportAssignment(statement) && statement.isExportEquals && currentModule.type !== ModuleType.ShouldBeInlined) {
 						updateResultForExternalExport(statement);
 						continue;
 					}
@@ -331,19 +337,49 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			updateResultImpl(statements);
 		}
 
-		function updateResultForRootModule(statements: readonly ts.Statement[], currentModule: ModuleInfo): void {
-			// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
-			function isReExportFromImportableModule(statement: ts.ExportDeclaration): boolean {
-				return getReferencedModuleInfo(statement, criteria, typeChecker)?.type === ModuleType.ShouldBeImported;
+		// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+		function isReferencedModuleImportable(statement: ts.ExportDeclaration | ts.ImportDeclaration): boolean {
+			return getReferencedModuleInfo(statement, criteria, typeChecker)?.type === ModuleType.ShouldBeImported;
+		}
+
+		function handleExportDeclarationFromRootModule(exportDeclaration: ts.ExportDeclaration): void {
+			// `export * from 'importable-package'`
+			if (isReferencedModuleImportable(exportDeclaration) && exportDeclaration.exportClause === undefined) {
+				collectionResult.statements.push(exportDeclaration);
+				return;
 			}
 
+			// `export { val, val2 }`
+			if (exportDeclaration.moduleSpecifier === undefined && exportDeclaration.exportClause !== undefined && ts.isNamedExports(exportDeclaration.exportClause)) {
+				for (const exportElement of exportDeclaration.exportClause.elements) {
+					const exportElementSymbol = getExportReferencedSymbol(exportElement, typeChecker);
+
+					const namespaceImportFromImportableModule = getDeclarationsForSymbol(exportElementSymbol).find((importDecl: ts.Declaration): importDecl is ts.NamespaceImport => {
+						return ts.isNamespaceImport(importDecl) && isReferencedModuleImportable(importDecl.parent.parent);
+					});
+
+					if (namespaceImportFromImportableModule !== undefined) {
+						const importModuleSpecifier = getImportModuleName(namespaceImportFromImportableModule.parent.parent);
+						if (importModuleSpecifier === null) {
+							throw new Error(`Cannot get import module name from '${namespaceImportFromImportableModule.parent.parent.getText()}'`);
+						}
+
+						addStartImport(
+							getImportItem(importModuleSpecifier),
+							namespaceImportFromImportableModule.name
+						);
+					}
+				}
+			}
+		}
+
+		function updateResultForRootModule(statements: readonly ts.Statement[], currentModule: ModuleInfo): void {
 			updateResultForAnyModule(statements, currentModule);
 
 			// add skipped by `updateResult` exports
 			for (const statement of statements) {
-				// `export * from 'importable-package'`
-				if (ts.isExportDeclaration(statement) && isReExportFromImportableModule(statement) && statement.exportClause === undefined) {
-					collectionResult.statements.push(statement);
+				if (ts.isExportDeclaration(statement)) {
+					handleExportDeclarationFromRootModule(statement);
 					continue;
 				}
 
@@ -428,6 +464,42 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			);
 		}
 
+		function getImportItem(importModuleSpecifier: string): ModuleImportsSet {
+			let importItem = collectionResult.imports.get(importModuleSpecifier);
+			if (importItem === undefined) {
+				importItem = {
+					defaultImports: new Set(),
+					namedImports: new Map(),
+					starImport: null,
+					requireImports: new Set(),
+				};
+
+				collectionResult.imports.set(importModuleSpecifier, importItem);
+			}
+
+			return importItem;
+		}
+
+		function addRequireImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier): void {
+			importItem.requireImports.add(collisionsResolver.addTopLevelIdentifier(preferredLocalName));
+		}
+
+		function addNamedImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier, importedIdentifier: ts.Identifier) {
+			const newLocalName = collisionsResolver.addTopLevelIdentifier(preferredLocalName);
+			const importedName = importedIdentifier.text;
+			importItem.namedImports.set(newLocalName, importedName);
+		}
+
+		function addStartImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier) {
+			if (importItem.starImport === null) {
+				importItem.starImport = collisionsResolver.addTopLevelIdentifier(preferredLocalName);
+			}
+		}
+
+		function addDefaultImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier) {
+			importItem.defaultImports.add(collisionsResolver.addTopLevelIdentifier(preferredLocalName));
+		}
+
 		function addImport(statement: ts.DeclarationStatement | ts.SourceFile): void {
 			if (!ts.isSourceFile(statement) && statement.name === undefined) {
 				throw new Error(`Import/usage unnamed declaration: ${statement.getText()}`);
@@ -460,21 +532,11 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						return;
 					}
 
-					let importItem = collectionResult.imports.get(importModuleSpecifier);
-					if (importItem === undefined) {
-						importItem = {
-							defaultImports: new Set(),
-							namedImports: new Map(),
-							starImport: null,
-							requireImports: new Set(),
-						};
-
-						collectionResult.imports.set(importModuleSpecifier, importItem);
-					}
+					const importItem = getImportItem(importModuleSpecifier);
 
 					if (ts.isImportEqualsDeclaration(st)) {
 						if (areDeclarationSame(statement, st)) {
-							importItem.requireImports.add(collisionsResolver.addTopLevelIdentifier(st.name));
+							addRequireImport(importItem, st.name);
 						}
 
 						return;
@@ -489,15 +551,12 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 							exportClause.elements
 								.filter(areDeclarationSame.bind(null, statement))
 								.forEach((specifier: ts.ExportSpecifier) => {
-									const newLocalName = collisionsResolver.addTopLevelIdentifier(specifier.name);
-									const importedName = (specifier.propertyName || specifier.name).text;
-									// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-									importItem!.namedImports.set(newLocalName, importedName);
+									addNamedImport(importItem, specifier.name, specifier.propertyName || specifier.name);
 								});
 						} else {
 							// export * as name from 'module';
-							if (importItem.starImport === null && isNodeUsed(exportClause)) {
-								importItem.starImport = collisionsResolver.addTopLevelIdentifier(exportClause.name);
+							if (isNodeUsed(exportClause)) {
+								addStartImport(importItem, exportClause.name);
 							}
 						}
 					} else {
@@ -505,7 +564,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						const importClause = st.importClause!;
 						if (importClause.name !== undefined && areDeclarationSame(statement, importClause)) {
 							// import name from 'module';
-							importItem.defaultImports.add(collisionsResolver.addTopLevelIdentifier(importClause.name));
+							addDefaultImport(importItem, importClause.name);
 						}
 
 						if (importClause.namedBindings !== undefined) {
@@ -514,15 +573,12 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 								importClause.namedBindings.elements
 									.filter(areDeclarationSame.bind(null, statement))
 									.forEach((specifier: ts.ImportSpecifier) => {
-										const newLocalName = collisionsResolver.addTopLevelIdentifier(specifier.name);
-										const importedName = (specifier.propertyName || specifier.name).text;
-										// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-										importItem!.namedImports.set(newLocalName, importedName);
+										addNamedImport(importItem, specifier.name, specifier.propertyName || specifier.name);
 									});
 							} else {
 								// import * as name from 'module';
-								if (importItem.starImport === null && isNodeUsed(importClause)) {
-									importItem.starImport = collisionsResolver.addTopLevelIdentifier(importClause.namedBindings.name);
+								if (isNodeUsed(importClause)) {
+									addStartImport(importItem, importClause.namedBindings.name);
 								}
 							}
 						}
@@ -665,19 +721,113 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			return false;
 		}
 
-		function getDeclarationsForExportedValues(exp: ts.ExportAssignment | ts.ExportDeclaration): ts.Declaration[] {
-			const nodeForSymbol = ts.isExportAssignment(exp) ? exp.expression : exp.moduleSpecifier;
-			if (nodeForSymbol === undefined) {
-				return [];
+		function createNamespaceForExports(exports: ts.SymbolTable, namespaceSymbol: ts.Symbol): string | null {
+			function addSymbolToNamespaceExports(namespaceExports: Map<string, string>, symbol: ts.Symbol): void {
+				const symbolKnownNames = collisionsResolver.namesForSymbol(symbol);
+				if (symbolKnownNames.size === 0) {
+					throw new Error(`Cannot get local names for symbol '${symbol.getName()}' while generating namespaced export`);
+				}
+
+				namespaceExports.set(symbol.getName(), Array.from(symbolKnownNames)[0]);
 			}
 
-			const symbolForExpression = typeChecker.getSymbolAtLocation(nodeForSymbol);
-			if (symbolForExpression === undefined) {
-				return [];
+			function processExportSymbol(namespaceExports: Map<string, string>, symbol: ts.Symbol): void {
+				if (symbol.escapedName === ts.InternalSymbolName.ExportStar) {
+					// this means that an export contains `export * from 'module'` statement
+					const exportStarDeclaration = getSymbolExportStarDeclaration(symbol);
+					if (exportStarDeclaration.moduleSpecifier === undefined) {
+						throw new Error(`Export star declaration does not have a module specifier '${exportStarDeclaration.getText()}'`);
+					}
+
+					if (isReferencedModuleImportable(exportStarDeclaration)) {
+						// in case of re-exporting from other modules directly we should import everything and re-export manually
+						// but it is not supported yet so lets just fail for now
+						throw new Error(`Having a re-export from an importable module as a part of namespaced export is not supported yet.`);
+					}
+
+					const referencedSourceFileSymbol = getNodeOwnSymbol(exportStarDeclaration.moduleSpecifier, typeChecker);
+					referencedSourceFileSymbol.exports?.forEach(
+						processExportSymbol.bind(null, namespaceExports)
+					);
+
+					return;
+				}
+
+				const namespaceExport = symbol.declarations?.find(ts.isNamespaceExport);
+				if (namespaceExport !== undefined && namespaceExport.parent.moduleSpecifier !== undefined) {
+					// `export * as ns from 'module'`
+					if (isReferencedModuleImportable(namespaceExport.parent)) {
+						// in case of an external export statement we should copy it as is
+						// here we assume that a namespace import will be added in other places
+						// so here we can just add re-export
+						addSymbolToNamespaceExports(namespaceExports, symbol);
+						return;
+					}
+
+					const referencedSourceFileSymbol = getNodeOwnSymbol(namespaceExport.parent.moduleSpecifier, typeChecker);
+
+					const localNamespaceName = referencedSourceFileSymbol.exports !== undefined
+						? createNamespaceForExports(referencedSourceFileSymbol.exports, symbol)
+						: null
+						;
+
+					if (localNamespaceName !== null) {
+						namespaceExports.set(symbol.getName(), localNamespaceName);
+					}
+
+					return;
+				}
+
+				addSymbolToNamespaceExports(namespaceExports, symbol);
 			}
 
-			const symbol = getActualSymbol(symbolForExpression, typeChecker);
-			return getDeclarationsForSymbol(symbol);
+			// handling namespaced re-exports/imports
+			// e.g. `export * as NS from './local-module';` or `import * as NS from './local-module'; export { NS }`
+			for (const decl of getDeclarationsForSymbol(namespaceSymbol)) {
+				if (!ts.isNamespaceExport(decl) && !ts.isExportSpecifier(decl)) {
+					continue;
+				}
+
+				// if it is namespace export then it should be from a inlined module (e.g. `export * as NS from './local-module';`)
+				if (ts.isNamespaceExport(decl) && isReferencedModuleImportable(decl.parent)) {
+					continue;
+				}
+
+				if (ts.isExportSpecifier(decl)) {
+					// if it is export specifier then it should exporting a local symbol i.e. without a module specifier (e.g. `export { NS };` or `export { NS as NewNsName };`)
+					if (decl.parent.parent.moduleSpecifier !== undefined) {
+						continue;
+					}
+
+					const declarationSymbol = getExportReferencedSymbol(decl, typeChecker);
+
+					// but also that local symbol should be a namespace imported from inlined module
+					// i.e. `import * as NS from './local-module'`
+					const isNamespaceImportFromInlinedModule = getDeclarationsForSymbol(declarationSymbol).some((importDecl: ts.Declaration) => {
+						return ts.isNamespaceImport(importDecl) && !isReferencedModuleImportable(importDecl.parent.parent);
+					});
+
+					if (!isNamespaceImportFromInlinedModule) {
+						continue;
+					}
+				}
+
+				const namespaceExports = new Map<string, string>();
+				exports.forEach(
+					processExportSymbol.bind(null, namespaceExports)
+				);
+
+				if (namespaceExports.size !== 0) {
+					const namespaceLocalName = collisionsResolver.addTopLevelIdentifier(decl.name);
+					collectionResult.wrappedNamespaces.set(namespaceLocalName, namespaceExports);
+					return namespaceLocalName;
+				}
+
+				// we just need to find one suitable declaration, no need to iterate over the rest of the declarations
+				break;
+			}
+
+			return null;
 		}
 
 		function syncExports(): void {
@@ -686,6 +836,18 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					// commonjs will be handled separately where we handle root source files
 					// as the only way of adding it is to add an explicit export statement in the root source file
 					continue;
+				}
+
+				// if resolved symbol is a "synthetic" symbol already (i.e. not namespace module)
+				// then we should create a namespace for its exports
+				// otherwise most likely it will be inlined as is anyway so we don't need to do anything
+				const namespaceLocalName = exp.symbol.flags & ts.SymbolFlags.ValueModule && exp.symbol.exports !== undefined
+					? createNamespaceForExports(exp.symbol.exports, exp.originalSymbol)
+					: null
+					;
+
+				if (namespaceLocalName !== null) {
+					collectionResult.renamedExports.set(exp.exportedName, namespaceLocalName);
 				}
 
 				const symbolKnownNames = collisionsResolver.namesForSymbol(exp.symbol);

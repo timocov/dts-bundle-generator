@@ -1,6 +1,11 @@
-export interface Options {
+declare namespace ora {
+	interface Options {
+	}
 }
-export declare const ExportedValue: Options;
-export type ExportedType = Options;
+declare const ora: {
+	(options: ora.Options): any;
+};
+export declare const ExportedValue: ora.Options;
+export type ExportedType = ora.Options;
 
 export {};

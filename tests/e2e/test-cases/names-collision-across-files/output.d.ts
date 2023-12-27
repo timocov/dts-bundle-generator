@@ -1,6 +1,28 @@
 import * as fakePackage from 'fake-package';
 import { Interface as FPI1, Interface as FPI2, Interface as Interface$2 } from 'fake-package';
 
+export type ExportEqNs = string;
+declare namespace ExportEqNs$1 {
+	namespace InternalNs {
+		type NewType = string;
+	}
+	type Bar = ExportEqNs$1.Foo;
+	type Foo = String;
+	namespace InternalNs2 {
+		type Type21 = InternalNs3.Type31;
+		type Type22 = InternalNs2.InternalNs3.Type31;
+		type Type23 = ExportEqNs$1.InternalNs2.InternalNs3.Type31;
+		namespace InternalNs3 {
+			type Type31 = InternalNs4.Type;
+			type Type32 = InternalNs3.InternalNs4.Type;
+			type Type33 = InternalNs2.InternalNs3.InternalNs4.Type;
+			type Type34 = ExportEqNs$1.InternalNs2.InternalNs3.InternalNs4.Type;
+			namespace InternalNs4 {
+				type Type = string;
+			}
+		}
+	}
+}
 declare const TEMPLATE = "template1";
 declare const MergedSymbol = "";
 interface MergedSymbol {
@@ -56,6 +78,7 @@ export interface Inter2 {
 	field7: Interface$2;
 }
 export type MyType = Interface$2;
+export type ExportedNsType = ExportEqNs$1.InternalNs.NewType;
 
 export {
 	AnotherInterface as AI1,

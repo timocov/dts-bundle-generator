@@ -151,6 +151,7 @@ export const enum ExportType {
 export interface SourceFileExport {
 	exportedName: string;
 	symbol: ts.Symbol;
+	originalSymbol: ts.Symbol;
 	type: ExportType;
 }
 
@@ -162,6 +163,7 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 			return [
 				{
 					symbol,
+					originalSymbol: commonJsExport,
 					type: ExportType.CommonJS,
 					exportedName: '',
 				},
@@ -171,7 +173,7 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 
 	const result = typeChecker
 		.getExportsOfModule(sourceFileSymbol)
-		.map<SourceFileExport>((symbol: ts.Symbol) => ({ symbol, exportedName: symbol.name, type: ExportType.ES6Named }));
+		.map<SourceFileExport>((symbol: ts.Symbol) => ({ symbol, originalSymbol: symbol, exportedName: symbol.name, type: ExportType.ES6Named }));
 
 	if (sourceFileSymbol.exports !== undefined) {
 		const defaultExportSymbol = sourceFileSymbol.exports.get(ts.InternalSymbolName.Default);
@@ -184,6 +186,7 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 				// but let's add it to be sure add if there is no such export
 				result.push({
 					symbol: defaultExportSymbol,
+					originalSymbol: defaultExportSymbol,
 					type: ExportType.ES6Default,
 					exportedName: 'default',
 				});
@@ -497,6 +500,15 @@ export function getRootSourceFile(program: ts.Program, rootFileName: string): ts
 	return sourceFile;
 }
 
+export function getNodeOwnSymbol(node: ts.Node, typeChecker: ts.TypeChecker): ts.Symbol {
+	const nodeSymbol = typeChecker.getSymbolAtLocation(node);
+	if (nodeSymbol === undefined) {
+		throw new Error(`Cannot find symbol for node "${node.getText()}" in "${node.parent.getText()}" from "${node.getSourceFile().fileName}"`);
+	}
+
+	return nodeSymbol;
+}
+
 export function getNodeSymbol(node: ts.Node, typeChecker: ts.TypeChecker): ts.Symbol | null {
 	if (ts.isSourceFile(node)) {
 		const fileSymbol = typeChecker.getSymbolAtLocation(node);
@@ -603,4 +615,47 @@ export function getImportModuleName(imp: ts.ImportEqualsDeclaration | ts.ImportD
 	}
 
 	return null;
+}
+
+/**
+ * Returns a symbol that an {@link exportElement} reference to.
+ *
+ * For example, for given `export { Value }` it returns a declaration of `Value` whatever it is (import statement, interface declaration, etc).
+ */
+export function getExportReferencedSymbol(exportElement: ts.ExportSpecifier, typeChecker: ts.TypeChecker): ts.Symbol {
+	return exportElement.propertyName !== undefined
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		? typeChecker.getSymbolAtLocation(exportElement.propertyName)!
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		: typeChecker.getImmediateAliasedSymbol(typeChecker.getSymbolAtLocation(exportElement.name)!)!
+	;
+}
+
+export function getSymbolExportStarDeclaration(symbol: ts.Symbol): ts.ExportDeclaration {
+	if (symbol.escapedName !== ts.InternalSymbolName.ExportStar) {
+		throw new Error(`Only ExportStar symbol can have export star declaration, but got ${symbol.escapedName}`);
+	}
+
+	// this means that an export contains `export * from 'module'` statement
+	const exportStarDeclaration = getDeclarationsForSymbol(symbol).find(ts.isExportDeclaration);
+	if (exportStarDeclaration === undefined || exportStarDeclaration.moduleSpecifier === undefined) {
+		throw new Error(`Cannot find export declaration for ${symbol.getName()} symbol`);
+	}
+
+	return exportStarDeclaration;
+}
+
+export function getDeclarationsForExportedValues(exp: ts.ExportAssignment | ts.ExportDeclaration, typeChecker: ts.TypeChecker): ts.Declaration[] {
+	const nodeForSymbol = ts.isExportAssignment(exp) ? exp.expression : exp.moduleSpecifier;
+	if (nodeForSymbol === undefined) {
+		return [];
+	}
+
+	const symbolForExpression = typeChecker.getSymbolAtLocation(nodeForSymbol);
+	if (symbolForExpression === undefined) {
+		return [];
+	}
+
+	const symbol = getActualSymbol(symbolForExpression, typeChecker);
+	return getDeclarationsForSymbol(symbol);
 }

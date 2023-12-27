@@ -1,3 +1,8 @@
+import { ExportEqNs } from './ns';
+import { InternalNs } from './export-eq';
+
+export type ExportedNsType = InternalNs.NewType;
+
 export {
 	default as TEMPLATE1,
 	MergedSymbol as MS1,
@@ -28,3 +33,5 @@ export {
 export { Inter } from './import-star-1';
 export { Inter2 } from './import-star-2';
 export { MyType } from './type';
+
+export { ExportEqNs };
