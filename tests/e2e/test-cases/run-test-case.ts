@@ -16,7 +16,7 @@ interface TestCase {
 const currentPackageVersion = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../package.json'), { encoding: 'utf-8' })).version as string;
 
 function prepareString(str: string): string {
-	return str.trim().replace(/\r\n/g, '\n');
+	return str.replace(/\r\n/g, '\n');
 }
 
 function findInputFile(testCaseDir: string): string {
