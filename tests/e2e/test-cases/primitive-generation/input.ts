@@ -1,10 +1,7 @@
-export type TypeName = string | number;
+import { InterfaceName, TypeName, func2 } from './func';
 
-export interface InterfaceName {
-	prop: number;
-	prop2: TypeName;
+export function func({ prop }: InterfaceName = { prop: 1, prop2: 1 }): TypeName {
+	throw new Error('it does not matter' + prop);
 }
 
-export function func({ prop: prop3 }: InterfaceName = { prop: 1, prop2: 1 }): TypeName {
-	throw new Error('it does not matter' + prop3);
-}
+export { func2 };
