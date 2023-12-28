@@ -599,7 +599,7 @@ export function getImportModuleName(imp: ts.ImportEqualsDeclaration | ts.ImportD
 	}
 
 	if (ts.isExportDeclaration(imp)) {
-		return imp.moduleSpecifier === undefined || imp.exportClause === undefined
+		return imp.moduleSpecifier === undefined
 			? null
 			: (imp.moduleSpecifier as ts.StringLiteral).text
 		;
@@ -618,7 +618,7 @@ export function getImportModuleName(imp: ts.ImportEqualsDeclaration | ts.ImportD
 }
 
 /**
- * Returns a symbol that an {@link exportElement} reference to.
+ * Returns a symbol that an {@link exportElement} node references to.
  *
  * For example, for given `export { Value }` it returns a declaration of `Value` whatever it is (import statement, interface declaration, etc).
  */

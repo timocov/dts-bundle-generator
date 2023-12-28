@@ -5,12 +5,12 @@ import { getModifiers, getNodeName, modifiersToMap, recreateRootLevelNodeWithMod
 
 export interface ModuleImportsSet {
 	defaultImports: Set<string>;
-	starImport: string | null;
+	nsImport: string | null;
 	namedImports: Map<string, string>;
 	requireImports: Set<string>;
 }
 
-export interface OutputParams extends OutputHelpers {
+export interface OutputInputData {
 	typesReferences: Set<string>;
 	imports: Map<string, ModuleImportsSet>;
 	statements: readonly ts.Statement[];
@@ -29,6 +29,8 @@ export interface OutputHelpers {
 	needStripImportFromImportTypeNode(importType: ts.ImportTypeNode): boolean;
 	resolveIdentifierName(identifier: ts.Identifier | ts.QualifiedName | ts.PropertyAccessEntityNameExpression): string | null;
 }
+
+export type OutputParams = OutputHelpers & OutputInputData;
 
 export interface OutputOptions {
 	umdModuleName?: string;
@@ -313,8 +315,8 @@ function generateImports(libraryName: string, imports: ModuleImportsSet): string
 	const result: string[] = [];
 
 	// sort to make output more "stable"
-	if (imports.starImport !== null) {
-		result.push(`import * as ${imports.starImport} ${fromEnding}`);
+	if (imports.nsImport !== null) {
+		result.push(`import * as ${imports.nsImport} ${fromEnding}`);
 	}
 
 	Array.from(imports.requireImports).sort().forEach((importName: string) => result.push(`import ${importName} = require('${libraryName}');`));
