@@ -770,6 +770,37 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				namespaceExports.set(symbol.getName(), Array.from(symbolKnownNames)[0]);
 			}
 
+			function handleNamespacedImportOrExport(namespacedImportOrExport: ts.ExportDeclaration | ts.ImportDeclaration, namespaceExports: Map<string, string>, symbol: ts.Symbol): void {
+				if (namespacedImportOrExport.moduleSpecifier === undefined) {
+					return;
+				}
+
+				if (isReferencedModuleImportable(namespacedImportOrExport)) {
+					// in case of an external export statement we should copy it as is
+					// here we assume that a namespace import will be added in other places
+					// so here we can just add re-export
+					addSymbolToNamespaceExports(namespaceExports, symbol);
+					return;
+				}
+
+				const referencedSourceFileSymbol = getNodeOwnSymbol(namespacedImportOrExport.moduleSpecifier, typeChecker);
+
+				if (referencedSourceFileSymbol.exports === undefined) {
+					return;
+				}
+
+				if (ts.isImportDeclaration(namespacedImportOrExport) && referencedSourceFileSymbol.exports.has(ts.InternalSymbolName.ExportEquals)) {
+					// in case of handling `import * as Ns` statements with `export =` export in a module we need to ignore it
+					// as that import will be renamed later
+					return;
+				}
+
+				const localNamespaceName = createNamespaceForExports(referencedSourceFileSymbol.exports, symbol);
+				if (localNamespaceName !== null) {
+					namespaceExports.set(symbol.getName(), localNamespaceName);
+				}
+			}
+
 			function processExportSymbol(namespaceExports: Map<string, string>, symbol: ts.Symbol): void {
 				if (symbol.escapedName === ts.InternalSymbolName.ExportStar) {
 					// this means that an export contains `export * from 'module'` statement
@@ -793,30 +824,22 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					return;
 				}
 
-				const namespaceExport = symbol.declarations?.find(ts.isNamespaceExport);
-				if (namespaceExport !== undefined && namespaceExport.parent.moduleSpecifier !== undefined) {
-					// `export * as ns from 'module'`
-					if (isReferencedModuleImportable(namespaceExport.parent)) {
-						// in case of an external export statement we should copy it as is
-						// here we assume that a namespace import will be added in other places
-						// so here we can just add re-export
-						addSymbolToNamespaceExports(namespaceExports, symbol);
+				symbol.declarations?.forEach((decl: ts.Declaration) => {
+					if (ts.isNamespaceExport(decl) && decl.parent.moduleSpecifier !== undefined) {
+						handleNamespacedImportOrExport(decl.parent, namespaceExports, symbol);
 						return;
 					}
 
-					const referencedSourceFileSymbol = getNodeOwnSymbol(namespaceExport.parent.moduleSpecifier, typeChecker);
+					if (ts.isExportSpecifier(decl)) {
+						const exportElementSymbol = getExportReferencedSymbol(decl, typeChecker);
+						const namespaceImport = getDeclarationsForSymbol(exportElementSymbol).find(ts.isNamespaceImport);
+						if (namespaceImport !== undefined) {
+							handleNamespacedImportOrExport(namespaceImport.parent.parent, namespaceExports, symbol);
+						}
 
-					const localNamespaceName = referencedSourceFileSymbol.exports !== undefined
-						? createNamespaceForExports(referencedSourceFileSymbol.exports, symbol)
-						: null
-						;
-
-					if (localNamespaceName !== null) {
-						namespaceExports.set(symbol.getName(), localNamespaceName);
+						return;
 					}
-
-					return;
-				}
+				});
 
 				addSymbolToNamespaceExports(namespaceExports, symbol);
 			}
