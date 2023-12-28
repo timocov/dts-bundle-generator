@@ -32,10 +32,10 @@ declare namespace subNs {
 	export { MyType2 };
 }
 declare namespace MyNamespace3 {
-	export { Interface, MyInt$2 as MyInt, MyString$2 as MyString, MyType, func$2 as func, subNs };
+	export { Interface, MyInt$2 as MyInt, MyString$2 as MyString, MyType, MyType2, func$2 as func, subNs };
 }
 declare namespace MyNamespace4 {
-	export { Interface, MyInt$2 as MyInt, MyString$2 as MyString, MyType, func$2 as func, subNs };
+	export { Interface, MyInt$2 as MyInt, MyString$2 as MyString, MyType, MyType2, func$2 as func, subNs };
 }
 
 export {

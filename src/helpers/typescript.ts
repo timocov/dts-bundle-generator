@@ -631,18 +631,13 @@ export function getExportReferencedSymbol(exportElement: ts.ExportSpecifier, typ
 	;
 }
 
-export function getSymbolExportStarDeclaration(symbol: ts.Symbol): ts.ExportDeclaration {
+export function getSymbolExportStarDeclarations(symbol: ts.Symbol): ts.ExportDeclaration[] {
 	if (symbol.escapedName !== ts.InternalSymbolName.ExportStar) {
 		throw new Error(`Only ExportStar symbol can have export star declaration, but got ${symbol.escapedName}`);
 	}
 
 	// this means that an export contains `export * from 'module'` statement
-	const exportStarDeclaration = getDeclarationsForSymbol(symbol).find(ts.isExportDeclaration);
-	if (exportStarDeclaration === undefined || exportStarDeclaration.moduleSpecifier === undefined) {
-		throw new Error(`Cannot find export declaration for ${symbol.getName()} symbol`);
-	}
-
-	return exportStarDeclaration;
+	return getDeclarationsForSymbol(symbol).filter((decl: ts.Declaration): decl is ts.ExportDeclaration => ts.isExportDeclaration(decl) && decl.moduleSpecifier !== undefined);
 }
 
 export function getDeclarationsForExportedValues(exp: ts.ExportAssignment | ts.ExportDeclaration, typeChecker: ts.TypeChecker): ts.Declaration[] {

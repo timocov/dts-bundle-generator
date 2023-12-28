@@ -6,7 +6,7 @@ import {
 	getExportReferencedSymbol,
 	getNodeName,
 	getNodeOwnSymbol,
-	getSymbolExportStarDeclaration,
+	getSymbolExportStarDeclarations,
 	isDeclareModule,
 	isNodeNamedDeclaration,
 	splitTransientSymbol,
@@ -167,19 +167,21 @@ export class TypesUsageEvaluator {
 		exports?.forEach((moduleExportedSymbol: ts.Symbol, name: ts.__String) => {
 			if (name === ts.InternalSymbolName.ExportStar) {
 				// this means that an export contains `export * from 'module'` statement
-				const exportStarDeclaration = getSymbolExportStarDeclaration(moduleExportedSymbol);
-				if (exportStarDeclaration.moduleSpecifier === undefined) {
-					throw new Error(`Export star declaration does not have a module specifier '${exportStarDeclaration.getText()}'`);
+				for (const exportStarDeclaration of getSymbolExportStarDeclarations(moduleExportedSymbol)) {
+					if (exportStarDeclaration.moduleSpecifier === undefined) {
+						throw new Error(`Export star declaration does not have a module specifier '${exportStarDeclaration.getText()}'`);
+					}
+
+					const referencedSourceFileSymbol = this.getSymbol(exportStarDeclaration.moduleSpecifier);
+					if (visitedSymbols.has(referencedSourceFileSymbol)) {
+						continue;
+					}
+
+					visitedSymbols.add(referencedSourceFileSymbol);
+
+					this.addExportsToSymbol(referencedSourceFileSymbol.exports, parentSymbol, visitedSymbols);
 				}
 
-				const referencedSourceFileSymbol = this.getSymbol(exportStarDeclaration.moduleSpecifier);
-				if (visitedSymbols.has(referencedSourceFileSymbol)) {
-					return;
-				}
-
-				visitedSymbols.add(referencedSourceFileSymbol);
-
-				this.addExportsToSymbol(referencedSourceFileSymbol.exports, parentSymbol, visitedSymbols);
 				return;
 			}
 

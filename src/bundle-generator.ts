@@ -16,7 +16,7 @@ import {
 	getNodeOwnSymbol,
 	getNodeSymbol,
 	getRootSourceFile,
-	getSymbolExportStarDeclaration,
+	getSymbolExportStarDeclarations,
 	hasNodeModifier,
 	isAmbientModule,
 	isDeclareGlobalStatement,
@@ -734,21 +734,22 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			function processExportSymbol(namespaceExports: Map<string, string>, symbol: ts.Symbol): void {
 				if (symbol.escapedName === ts.InternalSymbolName.ExportStar) {
 					// this means that an export contains `export * from 'module'` statement
-					const exportStarDeclaration = getSymbolExportStarDeclaration(symbol);
-					if (exportStarDeclaration.moduleSpecifier === undefined) {
-						throw new Error(`Export star declaration does not have a module specifier '${exportStarDeclaration.getText()}'`);
-					}
+					for (const exportStarDeclaration of getSymbolExportStarDeclarations(symbol)) {
+						if (exportStarDeclaration.moduleSpecifier === undefined) {
+							throw new Error(`Export star declaration does not have a module specifier '${exportStarDeclaration.getText()}'`);
+						}
 
-					if (isReferencedModuleImportable(exportStarDeclaration)) {
-						// in case of re-exporting from other modules directly we should import everything and re-export manually
-						// but it is not supported yet so lets just fail for now
-						throw new Error(`Having a re-export from an importable module as a part of namespaced export is not supported yet.`);
-					}
+						if (isReferencedModuleImportable(exportStarDeclaration)) {
+							// in case of re-exporting from other modules directly we should import everything and re-export manually
+							// but it is not supported yet so lets just fail for now
+							throw new Error(`Having a re-export from an importable module as a part of namespaced export is not supported yet.`);
+						}
 
-					const referencedSourceFileSymbol = getNodeOwnSymbol(exportStarDeclaration.moduleSpecifier, typeChecker);
-					referencedSourceFileSymbol.exports?.forEach(
-						processExportSymbol.bind(null, namespaceExports)
-					);
+						const referencedSourceFileSymbol = getNodeOwnSymbol(exportStarDeclaration.moduleSpecifier, typeChecker);
+						referencedSourceFileSymbol.exports?.forEach(
+							processExportSymbol.bind(null, namespaceExports)
+						);
+					}
 
 					return;
 				}
