@@ -5,3 +5,6 @@ export { SomeInterface as Int1, AnotherInterface as Int2, default as DefInterfac
 export { constName as cName, letName as lName, funcName as fName, default as defFunction } from './variables';
 export { default as MyClass } from './class';
 export { default } from 'package-with-default-export';
+
+import { NonDefaultInterface } from 'package-with-default-export';
+export { NonDefaultInterface };

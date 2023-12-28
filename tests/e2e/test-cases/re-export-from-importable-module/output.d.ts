@@ -1,5 +1,5 @@
 import { Server } from 'http';
-import { default as _default } from 'package-with-default-export';
+import { NonDefaultInterface, default as _default } from 'package-with-default-export';
 
 export interface SomeInterface {
 	field: string;
@@ -21,6 +21,7 @@ export * from "fs";
 export {
 	AnotherInterface as Int2,
 	DefaultInterface as DefInterface,
+	NonDefaultInterface,
 	Server,
 	SomeInterface as Int1,
 	_default as default,

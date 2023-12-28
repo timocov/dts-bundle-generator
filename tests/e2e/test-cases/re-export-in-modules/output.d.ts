@@ -11,7 +11,6 @@ import { NsName } from 're-export-via-star-with-rename';
 export interface Interface {
 	eq: EqFooBar;
 	eqV2: EqFooBarV2;
-	import: ImportFooBar;
 	star: StartFooBar;
 	ns: typeof NsName;
 	cycle1: BarFoo;
@@ -19,5 +18,9 @@ export interface Interface {
 	cycle3: Package2Interface;
 	cycle4: Package1Interface;
 }
+
+export {
+	ImportFooBar,
+};
 
 export {};

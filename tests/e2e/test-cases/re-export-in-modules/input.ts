@@ -11,7 +11,6 @@ import { Package1Interface } from 'package-with-cyclic-re-export-2';
 export interface Interface {
 	eq: EqFooBar;
 	eqV2: EqFooBarV2;
-	import: ImportFooBar;
 	star: StartFooBar;
 	ns: typeof NsName;
 	cycle1: BarFoo;
@@ -19,3 +18,5 @@ export interface Interface {
 	cycle3: Package2Interface;
 	cycle4: Package1Interface;
 }
+
+export { ImportFooBar };

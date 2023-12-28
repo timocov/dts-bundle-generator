@@ -106,7 +106,9 @@ export class TypesUsageEvaluator {
 				}
 
 				// "link" referenced symbol with its import
-				this.addUsages(exportElementSymbol, this.getNodeOwnSymbol(exportElement.name));
+				const exportElementOwnSymbol = this.getNodeOwnSymbol(exportElement.name);
+				this.addUsages(exportElementSymbol, exportElementOwnSymbol);
+				this.addUsages(this.getActualSymbol(exportElementSymbol), exportElementOwnSymbol);
 			}
 		}
 
@@ -161,7 +163,7 @@ export class TypesUsageEvaluator {
 		this.addExportsToSymbol(referencedSourceFileSymbol.exports, referencedSourceFileSymbol);
 	}
 
-	private addExportsToSymbol(exports: ts.SymbolTable | undefined, parentSymbol: ts.Symbol): void {
+	private addExportsToSymbol(exports: ts.SymbolTable | undefined, parentSymbol: ts.Symbol, visitedSymbols: Set<ts.Symbol> = new Set()): void {
 		exports?.forEach((moduleExportedSymbol: ts.Symbol, name: ts.__String) => {
 			if (name === ts.InternalSymbolName.ExportStar) {
 				// this means that an export contains `export * from 'module'` statement
@@ -171,7 +173,13 @@ export class TypesUsageEvaluator {
 				}
 
 				const referencedSourceFileSymbol = this.getSymbol(exportStarDeclaration.moduleSpecifier);
-				this.addExportsToSymbol(referencedSourceFileSymbol.exports, parentSymbol);
+				if (visitedSymbols.has(referencedSourceFileSymbol)) {
+					return;
+				}
+
+				visitedSymbols.add(referencedSourceFileSymbol);
+
+				this.addExportsToSymbol(referencedSourceFileSymbol.exports, parentSymbol, visitedSymbols);
 				return;
 			}
 
