@@ -555,9 +555,12 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					return;
 				}
 
-				const sourceFileStatements = ts.isSourceFile(sourceFile)
+				const sourceFileStatements: readonly ts.Statement[] = ts.isSourceFile(sourceFile)
 					? sourceFile.statements
-					: (sourceFile.body as ts.ModuleBlock).statements;
+					: sourceFile.body !== undefined && ts.isModuleBlock(sourceFile.body)
+						? sourceFile.body.statements
+						: []
+					;
 
 				// eslint-disable-next-line complexity
 				sourceFileStatements.forEach((st: ts.Statement) => {
