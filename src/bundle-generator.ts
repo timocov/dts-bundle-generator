@@ -4,6 +4,7 @@ import { compileDts } from './compile-dts';
 import { TypesUsageEvaluator } from './types-usage-evaluator';
 import {
 	ExportType,
+	getActualSymbol,
 	getClosestModuleLikeNode,
 	getClosestSourceFileLikeNode,
 	getDeclarationsForExportedValues,
@@ -386,32 +387,149 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				}
 			}
 
+			interface ExportingExportStarExport {
+				exportStarDeclaration: ts.ExportDeclaration;
+				exportedNodeSymbol: ts.Symbol;
+			}
+
+			/**
+			 * This function returns an export-star object that exports given {@link nodeSymbol} symbol.
+			 * If an exporting export declaration object is not from an importable module then `null` is returned.
+			 * Also if the symbol is exported explicitly (i.e. via `export { Name }` or specifying `export` keyword next to the node) then `null` is returned as well.
+			 */
+			function findExportingExportStarExportFromImportableModule(referencedModuleSymbol: ts.Symbol, nodeSymbol: ts.Symbol): ExportingExportStarExport | null {
+				function findResultRecursively(referencedModuleSym: ts.Symbol, exportedNodeSym: ts.Symbol, visitedSymbols: Set<ts.Symbol>): ExportingExportStarExport | null {
+					// prevent infinite recursion
+					if (visitedSymbols.has(referencedModuleSym)) {
+						return null;
+					}
+
+					visitedSymbols.add(referencedModuleSym);
+
+					// `export * from` exports always have less priority over explicit exports so it should go last
+					const exportStarExport = referencedModuleSym.exports?.get(ts.InternalSymbolName.ExportStar);
+					if (exportStarExport === undefined) {
+						return null;
+					}
+
+					for (const exportStarDeclaration of getDeclarationsForSymbol(exportStarExport).filter(ts.isExportDeclaration)) {
+						if (exportStarDeclaration.moduleSpecifier === undefined) {
+							// this seems impossible, but to make the compiler/types happy
+							continue;
+						}
+
+						const exportStarModuleSymbol = getNodeOwnSymbol(exportStarDeclaration.moduleSpecifier, typeChecker);
+						if (exportStarModuleSymbol.exports === undefined) {
+							continue;
+						}
+
+						if (isReferencedModuleImportable(exportStarDeclaration)) {
+							// for "importable" modules we don't need to go deeper or even check "explicit" exports
+							// as it doesn't matter how its done internally and we care about "public" interface only
+							// so we can just check whether it exports a symbol or not (irregardless of how it is exported exactly internally)
+							const referencedModuleExports = typeChecker.getExportsOfModule(exportStarModuleSymbol);
+							const exportedNodeSymbol = referencedModuleExports.find((exp: ts.Symbol) => getActualSymbol(exp, typeChecker) === nodeSymbol);
+							if (exportedNodeSymbol !== undefined) {
+								return { exportStarDeclaration, exportedNodeSymbol };
+							}
+
+							continue;
+						}
+
+						const result = findResultRecursively(exportStarModuleSymbol, exportedNodeSym, visitedSymbols);
+						if (result !== null) {
+							return result;
+						}
+					}
+
+					return null;
+				}
+
+				if (referencedModuleSymbol.exports === undefined) {
+					throw new Error(`No exports found for "${referencedModuleSymbol.getName()}" symbol`);
+				}
+
+				const hasExplicitExportOfSymbol = Array.from(referencedModuleSymbol.exports.values()).some((exp: ts.Symbol) => {
+					if (exp.escapedName === ts.InternalSymbolName.ExportStar) {
+						return false;
+					}
+
+					return getActualSymbol(exp, typeChecker) === nodeSymbol;
+				});
+
+				if (hasExplicitExportOfSymbol) {
+					// symbol is exported explicitly ¯\_(ツ)_/¯
+					return null;
+				}
+
+				return findResultRecursively(referencedModuleSymbol, nodeSymbol, new Set());
+			}
+
 			// `export * from 'module'`
 			if (exportDeclaration.exportClause === undefined) {
 				handleExportStarStatement(exportDeclaration);
 				return;
 			}
 
-			// `export { val, val2 }`
-			if (exportDeclaration.moduleSpecifier === undefined && exportDeclaration.exportClause !== undefined && ts.isNamedExports(exportDeclaration.exportClause)) {
-				for (const exportElement of exportDeclaration.exportClause.elements) {
-					const exportElementSymbol = getExportReferencedSymbol(exportElement, typeChecker);
+			if (exportDeclaration.exportClause !== undefined && ts.isNamedExports(exportDeclaration.exportClause)) {
+				// `export { val, val2 }`
+				if (exportDeclaration.moduleSpecifier === undefined) {
+					for (const exportElement of exportDeclaration.exportClause.elements) {
+						const exportElementSymbol = getExportReferencedSymbol(exportElement, typeChecker);
 
-					const namespaceImportFromImportableModule = getDeclarationsForSymbol(exportElementSymbol).find((importDecl: ts.Declaration): importDecl is ts.NamespaceImport => {
-						return ts.isNamespaceImport(importDecl) && isReferencedModuleImportable(importDecl.parent.parent);
-					});
+						const namespaceImportFromImportableModule = getDeclarationsForSymbol(exportElementSymbol).find((importDecl: ts.Declaration): importDecl is ts.NamespaceImport => {
+							return ts.isNamespaceImport(importDecl) && isReferencedModuleImportable(importDecl.parent.parent);
+						});
 
-					if (namespaceImportFromImportableModule !== undefined) {
-						const importModuleSpecifier = getImportModuleName(namespaceImportFromImportableModule.parent.parent);
-						if (importModuleSpecifier === null) {
-							throw new Error(`Cannot get import module name from '${namespaceImportFromImportableModule.parent.parent.getText()}'`);
+						if (namespaceImportFromImportableModule !== undefined) {
+							const importModuleSpecifier = getImportModuleName(namespaceImportFromImportableModule.parent.parent);
+							if (importModuleSpecifier === null) {
+								throw new Error(`Cannot get import module name from '${namespaceImportFromImportableModule.parent.parent.getText()}'`);
+							}
+
+							addNsImport(
+								getImportItem(importModuleSpecifier),
+								namespaceImportFromImportableModule.name
+							);
+						}
+					}
+
+					return;
+				}
+
+				// `export { val, val2 } from 'module'`
+				if (exportDeclaration.moduleSpecifier !== undefined) {
+					const referencedModuleSymbol = getNodeOwnSymbol(exportDeclaration.moduleSpecifier, typeChecker);
+
+					// in this case we want to find all elements that we re-exported via `export * from` exports as they aren't handled elsewhere
+					for (const exportElement of exportDeclaration.exportClause.elements) {
+						const exportedNodeSymbol = getActualSymbol(getExportReferencedSymbol(exportElement, typeChecker), typeChecker);
+						const exportingExportStarResult = findExportingExportStarExportFromImportableModule(
+							referencedModuleSymbol,
+							exportedNodeSymbol
+						);
+
+						if (exportingExportStarResult === null) {
+							continue;
 						}
 
-						addNsImport(
+						const importModuleSpecifier = getImportModuleName(exportingExportStarResult.exportStarDeclaration);
+						if (importModuleSpecifier === null) {
+							throw new Error(`Cannot get import module name from '${exportingExportStarResult.exportStarDeclaration.getText()}'`);
+						}
+
+						// technically we could use named imports and then add re-exports
+						// but this solution affects names scope (re-exports don't affect it)
+						// and also it is slightly complicated to find a name declaration (identifier) that needs to be imported
+						// so it feels better to go this way, but happy to change in the future if there would be any issues
+						addReExport(
 							getImportItem(importModuleSpecifier),
-							namespaceImportFromImportableModule.name
+							exportingExportStarResult.exportedNodeSymbol.getName(),
+							exportElement.name.text
 						);
 					}
+
+					return;
 				}
 			}
 		}
@@ -514,6 +632,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					namedImports: new Map(),
 					nsImport: null,
 					requireImports: new Set(),
+					reExports: new Map(),
 				};
 
 				collectionResult.imports.set(importModuleSpecifier, importItem);
@@ -530,6 +649,11 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			const newLocalName = collisionsResolver.addTopLevelIdentifier(preferredLocalName);
 			const importedName = importedIdentifier.text;
 			importItem.namedImports.set(newLocalName, importedName);
+		}
+
+		function addReExport(importItem: ModuleImportsSet, moduleExportedName: string, reExportedName: string): void {
+			// re-exports don't affect local names scope so we don't need to register them in collisions resolver
+			importItem.reExports.set(reExportedName, moduleExportedName);
 		}
 
 		function addNsImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier): void {

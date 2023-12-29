@@ -8,6 +8,7 @@ export interface ModuleImportsSet {
 	nsImport: string | null;
 	namedImports: Map<string, string>;
 	requireImports: Set<string>;
+	reExports: Map<string, string>;
 }
 
 export interface OutputInputData {
@@ -325,6 +326,15 @@ function generateImports(libraryName: string, imports: ModuleImportsSet): string
 	if (imports.namedImports.size !== 0) {
 		result.push(`import { ${
 			Array.from(imports.namedImports.entries())
+				.map(([localName, importedName]: [string, string]) => renamedImportValue(importedName, localName))
+				.sort()
+				.join(', ')
+		} } ${fromEnding}`);
+	}
+
+	if (imports.reExports.size !== 0) {
+		result.push(`export { ${
+			Array.from(imports.reExports.entries())
 				.map(([localName, importedName]: [string, string]) => renamedImportValue(importedName, localName))
 				.sort()
 				.join(', ')
