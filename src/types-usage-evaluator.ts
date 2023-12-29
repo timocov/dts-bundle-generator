@@ -157,7 +157,6 @@ export class TypesUsageEvaluator {
 		this.addUsages(resolvedNamespaceSymbol, namespaceSymbol);
 
 		// if a referenced source file has any exports, they should be added "to the usage" as they all are re-exported/imported
-		this.addExportsToSymbol(referencedSourceFileSymbol.exports, namespaceSymbol);
 		this.addExportsToSymbol(referencedSourceFileSymbol.exports, referencedSourceFileSymbol);
 	}
 
