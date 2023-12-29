@@ -4,7 +4,6 @@ module.exports = {
 		'@typescript-eslint',
 		'eslint-plugin-deprecation',
 		'eslint-plugin-import',
-		'eslint-plugin-prefer-arrow',
 		'eslint-plugin-unicorn',
 	],
 	extends: [
@@ -488,14 +487,6 @@ module.exports = {
 		}],
 
 		'import/no-default-export': 'error',
-
-		'prefer-arrow/prefer-arrow-functions': [
-			'error',
-			{
-				singleReturnOnly: true,
-				allowStandaloneDeclarations: true,
-			},
-		],
 
 		'unicorn/empty-brace-spaces': ['error'],
 		'unicorn/filename-case': ['error', { case: 'kebabCase' }],

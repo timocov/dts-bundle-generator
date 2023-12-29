@@ -337,7 +337,6 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			updateResultImpl(statements);
 		}
 
-		// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
 		function isReferencedModuleImportable(statement: ts.ExportDeclaration | ts.ImportDeclaration): boolean {
 			return getReferencedModuleInfo(statement, criteria, typeChecker)?.type === ModuleType.ShouldBeImported;
 		}
@@ -498,7 +497,6 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			}
 		}
 
-		// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
 		function getDeclarationUsagesSourceFiles(declaration: ts.NamedDeclaration): Set<ts.SourceFile | ts.ModuleDeclaration> {
 			return new Set(
 				getExportedSymbolsUsingStatement(declaration)
@@ -629,7 +627,6 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			});
 		}
 
-		// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
 		function getGlobalSymbolsUsingSymbol(symbol: ts.Symbol): ts.Symbol[] {
 			return Array.from(typesUsageEvaluator.getSymbolsUsingSymbol(symbol) ?? []).filter((usedInSymbol: ts.Symbol) => {
 				if (usedInSymbol.escapedName !== ts.InternalSymbolName.Global) {
