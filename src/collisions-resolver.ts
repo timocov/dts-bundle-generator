@@ -78,9 +78,7 @@ export class CollisionsResolver {
 			return null;
 		}
 
-		// we assume that all symbols for a given identifier will be in the same scope (i.e. defined in the same namespaces-chain)
-		// so we can use any declaration to find that scope as they all will have the same scope
-		const symbolScopePath = this.getNodeScope(getDeclarationsForSymbol(identifierSymbol)[0]);
+		const symbolScopePath = this.getSymbolScope(identifierSymbol);
 
 		// this scope defines where the current identifier is located
 		const currentIdentifierScope = this.getNodeScope(referencedIdentifier);
@@ -182,6 +180,20 @@ export class CollisionsResolver {
 		identifierParts[0] = topLevelName;
 
 		return identifierParts.join('.');
+	}
+
+	private getSymbolScope(identifierSymbol: ts.Symbol): ts.Symbol[] {
+		const identifierDeclarations = getDeclarationsForSymbol(identifierSymbol);
+
+		// not all symbols have declarations, e.g. `globalThis` or `undefined` (not type but value e.g. in `typeof undefined`)
+		// they are "fake" symbols that exist only at the compiler level (see checker.ts file in in the compiler or `globals.set()` calls)
+		if (identifierDeclarations.length === 0) {
+			return [];
+		}
+
+		// we assume that all symbols for a given identifier will be in the same scope (i.e. defined in the same namespaces-chain)
+		// so we can use any declaration to find that scope as they all will have the same scope
+		return this.getNodeScope(identifierDeclarations[0]);
 	}
 
 	/**
