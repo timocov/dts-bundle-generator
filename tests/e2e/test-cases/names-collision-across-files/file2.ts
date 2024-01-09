@@ -2,6 +2,9 @@ const TEMPLATE = 'template2';
 export default TEMPLATE;
 
 export const MergedSymbol = '';
+
+export var Variable = '';
+
 export interface MergedSymbol {
 	test(): void
 };

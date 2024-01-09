@@ -10,6 +10,7 @@ export {
 	TypeName as T1,
 	func as f1,
 	NamespaceName as NS1,
+	Variable as V1,
 
 	// rename these to include them into import
 	AnotherInterface as AI1,
@@ -24,6 +25,7 @@ export {
 	TypeName as T2,
 	func as f2,
 	NamespaceName as NS2,
+	Variable as V2,
 
 	// yes, keep these without renaming so we can check that these aren't exported with wrong names
 	AnotherInterface,
