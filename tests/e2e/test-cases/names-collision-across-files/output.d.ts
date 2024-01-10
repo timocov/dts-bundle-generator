@@ -25,6 +25,7 @@ declare namespace ExportEqNs$1 {
 }
 declare const TEMPLATE = "template1";
 declare const MergedSymbol = "";
+declare var Variable: number;
 interface MergedSymbol {
 	test(): void;
 }
@@ -43,6 +44,7 @@ declare namespace NamespaceName {
 }
 declare const TEMPLATE$1 = "template2";
 declare const MergedSymbol$1 = "";
+declare var Variable$1: string;
 interface MergedSymbol$1 {
 	test(): void;
 }
@@ -93,6 +95,8 @@ export {
 	TEMPLATE$1 as TEMPLATE2,
 	TypeName as T1,
 	TypeName$1 as T2,
+	Variable as V1,
+	Variable$1 as V2,
 	anotherFunc as af1,
 	anotherFunc$1 as anotherFunc,
 	func as f1,
