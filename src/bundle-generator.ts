@@ -1092,6 +1092,15 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		// by default this option should be enabled
 		const exportReferencedTypes = outputOptions.exportReferencedTypes !== false;
 
+		function isExportedWithLocalName(namedDeclaration: ts.NamedDeclaration, exportedName: string): boolean {
+			const nodeName = getNodeName(namedDeclaration);
+			if (nodeName === undefined) {
+				throw new Error(`Cannot find node name ${namedDeclaration.getText()}`);
+			}
+
+			return collisionsResolver.resolveReferencedIdentifier(nodeName as ts.Identifier) === exportedName;
+		}
+
 		return generateOutput(
 			{
 				...collectionResult,
@@ -1102,14 +1111,18 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						return collisionsResolver.resolveReferencedQualifiedName(identifier);
 					}
 				},
+				// eslint-disable-next-line complexity
 				shouldStatementHasExportKeyword: (statement: ts.Statement) => {
+					if (isAmbientModule(statement) || ts.isExportDeclaration(statement)) {
+						return false;
+					}
+
 					const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
 
 					// If true, then no direct export was found. That means that node might have
 					// an export keyword (like interface, type, etc) otherwise, if there are
 					// only re-exports with renaming (like export { foo as bar }) we don't need
 					// to put export keyword for this statement because we'll re-export it in the way
-					// const hasStatementDefaultKeyword = hasNodeModifier(statement, ts.SyntaxKind.DefaultKeyword);
 					let result = statementExports.length === 0 || statementExports.find((exp: SourceFileExport) => {
 						if (ts.isVariableStatement(statement)) {
 							for (const variableDeclaration of statement.declarationList.declarations) {
@@ -1128,17 +1141,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 							return false;
 						}
 
-						if (isNodeNamedDeclaration(statement)) {
-							const nodeName = getNodeName(statement);
-							if (nodeName === undefined) {
-								throw new Error(`Cannot find node name ${statement.getText()}`);
-							}
-
-							const resolvedName = collisionsResolver.resolveReferencedIdentifier(nodeName as ts.Identifier);
-							return exp.exportedName === resolvedName;
-						}
-
-						return false;
+						return isNodeNamedDeclaration(statement) && isExportedWithLocalName(statement, exp.exportedName);
 					}) !== undefined;
 
 					// "direct export" means export from the root source file
@@ -1156,8 +1159,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						// "valuable" statements must be re-exported from root source file
 						// to having export keyword in declaration file
 						result = result && statementExports.length !== 0;
-					} else if (isAmbientModule(statement) || ts.isExportDeclaration(statement)) {
-						result = false;
+					} else if (isNodeNamedDeclaration(statement) && !isExportedWithLocalName(statement, getNodeName(statement)!.getText())) { // eslint-disable-line @typescript-eslint/no-non-null-assertion
+						return false;
 					}
 
 					return result;

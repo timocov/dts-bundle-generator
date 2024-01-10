@@ -1,6 +1,6 @@
-export interface Promise$3 {
+interface Promise$3 {
 }
-export interface Date$2 {
+interface Date$2 {
 }
 export interface Int {
 	localD: Date$2;

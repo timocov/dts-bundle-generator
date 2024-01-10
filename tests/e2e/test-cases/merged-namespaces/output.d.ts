@@ -27,7 +27,7 @@ declare namespace Ns2 {
 		}
 	}
 }
-export type FooBar$1 = number;
+type FooBar$1 = number;
 declare namespace Ns1$1 {
 	namespace SubNs1 {
 		interface Interface1 {
