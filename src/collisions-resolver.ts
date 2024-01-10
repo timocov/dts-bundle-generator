@@ -11,8 +11,7 @@ import { verboseLog } from './logger';
 
 const renamingSupportedSymbols: readonly ts.SymbolFlags[] = [
 	ts.SymbolFlags.Alias,
-	ts.SymbolFlags.FunctionScopedVariable,
-	ts.SymbolFlags.BlockScopedVariable,
+	ts.SymbolFlags.Variable,
 	ts.SymbolFlags.Class,
 	ts.SymbolFlags.Enum,
 	ts.SymbolFlags.Function,
