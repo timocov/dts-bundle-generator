@@ -41,6 +41,7 @@ import { generateOutput, ModuleImportsSet, OutputInputData } from './generate-ou
 import {
 	normalLog,
 	verboseLog,
+	warnLog,
 } from './logger';
 import { CollisionsResolver } from './collisions-resolver';
 
@@ -1101,7 +1102,9 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			return collisionsResolver.resolveReferencedIdentifier(nodeName as ts.Identifier) === exportedName;
 		}
 
-		return generateOutput(
+		const renamedAndNotExplicitlyExportedTypes: ts.NamedDeclaration[] = [];
+
+		const output = generateOutput(
 			{
 				...collectionResult,
 				resolveIdentifierName: (identifier: ts.Identifier | ts.QualifiedName | ts.PropertyAccessEntityNameExpression): string | null => {
@@ -1123,7 +1126,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					// an export keyword (like interface, type, etc) otherwise, if there are
 					// only re-exports with renaming (like export { foo as bar }) we don't need
 					// to put export keyword for this statement because we'll re-export it in the way
-					let result = statementExports.length === 0 || statementExports.find((exp: SourceFileExport) => {
+					const isExplicitlyExported = statementExports.find((exp: SourceFileExport) => {
 						if (ts.isVariableStatement(statement)) {
 							for (const variableDeclaration of statement.declarationList.declarations) {
 								if (ts.isIdentifier(variableDeclaration.name)) {
@@ -1148,22 +1151,27 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					// e.g. classes/functions/etc must be exported from the root source file to have an "export" keyword
 					// by default interfaces/types are exported even if they aren't directly exported (e.g. when they are referenced by other types)
 					// but if `exportReferencedTypes` option is disabled we have to check direct export for them either
-					const onlyDirectlyExportedShouldBeExported = !exportReferencedTypes
+					const onlyExplicitlyExportedShouldBeExported = !exportReferencedTypes
 						|| ts.isClassDeclaration(statement)
 						|| (ts.isEnumDeclaration(statement) && !hasNodeModifier(statement, ts.SyntaxKind.ConstKeyword))
 						|| ts.isFunctionDeclaration(statement)
 						|| ts.isVariableStatement(statement)
 						|| ts.isModuleDeclaration(statement);
 
-					if (onlyDirectlyExportedShouldBeExported) {
+					if (onlyExplicitlyExportedShouldBeExported) {
 						// "valuable" statements must be re-exported from root source file
 						// to having export keyword in declaration file
-						result = result && statementExports.length !== 0;
-					} else if (isNodeNamedDeclaration(statement) && !isExportedWithLocalName(statement, getNodeName(statement)!.getText())) { // eslint-disable-line @typescript-eslint/no-non-null-assertion
+						return isExplicitlyExported;
+					}
+
+					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+					if (isNodeNamedDeclaration(statement) && !isExportedWithLocalName(statement, getNodeName(statement)!.getText())) {
+						// if a type node was renamed because of name collisions it shouldn't be exported with its new name
+						renamedAndNotExplicitlyExportedTypes.push(statement);
 						return false;
 					}
 
-					return result;
+					return isExplicitlyExported || statementExports.length === 0;
 				},
 				needStripConstFromConstEnum: (constEnum: ts.EnumDeclaration) => {
 					if (!program.getCompilerOptions().preserveConstEnums || !outputOptions.respectPreserveConstEnum) {
@@ -1195,5 +1203,18 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				noBanner: outputOptions.noBanner,
 			}
 		);
+
+		if (renamedAndNotExplicitlyExportedTypes.length !== 0) {
+			warnLog(`The following type nodes were renamed because of the name collisions and will not be exported from the generated bundle:\n- ${
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				renamedAndNotExplicitlyExportedTypes.map(node => `${getNodeName(node)!.getText()} (from ${node.getSourceFile().fileName})`).join('\n- ')
+			}${
+				'\n'
+			}This might lead to unpredictable and unexpected output, and possible breaking changes to your API.${
+				'\n'
+			}Consider either (re-)exporting them explicitly from the entry point, or disable --export-referenced-types option ('output.exportReferencedTypes' in the config).`);
+		}
+
+		return output;
 	});
 }
