@@ -5,8 +5,9 @@ const config: TestCaseConfig = {
 		inlinedLibraries: ['fake-package', 'fake-fs'],
 	},
 	output: {
+		exportReferencedTypes: true,
 		sortNodes: true,
-	}
+	},
 };
 
 export = config;

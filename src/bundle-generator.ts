@@ -39,9 +39,9 @@ import {
 import { generateOutput, ModuleImportsSet, OutputInputData } from './generate-output';
 
 import {
+	errorLog,
 	normalLog,
 	verboseLog,
-	warnLog,
 } from './logger';
 import { CollisionsResolver } from './collisions-resolver';
 
@@ -1090,8 +1090,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 		syncExports();
 
-		// by default this option should be enabled
-		const exportReferencedTypes = outputOptions.exportReferencedTypes !== false;
+		const exportReferencedTypes = Boolean(outputOptions.exportReferencedTypes);
 
 		function isExportedWithLocalName(namedDeclaration: ts.NamedDeclaration, exportedName: string): boolean {
 			const nodeName = getNodeName(namedDeclaration);
@@ -1205,14 +1204,16 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		);
 
 		if (renamedAndNotExplicitlyExportedTypes.length !== 0) {
-			warnLog(`The following type nodes were renamed because of the name collisions and will not be exported from the generated bundle:\n- ${
+			errorLog(`The following type nodes were renamed because of the name collisions and will not be exported from the generated bundle:\n- ${
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				renamedAndNotExplicitlyExportedTypes.map(node => `${getNodeName(node)!.getText()} (from ${node.getSourceFile().fileName})`).join('\n- ')
 			}${
 				'\n'
 			}This might lead to unpredictable and unexpected output, and possible breaking changes to your API.${
 				'\n'
-			}Consider either (re-)exporting them explicitly from the entry point, or disable --export-referenced-types option ('output.exportReferencedTypes' in the config).`);
+			}These types should be (re-)exported explicitly from the entry point, or the option --export-referenced-types should be disabled ('output.exportReferencedTypes' in the config).`);
+
+			throw new Error(`'exportReferencedTypes' feature is turned on, but some of the types cannot be exported due to the name collisions. See error log for more details.`);
 		}
 
 		return output;

@@ -113,10 +113,11 @@ Config file might be either JSON file or JS file with CommonJS export of the con
                 respectPreserveConstEnum: false,
 
                 /**
-                 * By default all interfaces, types and const enums are marked as exported even if they aren't exported directly.
-                 * This option allows you to disable this behavior so a node will be exported if it is exported from root source file only.
+                 * By default only explicitly exported interfaces, types and const enums are marked as exported
+                 * (other types will not be marked as exported, but they still will be in the result bundle if they are used)
+                 * This option allows you to control this behavior.
                  */
-                exportReferencedTypes: true,
+                exportReferencedTypes: false,
             },
         },
     ],
