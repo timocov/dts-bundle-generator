@@ -656,14 +656,13 @@ export function getDeclarationsForExportedValues(exp: ts.ExportAssignment | ts.E
 }
 
 export function hasGlobalName(typeChecker: ts.TypeChecker, name: string): boolean {
-	interface TsInternalEmitResolver {
-		hasGlobalName(name: string): boolean;
-	}
-
 	interface Ts54CompatTypeChecker extends ts.TypeChecker {
-		getEmitResolver(): TsInternalEmitResolver;
+		resolveName(name: string, location: ts.Node | undefined, meaning: ts.SymbolFlags, excludeGlobals: boolean): ts.Symbol | undefined;
 	}
 
-	// see https://github.com/microsoft/TypeScript/issues/46793
-	return (typeChecker as Ts54CompatTypeChecker).getEmitResolver().hasGlobalName(name);
+	// this value isn't available in all typescript versions so lets assign its value here instead
+	const tsSymbolFlagsAll = /* ts.SymbolFlags.All */ -1 as ts.SymbolFlags;
+
+	// see https://github.com/microsoft/TypeScript/pull/56932
+	return (typeChecker as Ts54CompatTypeChecker).resolveName(name, undefined, tsSymbolFlagsAll, false) !== undefined;
 }
