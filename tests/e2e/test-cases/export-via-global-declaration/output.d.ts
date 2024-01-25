@@ -1,6 +1,9 @@
 import { Interface } from 'fake-package';
 
+export interface SubOptions {
+}
 export interface FooOptions {
+	field: SubOptions;
 }
 declare global {
 	export namespace Cypress {

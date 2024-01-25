@@ -766,6 +766,32 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			});
 		}
 
+		function isSymbolUsedByGlobalSymbols(symbol: ts.Symbol, visitedSymbols: Set<ts.Symbol> = new Set()): boolean {
+			if (visitedSymbols.has(symbol)) {
+				return false;
+			}
+
+			visitedSymbols.add(symbol);
+
+			return Array.from(typesUsageEvaluator.getSymbolsUsingSymbol(symbol) ?? []).some((usedInSymbol: ts.Symbol) => {
+				if (usedInSymbol.escapedName !== ts.InternalSymbolName.Global) {
+					return isSymbolUsedByGlobalSymbols(usedInSymbol, visitedSymbols);
+				}
+
+				const usedByThisSymbol = getDeclarationsForSymbol(usedInSymbol).some((decl: ts.Declaration) => {
+					const closestModuleLike = getClosestSourceFileLikeNode(decl);
+					const moduleInfo = getModuleLikeModuleInfo(closestModuleLike, criteria, typeChecker);
+					return moduleInfo.type === ModuleType.ShouldBeInlined;
+				});
+
+				if (usedByThisSymbol) {
+					return true;
+				}
+
+				return isSymbolUsedByGlobalSymbols(usedInSymbol, visitedSymbols);
+			});
+		}
+
 		function isNodeUsed(node: ts.Node): boolean {
 			if (isNodeNamedDeclaration(node) || ts.isSourceFile(node)) {
 				const nodeSymbol = getNodeSymbol(node, typeChecker);
@@ -778,7 +804,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					return true;
 				}
 
-				return inlineDeclareGlobals && getGlobalSymbolsUsingSymbol(nodeSymbol).length !== 0;
+				return inlineDeclareGlobals && isSymbolUsedByGlobalSymbols(nodeSymbol);
 			} else if (ts.isVariableStatement(node)) {
 				return node.declarationList.declarations.some((declaration: ts.VariableDeclaration) => {
 					return isNodeUsed(declaration);

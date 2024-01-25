@@ -1,1 +1,5 @@
-export interface FooOptions {}
+export interface SubOptions {}
+
+export interface FooOptions {
+	field: SubOptions;
+}
