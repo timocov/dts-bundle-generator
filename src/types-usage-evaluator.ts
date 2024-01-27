@@ -36,7 +36,7 @@ export class TypesUsageEvaluator {
 
 		const reachableNodes = this.nodesParentsMap.get(fromSymbol);
 		if (reachableNodes !== undefined) {
-			for (const symbol of Array.from(reachableNodes)) {
+			for (const symbol of reachableNodes) {
 				if (visitedSymbols.has(symbol)) {
 					continue;
 				}
