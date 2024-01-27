@@ -5,7 +5,7 @@ import {
 	getClosestModuleLikeNode,
 	getDeclarationNameSymbol,
 	getDeclarationsForSymbol,
-	hasGlobalName,
+	resolveGlobalName,
 } from './helpers/typescript';
 import { verboseLog } from './logger';
 
@@ -250,9 +250,12 @@ export class CollisionsResolver {
 
 		let nameIndex = collisionSymbols.size;
 		let newName = collisionSymbols.size === 0 ? symbolName : `${symbolName}$${nameIndex}`;
-		while (hasGlobalName(this.typeChecker, newName)) {
+
+		let resolvedGlobalSymbol = resolveGlobalName(this.typeChecker, newName);
+		while (resolvedGlobalSymbol !== undefined && resolvedGlobalSymbol !== identifierSymbol) {
 			nameIndex += 1;
 			newName = `${symbolName}$${nameIndex}`;
+			resolvedGlobalSymbol = resolveGlobalName(this.typeChecker, newName);
 		}
 
 		collisionSymbols.set(identifierSymbol, newName);
