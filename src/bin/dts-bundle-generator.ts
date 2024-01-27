@@ -261,8 +261,20 @@ function main(): void {
 		warnLog('Compiler option "skipLibCheck" is disabled to properly check generated output');
 	}
 
-	const program = ts.createProgram(outFilesToCheck, compilerOptions);
-	checkProgramDiagnosticsErrors(program);
+	let checkFailed = false;
+	for (const outputFile of outFilesToCheck) {
+		const program = ts.createProgram([outputFile], compilerOptions);
+
+		try {
+			checkProgramDiagnosticsErrors(program);
+		} catch (e) {
+			checkFailed = true;
+		}
+	}
+
+	if (checkFailed) {
+		throw new Error('Failed to check some of generated bundles, check error messages above');
+	}
 }
 
 try {
