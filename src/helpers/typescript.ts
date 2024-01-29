@@ -618,16 +618,16 @@ export function getImportModuleName(imp: ts.ImportEqualsDeclaration | ts.ImportD
 }
 
 /**
- * Returns a symbol that an {@link exportElement} node references to.
+ * Returns a symbol that an {@link importExportSpecifier} node references to.
  *
  * For example, for given `export { Value }` it returns a declaration of `Value` whatever it is (import statement, interface declaration, etc).
  */
-export function getExportReferencedSymbol(exportElement: ts.ExportSpecifier, typeChecker: ts.TypeChecker): ts.Symbol {
-	return exportElement.propertyName !== undefined
+export function getImportExportReferencedSymbol(importExportSpecifier: ts.ExportSpecifier | ts.ImportSpecifier, typeChecker: ts.TypeChecker): ts.Symbol {
+	return importExportSpecifier.propertyName !== undefined
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		? typeChecker.getSymbolAtLocation(exportElement.propertyName)!
+		? typeChecker.getSymbolAtLocation(importExportSpecifier.propertyName)!
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		: typeChecker.getImmediateAliasedSymbol(typeChecker.getSymbolAtLocation(exportElement.name)!)!
+		: typeChecker.getImmediateAliasedSymbol(typeChecker.getSymbolAtLocation(importExportSpecifier.name)!)!
 	;
 }
 

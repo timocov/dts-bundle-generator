@@ -9,7 +9,7 @@ import {
 	getClosestSourceFileLikeNode,
 	getDeclarationsForExportedValues,
 	getDeclarationsForSymbol,
-	getExportReferencedSymbol,
+	getImportExportReferencedSymbol,
 	getExportsForSourceFile,
 	getExportsForStatement,
 	getImportModuleName,
@@ -476,7 +476,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				// `export { val, val2 }`
 				if (exportDeclaration.moduleSpecifier === undefined) {
 					for (const exportElement of exportDeclaration.exportClause.elements) {
-						const exportElementSymbol = getExportReferencedSymbol(exportElement, typeChecker);
+						const exportElementSymbol = getImportExportReferencedSymbol(exportElement, typeChecker);
 
 						const namespaceImportFromImportableModule = getDeclarationsForSymbol(exportElementSymbol).find((importDecl: ts.Declaration): importDecl is ts.NamespaceImport => {
 							return ts.isNamespaceImport(importDecl) && isReferencedModuleImportable(importDecl.parent.parent);
@@ -504,7 +504,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 					// in this case we want to find all elements that we re-exported via `export * from` exports as they aren't handled elsewhere
 					for (const exportElement of exportDeclaration.exportClause.elements) {
-						const exportedNodeSymbol = getActualSymbol(getExportReferencedSymbol(exportElement, typeChecker), typeChecker);
+						const exportedNodeSymbol = getActualSymbol(getImportExportReferencedSymbol(exportElement, typeChecker), typeChecker);
 						const exportingExportStarResult = findExportingExportStarExportFromImportableModule(
 							referencedModuleSymbol,
 							exportedNodeSymbol
@@ -982,7 +982,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					}
 
 					if (ts.isExportSpecifier(decl)) {
-						const exportElementSymbol = getExportReferencedSymbol(decl, typeChecker);
+						const exportElementSymbol = getImportExportReferencedSymbol(decl, typeChecker);
 						const namespaceImport = getDeclarationsForSymbol(exportElementSymbol).find(ts.isNamespaceImport);
 						if (namespaceImport !== undefined) {
 							handleNamespacedImportOrExport(namespaceImport.parent.parent, namespaceExports, symbol);
@@ -995,50 +995,71 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				addSymbolToNamespaceExports(namespaceExports, symbol);
 			}
 
-			// handling namespaced re-exports/imports
-			// e.g. `export * as NS from './local-module';` or `import * as NS from './local-module'; export { NS }`
-			for (const decl of getDeclarationsForSymbol(namespaceSymbol)) {
-				if (!ts.isNamespaceExport(decl) && !ts.isExportSpecifier(decl)) {
-					continue;
-				}
-
-				// if it is namespace export then it should be from a inlined module (e.g. `export * as NS from './local-module';`)
-				if (ts.isNamespaceExport(decl) && isReferencedModuleImportable(decl.parent)) {
-					continue;
-				}
-
-				if (ts.isExportSpecifier(decl)) {
-					// if it is export specifier then it should exporting a local symbol i.e. without a module specifier (e.g. `export { NS };` or `export { NS as NewNsName };`)
-					if (decl.parent.parent.moduleSpecifier !== undefined) {
+			function getIdentifierOfNamespaceImportFromInlinedModule(nsSymbol: ts.Symbol): ts.Identifier | null {
+				// handling namespaced re-exports/imports
+				// e.g. `export * as NS from './local-module';` or `import * as NS from './local-module'; export { NS }`
+				for (const decl of getDeclarationsForSymbol(nsSymbol)) {
+					if (!ts.isNamespaceExport(decl) && !ts.isExportSpecifier(decl)) {
 						continue;
 					}
 
-					const declarationSymbol = getExportReferencedSymbol(decl, typeChecker);
+					// if it is namespace export then it should be from a inlined module (e.g. `export * as NS from './local-module';`)
+					if (ts.isNamespaceExport(decl) && !isReferencedModuleImportable(decl.parent)) {
+						return decl.name;
+					}
 
-					// but also that local symbol should be a namespace imported from inlined module
-					// i.e. `import * as NS from './local-module'`
-					const isNamespaceImportFromInlinedModule = getDeclarationsForSymbol(declarationSymbol).some((importDecl: ts.Declaration) => {
-						return ts.isNamespaceImport(importDecl) && !isReferencedModuleImportable(importDecl.parent.parent);
-					});
+					if (ts.isExportSpecifier(decl)) {
+						// if it is export specifier then it should exporting a local symbol i.e. without a module specifier (e.g. `export { NS };` or `export { NS as NewNsName };`)
+						if (decl.parent.parent.moduleSpecifier !== undefined) {
+							// this means that namespace symbol is created somewhere else in the import/export chain
+							if (isReferencedModuleImportable(decl.parent.parent)) {
+								continue;
+							}
 
-					if (!isNamespaceImportFromInlinedModule) {
-						continue;
+							// in case of a chain of imports/exports we need to keep searching recursively
+							if (getIdentifierOfNamespaceImportFromInlinedModule(getImportExportReferencedSymbol(decl, typeChecker))) {
+								return decl.name;
+							}
+						}
+
+						// but also that local symbol should be a namespace imported from inlined module
+						// i.e. `import * as NS from './local-module'`
+						const result = getDeclarationsForSymbol(getImportExportReferencedSymbol(decl, typeChecker)).some((importDecl: ts.Declaration) => {
+							if (ts.isNamespaceImport(importDecl)) {
+								return !isReferencedModuleImportable(importDecl.parent.parent);
+							}
+
+							if (ts.isImportSpecifier(importDecl)) {
+								// this means that namespace symbol is created somewhere else in the import/export chain
+								return getIdentifierOfNamespaceImportFromInlinedModule(getImportExportReferencedSymbol(importDecl, typeChecker));
+							}
+
+							return false;
+						});
+
+						if (result) {
+							return decl.name;
+						}
 					}
 				}
 
-				const namespaceExports = new Map<string, string>();
-				exports.forEach(
-					processExportSymbol.bind(null, namespaceExports)
-				);
+				return null;
+			}
 
-				if (namespaceExports.size !== 0) {
-					const namespaceLocalName = collisionsResolver.addTopLevelIdentifier(decl.name);
-					collectionResult.wrappedNamespaces.set(namespaceLocalName, namespaceExports);
-					return namespaceLocalName;
-				}
+			const namespaceNameIdentifier = getIdentifierOfNamespaceImportFromInlinedModule(namespaceSymbol);
+			if (namespaceNameIdentifier === null) {
+				return null;
+			}
 
-				// we just need to find one suitable declaration, no need to iterate over the rest of the declarations
-				break;
+			const namespaceExports = new Map<string, string>();
+			exports.forEach(
+				processExportSymbol.bind(null, namespaceExports)
+			);
+
+			if (namespaceExports.size !== 0) {
+				const namespaceLocalName = collisionsResolver.addTopLevelIdentifier(namespaceNameIdentifier);
+				collectionResult.wrappedNamespaces.set(namespaceLocalName, namespaceExports);
+				return namespaceLocalName;
 			}
 
 			return null;

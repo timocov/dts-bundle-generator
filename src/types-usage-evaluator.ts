@@ -3,7 +3,7 @@ import {
 	getActualSymbol,
 	getDeclarationsForExportedValues,
 	getDeclarationsForSymbol,
-	getExportReferencedSymbol,
+	getImportExportReferencedSymbol,
 	getNodeName,
 	getNodeOwnSymbol,
 	getSymbolExportStarDeclarations,
@@ -93,7 +93,7 @@ export class TypesUsageEvaluator {
 		// `export {}` or `export {} from 'mod'`
 		if (ts.isExportDeclaration(node) && node.exportClause !== undefined && ts.isNamedExports(node.exportClause)) {
 			for (const exportElement of node.exportClause.elements) {
-				const exportElementSymbol = getExportReferencedSymbol(exportElement, this.typeChecker);
+				const exportElementSymbol = getImportExportReferencedSymbol(exportElement, this.typeChecker);
 
 				// i.e. `import * as NS from './local-module'`
 				const namespaceImportForElement = getDeclarationsForSymbol(exportElementSymbol).find(ts.isNamespaceImport);
