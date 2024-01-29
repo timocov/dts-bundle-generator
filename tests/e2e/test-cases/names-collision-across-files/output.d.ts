@@ -53,9 +53,11 @@ interface Interface$1 {
 }
 declare function func$1(two: number): void;
 type TypeName$1 = Pick<Interface$1, "field2">;
+/** Another interface doc string */
 interface AnotherInterface$1 {
 	field2: number;
 }
+/** Another func doc string */
 declare function anotherFunc$1(two: NamespaceName$1.Local): void;
 declare namespace NamespaceName$1 {
 	interface Local {

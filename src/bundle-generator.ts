@@ -36,7 +36,7 @@ import {
 	ModuleType,
 } from './module-info';
 
-import { generateOutput, ModuleImportsSet, OutputInputData } from './generate-output';
+import { generateOutput, ModuleImportsSet, OutputInputData, StatementSettings } from './generate-output';
 
 import {
 	normalLog,
@@ -1141,9 +1141,9 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					}
 				},
 				// eslint-disable-next-line complexity
-				shouldStatementHasExportKeyword: (statement: ts.Statement) => {
+				getStatementSettings: (statement: ts.Statement): StatementSettings => {
 					if (isAmbientModule(statement) || ts.isExportDeclaration(statement)) {
-						return false;
+						return { shouldHaveExportKeyword: false, shouldHaveJSDoc: true };
 					}
 
 					const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
@@ -1152,7 +1152,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					// an export keyword (like interface, type, etc) otherwise, if there are
 					// only re-exports with renaming (like export { foo as bar }) we don't need
 					// to put export keyword for this statement because we'll re-export it in the way
-					const isExplicitlyExported = statementExports.find((exp: SourceFileExport) => {
+					const isExplicitlyExportedWithOriginalName = statementExports.find((exp: SourceFileExport) => {
 						if (ts.isVariableStatement(statement)) {
 							for (const variableDeclaration of statement.declarationList.declarations) {
 								if (ts.isIdentifier(variableDeclaration.name)) {
@@ -1160,11 +1160,14 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 									if (exp.exportedName === resolvedName) {
 										return true;
 									}
+
+									continue;
 								}
 
 								// it seems that the compiler doesn't produce anything else (e.g. binding elements) in declaration files
 								// but it is still possible to write such code manually
 								// this feels like quite rare case so no support for now
+								warnLog(`Unhandled variable identifier type detected (${ts.SyntaxKind[variableDeclaration.name.kind]}). Please report this issue to https://github.com/timocov/dts-bundle-generator`);
 							}
 
 							return false;
@@ -1187,17 +1190,19 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					if (onlyExplicitlyExportedShouldBeExported) {
 						// "valuable" statements must be re-exported from root source file
 						// to having export keyword in declaration file
-						return isExplicitlyExported;
+						return { shouldHaveExportKeyword: isExplicitlyExportedWithOriginalName, shouldHaveJSDoc: statementExports.length !== 0 };
 					}
 
 					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					if (isNodeNamedDeclaration(statement) && !isExportedWithLocalName(statement, getNodeName(statement)!.getText())) {
 						// if a type node was renamed because of name collisions it shouldn't be exported with its new name
 						renamedAndNotExplicitlyExportedTypes.push(statement);
-						return false;
+						return { shouldHaveExportKeyword: false, shouldHaveJSDoc: statementExports.length !== 0 };
 					}
 
-					return isExplicitlyExported || statementExports.length === 0;
+					// at this point a statement of a type (interface, const enum, etc) will be exported 100% (it's just a matter of a name)
+					// so it must have jsdoc comment
+					return { shouldHaveExportKeyword: isExplicitlyExportedWithOriginalName || statementExports.length === 0, shouldHaveJSDoc: true };
 				},
 				needStripConstFromConstEnum: (constEnum: ts.EnumDeclaration) => {
 					if (!program.getCompilerOptions().preserveConstEnums || !outputOptions.respectPreserveConstEnum) {

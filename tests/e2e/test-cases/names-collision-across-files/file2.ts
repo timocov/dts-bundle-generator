@@ -17,10 +17,12 @@ export function func(two: number) {}
 
 export type TypeName = Pick<Interface, 'field2'>;
 
+/** Another interface doc string */
 export interface AnotherInterface {
 	field2: number;
 }
 
+/** Another func doc string */
 export function anotherFunc(two: NamespaceName.Local) {}
 
 export namespace NamespaceName {

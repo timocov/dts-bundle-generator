@@ -24,8 +24,13 @@ export interface NeedStripDefaultKeywordResult {
 	newName?: string;
 }
 
+export interface StatementSettings {
+	shouldHaveExportKeyword: boolean;
+	shouldHaveJSDoc: boolean;
+}
+
 export interface OutputHelpers {
-	shouldStatementHasExportKeyword(statement: ts.Statement): boolean;
+	getStatementSettings(statement: ts.Statement): StatementSettings;
 	needStripConstFromConstEnum(constEnum: ts.EnumDeclaration): boolean;
 	needStripImportFromImportTypeNode(importType: ts.ImportTypeNode): boolean;
 	resolveIdentifierName(identifier: ts.Identifier | ts.QualifiedName | ts.PropertyAccessEntityNameExpression): string | null;
@@ -177,7 +182,7 @@ function recreateEntityName(node: ts.EntityName, helpers: OutputHelpers): ts.Ent
 }
 
 function getStatementText(statement: ts.Statement, includeSortingValue: boolean, helpers: OutputHelpers): StatementText {
-	const shouldStatementHasExportKeyword = helpers.shouldStatementHasExportKeyword(statement);
+	const { shouldHaveExportKeyword, shouldHaveJSDoc } = helpers.getStatementSettings(statement);
 
 	// re-export statements do not contribute to top-level names scope so we don't need to resolve their identifiers
 	const needResolveIdentifiers = !ts.isExportDeclaration(statement) || statement.moduleSpecifier === undefined;
@@ -267,7 +272,7 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 					}
 				}
 
-				if (!shouldStatementHasExportKeyword) {
+				if (!shouldHaveExportKeyword) {
 					modifiersMap[ts.SyntaxKind.ExportKeyword] = false;
 				} else {
 					modifiersMap[ts.SyntaxKind.ExportKeyword] = true;
@@ -287,7 +292,7 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 					modifiersMap[ts.SyntaxKind.DeclareKeyword] = true;
 				}
 
-				return recreateRootLevelNodeWithModifiers(node, modifiersMap, resolvedStatementName, shouldStatementHasExportKeyword);
+				return recreateRootLevelNodeWithModifiers(node, modifiersMap, resolvedStatementName, shouldHaveJSDoc);
 			},
 		}
 	);
