@@ -1,0 +1,2 @@
+interface Baz {}
+export = Baz;

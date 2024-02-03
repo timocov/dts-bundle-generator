@@ -11,11 +11,16 @@ export interface ModuleImportsSet {
 	reExports: Map<string, string>;
 }
 
+export interface RenamedExportItem {
+	localSymbolName: string;
+	asType: boolean;
+}
+
 export interface OutputInputData {
 	typesReferences: Set<string>;
 	imports: Map<string, ModuleImportsSet>;
 	statements: readonly ts.Statement[];
-	renamedExports: Map<string, string>;
+	renamedExports: Map<string, RenamedExportItem>;
 	wrappedNamespaces: Map<string, Map<string, string>>;
 }
 
@@ -92,7 +97,7 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 				.map(([namespaceName, exportedNames]: [string, Map<string, string>]) => {
 					return `declare namespace ${namespaceName} {\n\texport { ${
 						Array.from(exportedNames.entries())
-							.map(([exportedName, localName]: [string, string]) => renamedExportValue(exportedName, localName))
+							.map(([exportedName, localName]: [string, string]) => renamedExportValue(exportedName, localName, false))
 							.sort()
 							.join(', ')
 					} };\n}`;
@@ -104,7 +109,7 @@ export function generateOutput(params: OutputParams, options: OutputOptions = {}
 	if (params.renamedExports.size !== 0) {
 		resultOutputParts.push(`export {\n\t${
 			Array.from(params.renamedExports.entries())
-				.map(([exportedName, localName]: [string, string]) => renamedExportValue(exportedName, localName))
+				.map(([exportedName, exportItem]: [string, RenamedExportItem]) => renamedExportValue(exportedName, exportItem.localSymbolName, exportItem.asType))
 				.sort()
 				.join(',\n\t')
 		},\n};`);
@@ -131,8 +136,9 @@ function statementsTextToString(statements: StatementText[]): string {
 	return spacesToTabs(prettifyStatementsText(statementsText));
 }
 
-function renamedExportValue(exportedName: string, localName: string): string {
-	return exportedName !== localName ? `${localName} as ${exportedName}` : exportedName;
+function renamedExportValue(exportedName: string, localName: string, asType: boolean): string {
+	const renamedExport = exportedName !== localName ? `${localName} as ${exportedName}` : exportedName;
+	return asType ? `type ${renamedExport}` : renamedExport;
 }
 
 function renamedImportValue(importedName: string, localName: string): string {
