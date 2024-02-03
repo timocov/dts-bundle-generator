@@ -322,6 +322,9 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 									// it seems that the compiler doesn't produce anything else (e.g. binding elements) in declaration files
 									// but it is still possible to write such code manually
 									// this feels like quite rare case so no support for now
+									warnLog(`Unhandled variable identifier type detected (${
+										ts.SyntaxKind[variableDeclaration.name.kind]
+									}). Please report this issue to https://github.com/timocov/dts-bundle-generator`);
 								}
 							} else if (isNodeNamedDeclaration(statement)) {
 								const statementName = getNodeName(statement);
