@@ -194,11 +194,35 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 		}
 	}
 
+	const symbolsMergingResolvedExports: SourceFileExport[] = [];
+
 	result.forEach((exp: SourceFileExport) => {
 		exp.symbol = getActualSymbol(exp.symbol, typeChecker);
+
+		const symbolsDeclarations = getDeclarationsForSymbol(exp.symbol);
+		const importSpecifierDeclaration = symbolsDeclarations.find(ts.isImportSpecifier);
+		if (symbolsDeclarations.length > 1 && importSpecifierDeclaration !== undefined) {
+			// most likely this export is part of the symbol merging situation
+			// where one of the declarations is the imported value but the other is declared locally
+			// in this case we need to add an extra export to the exports list to make sure that it is marked as "exported"
+			const referencedModule = resolveReferencedModule(importSpecifierDeclaration.parent.parent.parent, typeChecker);
+			if (referencedModule !== null) {
+				const referencedModuleSymbol = getNodeSymbol(referencedModule, typeChecker);
+				if (referencedModuleSymbol !== null) {
+					const importedName = (importSpecifierDeclaration.propertyName ?? importSpecifierDeclaration.name).getText();
+					const exportedItemSymbol = typeChecker.getExportsOfModule(referencedModuleSymbol).find((exportSymbol: ts.Symbol) => exportSymbol.getName() === importedName);
+					if (exportedItemSymbol !== undefined) {
+						symbolsMergingResolvedExports.push({
+							...exp,
+							symbol: getActualSymbol(exportedItemSymbol, typeChecker),
+						});
+					}
+				}
+			}
+		}
 	});
 
-	return result;
+	return [...result, ...symbolsMergingResolvedExports];
 }
 
 export function resolveIdentifier(typeChecker: ts.TypeChecker, identifier: ts.Identifier): ts.NamedDeclaration | undefined {
