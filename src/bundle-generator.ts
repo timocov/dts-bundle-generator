@@ -316,7 +316,17 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 							if (ts.isVariableStatement(statement)) {
 								for (const variableDeclaration of statement.declarationList.declarations) {
 									if (ts.isIdentifier(variableDeclaration.name)) {
-										collisionsResolver.addTopLevelIdentifier(variableDeclaration.name);
+										const name = collisionsResolver.addTopLevelIdentifier(variableDeclaration.name);
+
+										// if (!isSymbolOfNonValue(getNodeSymbol(variableDeclaration, typeChecker)!)) {
+										// 	const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
+
+										// 	statementExports.forEach((exp: SourceFileExport) => {
+										// 		if (isSymbolOfNonValue(exp.originalSymbol)) {
+										// 			collectionResult.renamedExports.set(exp.exportedName, { localSymbolName: name, asType: true });
+										// 		}
+										// 	});
+										// }
 									}
 
 									// it seems that the compiler doesn't produce anything else (e.g. binding elements) in declaration files
@@ -329,7 +339,17 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 							} else if (isNodeNamedDeclaration(statement)) {
 								const statementName = getNodeName(statement);
 								if (statementName !== undefined) {
-									collisionsResolver.addTopLevelIdentifier(statementName as ts.Identifier | ts.DefaultKeyword);
+									const name = collisionsResolver.addTopLevelIdentifier(statementName as ts.Identifier | ts.DefaultKeyword);
+
+									if (!isSymbolOfNonValue(getNodeSymbol(statement, typeChecker)!)) {
+										const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
+
+										statementExports.forEach((exp: SourceFileExport) => {
+											if (isSymbolOfNonValue(exp.originalSymbol)) {
+												collectionResult.renamedExports.set(exp.exportedName, { localSymbolName: name, asType: true });
+											}
+										});
+									}
 								}
 							}
 
@@ -1068,6 +1088,50 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			return null;
 		}
 
+		function isSymbolOfNonValue(symbol: ts.Symbol): boolean {
+			// return false;
+			function typeCheckerVersion(): boolean {
+				// @ts-expect-error
+				return !!typeChecker.getTypeOnlyAliasDeclaration(symbol);
+			}
+
+			function mixedVersion(): boolean {
+				let aliasSymbol: ts.Symbol | undefined = symbol;
+
+				while (aliasSymbol !== undefined && aliasSymbol.flags & ts.SymbolFlags.Alias) {
+					const symbolsDeclarations = getDeclarationsForSymbol(aliasSymbol);
+					const typeOnlyDeclaration = symbolsDeclarations.find(ts.isTypeOnlyImportOrExportDeclaration);
+					if (typeOnlyDeclaration !== undefined) {
+						// it means that this symbol is explicitly imported/exported via import/export-type declaration
+						return true;
+					}
+
+					const importDeclaration = symbolsDeclarations.find(ts.isImportSpecifier);
+					if (importDeclaration !== undefined && importDeclaration.parent.parent.parent.moduleSpecifier !== undefined) {
+						const referencedSourceFileSymbol = getNodeOwnSymbol(importDeclaration.parent.parent.parent.moduleSpecifier, typeChecker);
+						if (referencedSourceFileSymbol.exports !== undefined) {
+							referencedSourceFileSymbol.exports.get()
+						}
+					}
+
+					const exportDeclaration = symbolsDeclarations.find(ts.isExportSpecifier);
+
+					aliasSymbol = typeChecker.getImmediateAliasedSymbol(aliasSymbol);
+				}
+
+				return false;
+			}
+
+			if (mixedVersion() !== typeCheckerVersion()) {
+				debugger;
+			}
+
+			return mixedVersion();
+
+			// uncomment the following line and comment the previous one in order to test with different strategies
+			// return typeCheckerVersion();
+		}
+
 		function syncExports(): void {
 			for (const exp of rootFileExports) {
 				if (exp.type === ExportType.CommonJS) {
@@ -1085,7 +1149,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					;
 
 				if (namespaceLocalName !== null) {
-					collectionResult.renamedExports.set(exp.exportedName, namespaceLocalName);
+					collectionResult.renamedExports.set(exp.exportedName, { localSymbolName: namespaceLocalName, asType: false });
 				}
 
 				const symbolKnownNames = collisionsResolver.namesForSymbol(exp.symbol);
@@ -1101,7 +1165,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					// an exported symbol is already known with its "exported" name so nothing to do at this point
 					// but if it is re-exported from imported library then we assume it was previously imported so we should re-export it anyway
 					if (shouldSymbolBeImported(exp.symbol)) {
-						collectionResult.renamedExports.set(exp.exportedName, exp.exportedName);
+						collectionResult.renamedExports.set(exp.exportedName, { localSymbolName: exp.exportedName, asType: isSymbolOfNonValue(exp.originalSymbol) });
 					}
 
 					continue;
@@ -1112,7 +1176,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				// usually all "local" names should have only one known name
 				// but having multiple names is possible with imports - you can import the same node with different names
 				// and we want to preserve the source input as much as we can that's why we re-use them
-				collectionResult.renamedExports.set(exp.exportedName, Array.from(symbolKnownNames)[0]);
+				collectionResult.renamedExports.set(exp.exportedName, { localSymbolName: Array.from(symbolKnownNames)[0], asType: isSymbolOfNonValue(exp.originalSymbol) });
 			}
 		}
 
@@ -1177,15 +1241,14 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					// only re-exports with renaming (like export { foo as bar }) we don't need
 					// to put export keyword for this statement because we'll re-export it in the way
 					const isExplicitlyExportedWithOriginalName = statementExports.find((exp: SourceFileExport) => {
+						// if (isSymbolOfNonValue(exp.originalSymbol) && !isSymbolOfNonValue(exp.symbol)) {
+						// 	return false;
+						// }
+
 						if (ts.isVariableStatement(statement)) {
 							for (const variableDeclaration of statement.declarationList.declarations) {
-								if (ts.isIdentifier(variableDeclaration.name)) {
-									const resolvedName = collisionsResolver.resolveReferencedIdentifier(variableDeclaration.name);
-									if (exp.exportedName === resolvedName) {
-										return true;
-									}
-
-									continue;
+								if (ts.isIdentifier(variableDeclaration.name) && isExportedWithLocalName(variableDeclaration, exp.exportedName)) {
+									return true;
 								}
 
 								// it seems that the compiler doesn't produce anything else (e.g. binding elements) in declaration files
