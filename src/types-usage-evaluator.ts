@@ -187,29 +187,28 @@ export class TypesUsageEvaluator {
 	}
 
 	private computeUsagesRecursively(parent: ts.Node, parentSymbol: ts.Symbol): void {
-		const queue = parent.getChildren();
-		for (const child of queue) {
+		ts.forEachChild(parent, (child: ts.Node) => {
 			if (child.kind === ts.SyntaxKind.JSDoc) {
-				continue;
+				return;
 			}
 
-			queue.push(...child.getChildren());
+			this.computeUsagesRecursively(child, parentSymbol);
 
 			if (ts.isIdentifier(child) || child.kind === ts.SyntaxKind.DefaultKeyword) {
 				// identifiers in labelled tuples don't have symbols for their labels
 				// so let's just skip them from collecting
 				if (ts.isNamedTupleMember(child.parent) && child.parent.name === child) {
-					continue;
+					return;
 				}
 
 				// `{ propertyName: name }` - in this case we don't need to handle `propertyName` as it has no symbol
 				if (ts.isBindingElement(child.parent) && child.parent.propertyName === child) {
-					continue;
+					return;
 				}
 
 				this.addUsages(this.getSymbol(child), parentSymbol);
 			}
-		}
+		});
 	}
 
 	private addUsages(childSymbol: ts.Symbol, parentSymbol: ts.Symbol): void {
