@@ -16,6 +16,8 @@ export class TypesUsageEvaluator {
 	private readonly typeChecker: ts.TypeChecker;
 	private readonly nodesParentsMap: Map<ts.Symbol, Set<ts.Symbol>> = new Map();
 
+	private readonly usageResultCache: Map<ts.Symbol, Map<ts.Symbol, boolean>> = new Map();
+
 	public constructor(files: ts.SourceFile[], typeChecker: ts.TypeChecker) {
 		this.typeChecker = typeChecker;
 		this.computeUsages(files);
@@ -31,7 +33,12 @@ export class TypesUsageEvaluator {
 
 	private isSymbolUsedBySymbolImpl(fromSymbol: ts.Symbol, toSymbol: ts.Symbol, visitedSymbols: Set<ts.Symbol>): boolean {
 		if (fromSymbol === toSymbol) {
-			return true;
+			return this.setUsageCacheValue(fromSymbol, toSymbol, true);
+		}
+
+		const cacheResult = this.usageResultCache.get(fromSymbol)?.get(toSymbol);
+		if (cacheResult !== undefined) {
+			return cacheResult;
 		}
 
 		const reachableNodes = this.nodesParentsMap.get(fromSymbol);
@@ -50,7 +57,19 @@ export class TypesUsageEvaluator {
 
 		visitedSymbols.add(fromSymbol);
 
-		return false;
+		return this.setUsageCacheValue(fromSymbol, toSymbol, false);
+	}
+
+	private setUsageCacheValue(fromSymbol: ts.Symbol, toSymbol: ts.Symbol, value: boolean): boolean {
+		let fromSymbolCacheMap = this.usageResultCache.get(fromSymbol);
+		if (fromSymbolCacheMap === undefined) {
+			fromSymbolCacheMap = new Map();
+			this.usageResultCache.set(fromSymbol, fromSymbolCacheMap);
+		}
+
+		fromSymbolCacheMap.set(toSymbol, value);
+
+		return value;
 	}
 
 	private computeUsages(files: ts.SourceFile[]): void {
