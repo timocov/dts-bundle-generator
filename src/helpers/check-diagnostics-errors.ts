@@ -8,8 +8,11 @@ const formatDiagnosticsHost: ts.FormatDiagnosticsHost = {
 };
 
 export function checkProgramDiagnosticsErrors(program: ts.Program): void {
+	if (!program.getCompilerOptions().declaration) {
+		throw new Error(`Something went wrong - the program doesn't have declaration option enabled`);
+	}
+
 	checkDiagnosticsErrors(ts.getPreEmitDiagnostics(program), 'Compiled with errors');
-	checkDiagnosticsErrors(program.getDeclarationDiagnostics(), 'Compiled with errors');
 }
 
 export function checkDiagnosticsErrors(diagnostics: readonly ts.Diagnostic[], failMessage: string): void {

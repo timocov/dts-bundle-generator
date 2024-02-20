@@ -261,6 +261,9 @@ function main(): void {
 		warnLog('Compiler option "skipLibCheck" is disabled to properly check generated output');
 	}
 
+	// we want to turn this option on because in this case the compile will generate declaration diagnostics out of the box
+	compilerOptions.declaration = true;
+
 	let checkFailed = false;
 	for (const outputFile of outFilesToCheck) {
 		const program = ts.createProgram([outputFile], compilerOptions);

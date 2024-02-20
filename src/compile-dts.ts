@@ -41,6 +41,9 @@ export function compileDts(rootFiles: readonly string[], preferredConfigPath?: s
 	compilerOptions.tsBuildInfoFile = undefined;
 	compilerOptions.declarationDir = undefined;
 
+	// we want to turn this option on because in this case the compile will generate declaration diagnostics out of the box
+	compilerOptions.declaration = true;
+
 	if (compilerOptions.composite) {
 		warnLog(`Composite projects aren't supported at the time. Prefer to use non-composite project to generate declarations instead or just ignore this message if everything works fine. See https://github.com/timocov/dts-bundle-generator/issues/93`);
 		compilerOptions.composite = undefined;
