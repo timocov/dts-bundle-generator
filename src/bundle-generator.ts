@@ -151,8 +151,6 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		return !program.isSourceFileDefaultLibrary(file);
 	});
 
-	verboseLog(`Input source files:\n  ${sourceFiles.map((file: ts.SourceFile) => file.fileName).join('\n  ')}`);
-
 	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker);
 
 	return entries.map((entryConfig: EntryPointConfig) => {
@@ -1118,7 +1116,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		}
 
 		for (const sourceFile of sourceFiles) {
-			verboseLog(`\n\n======= Preparing file: ${sourceFile.fileName} =======`);
+			verboseLog(`======= Processing ${sourceFile.fileName} =======`);
 
 			const updateFn = sourceFile === rootSourceFile ? updateResultForRootModule : updateResultForAnyModule;
 			const currentModule = getFileModuleInfo(sourceFile.fileName, criteria);
