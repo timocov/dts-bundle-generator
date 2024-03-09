@@ -132,6 +132,14 @@ export class CollisionsResolver {
 	 * The main point of this resolver is that it might change the first part of the qualifier only (as it drives uniqueness of a name).
 	 */
 	public resolveReferencedQualifiedName(referencedIdentifier: ts.QualifiedName | ts.PropertyAccessEntityNameExpression): string | null {
+		const identifierSymbol = getDeclarationNameSymbol(referencedIdentifier, this.typeChecker);
+		const isSymbolRegisteredAtTopLevel = identifierSymbol !== null && this.namesForSymbol(identifierSymbol).size !== 0;
+		if (isSymbolRegisteredAtTopLevel) {
+			// if a symbol is registered at the top level it means we can reference it directly without using a qualified name
+			const rightmostIdentifier = ts.isQualifiedName(referencedIdentifier) ? referencedIdentifier.right : referencedIdentifier.name;
+			return this.resolveReferencedIdentifier(rightmostIdentifier);
+		}
+
 		let topLevelIdentifier: ts.Identifier | ts.QualifiedName | ts.PropertyAccessEntityNameExpression = referencedIdentifier;
 
 		if (ts.isQualifiedName(topLevelIdentifier) || ts.isPropertyAccessExpression(topLevelIdentifier)) {
@@ -152,7 +160,6 @@ export class CollisionsResolver {
 			// but it is possible that the full qualified name is registered so we can use its replacement instead
 			// it is possible in cases where you use `import * as nsName` for internal modules
 			// so `nsName.Interface` will be resolved to `Interface` (or any other name that `Interface` was registered with)
-			const identifierSymbol = getDeclarationNameSymbol(referencedIdentifier, this.typeChecker);
 			if (identifierSymbol === null) {
 				// that's fine if an identifier doesn't have a symbol
 				// it could be in cases like for `prop` in `declare function func({ prop: prop3 }?: InterfaceName): TypeName;`

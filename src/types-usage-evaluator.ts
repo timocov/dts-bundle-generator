@@ -50,7 +50,7 @@ export class TypesUsageEvaluator {
 
 				visitedSymbols.add(symbol);
 				if (this.isSymbolUsedBySymbolImpl(symbol, toSymbol, visitedSymbols)) {
-					return true;
+					return this.setUsageCacheValue(fromSymbol, toSymbol, true);
 				}
 			}
 		}
@@ -107,6 +107,11 @@ export class TypesUsageEvaluator {
 		// `export * as ns from 'mod'`
 		if (ts.isExportDeclaration(node) && node.moduleSpecifier !== undefined && node.exportClause !== undefined && ts.isNamespaceExport(node.exportClause)) {
 			this.addUsagesForNamespacedModule(node.exportClause, node.moduleSpecifier as ts.StringLiteral);
+		}
+
+		// `import * as ns from 'mod'`
+		if (ts.isImportDeclaration(node) && node.moduleSpecifier !== undefined && node.importClause?.namedBindings !== undefined && ts.isNamespaceImport(node.importClause.namedBindings)) {
+			this.addUsagesForNamespacedModule(node.importClause.namedBindings, node.moduleSpecifier as ts.StringLiteral);
 		}
 
 		// `export {}` or `export {} from 'mod'`

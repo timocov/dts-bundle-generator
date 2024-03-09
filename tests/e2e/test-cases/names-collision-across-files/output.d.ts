@@ -68,7 +68,7 @@ export interface Inter {
 	field2: AnotherInterface$1;
 	field3: TypeName;
 	field4: AnotherInterface;
-	field5: fakePackage.Interface;
+	field5: Interface$2;
 	field6: FPI1;
 	field7: Interface$2;
 }
@@ -77,7 +77,7 @@ export interface Inter2 {
 	field2: AnotherInterface$1;
 	field3: TypeName;
 	field4: AnotherInterface;
-	field5: fakePackage.Interface;
+	field5: Interface$2;
 	field6: FPI2;
 	field7: Interface$2;
 }
