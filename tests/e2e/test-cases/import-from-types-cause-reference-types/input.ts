@@ -1,4 +1,4 @@
-/// <reference types="node" />
+/// <reference types="node" preserve="true" />
 
 import { EventEmitter } from 'events';
 

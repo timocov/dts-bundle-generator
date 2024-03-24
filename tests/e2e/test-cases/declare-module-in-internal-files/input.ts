@@ -1,6 +1,6 @@
 // this test case comes from Dexie.js
 
-/// <reference path="./ambient-module-declaration.d.ts" />
+/// <reference path="./ambient-module-declaration.d.ts" preserve="true" />
 
 import { ModuleWithoutQuotes } from 'fake-package';
 

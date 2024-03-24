@@ -1,4 +1,4 @@
-/// <reference types="fake-types-lib-2" />
+/// <reference types="fake-types-lib-2" preserve="true" />
 
 import { Data } from 'fake-types-lib-2.5';
 
