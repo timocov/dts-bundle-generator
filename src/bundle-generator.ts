@@ -153,6 +153,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker);
 
+	// eslint-disable-next-line complexity
 	return entries.map((entryConfig: EntryPointConfig) => {
 		normalLog(`Processing ${entryConfig.filePath}`);
 
@@ -303,7 +304,10 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 					switch (currentModule.type) {
 						case ModuleType.ShouldBeReferencedAsTypes:
-							addTypesReference(currentModule.typesLibraryName);
+							// while a node might be "used" somewhere via transitive nodes
+							// we need to add types reference only if a node is treated as "should be imported"
+							// because otherwise we might have lots of false-positive references
+							forEachNodeThatShouldBeImported(statement, () => addTypesReference(currentModule.typesLibraryName));
 							break;
 
 						case ModuleType.ShouldBeImported:
@@ -590,7 +594,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			}
 		}
 
-		function updateImportsForStatement(statement: ts.Statement | ts.SourceFile | ts.ExportSpecifier): void {
+		function forEachNodeThatShouldBeImported(statement: ts.Statement | ts.SourceFile | ts.ExportSpecifier, callback: (st: ts.DeclarationStatement) => void): void {
 			const statementsToImport = ts.isVariableStatement(statement)
 				? statement.declarationList.declarations
 				: ts.isExportDeclaration(statement) && statement.exportClause !== undefined
@@ -601,23 +605,29 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 			for (const statementToImport of statementsToImport) {
 				if (shouldNodeBeImported(statementToImport as ts.DeclarationStatement)) {
-					addImport(statementToImport as ts.DeclarationStatement);
-
-					// if we're going to add import of any statement in the bundle
-					// we should check whether the library of that statement
-					// could be referenced via triple-slash reference-types directive
-					// because the project which will use bundled declaration file
-					// can have `types: []` in the tsconfig and it'll fail
-					// this is especially related to the types packages
-					// which declares different modules in their declarations
-					// e.g. @types/node has declaration for "packages" events, fs, path and so on
-					const sourceFile = statementToImport.getSourceFile();
-					const moduleInfo = getFileModuleInfo(sourceFile.fileName, criteria);
-					if (moduleInfo.type === ModuleType.ShouldBeReferencedAsTypes) {
-						addTypesReference(moduleInfo.typesLibraryName);
-					}
+					callback(statementToImport as ts.DeclarationStatement);
 				}
 			}
+		}
+
+		function updateImportsForStatement(statement: ts.Statement | ts.SourceFile | ts.ExportSpecifier): void {
+			forEachNodeThatShouldBeImported(statement, (statementToImport: ts.DeclarationStatement) => {
+				addImport(statementToImport);
+
+				// if we're going to add import of any statement in the bundle
+				// we should check whether the library of that statement
+				// could be referenced via triple-slash reference-types directive
+				// because the project which will use bundled declaration file
+				// can have `types: []` in the tsconfig and it'll fail
+				// this is especially related to the types packages
+				// which declares different modules in their declarations
+				// e.g. @types/node has declaration for "packages" events, fs, path and so on
+				const sourceFile = statementToImport.getSourceFile();
+				const moduleInfo = getFileModuleInfo(sourceFile.fileName, criteria);
+				if (moduleInfo.type === ModuleType.ShouldBeReferencedAsTypes) {
+					addTypesReference(moduleInfo.typesLibraryName);
+				}
+			});
 		}
 
 		function getDeclarationUsagesSourceFiles(declaration: ts.NamedDeclaration): Set<ts.SourceFile | ts.ModuleDeclaration> {
@@ -672,6 +682,55 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		}
 
 		function addImport(statement: ts.DeclarationStatement | ts.SourceFile): void {
+			forEachImportOfStatement(statement, (imp: ImportOfStatement, referencedModuleInfo: ModuleInfo, importModuleSpecifier: string) => {
+				// if a referenced module should be inlined we can just ignore it
+				if (referencedModuleInfo.type !== ModuleType.ShouldBeImported) {
+					return;
+				}
+
+				const importItem = getImportItem(importModuleSpecifier);
+
+				if (ts.isImportEqualsDeclaration(imp)) {
+					// import x = require("mod");
+					addRequireImport(importItem, imp.name);
+					return;
+				}
+
+				if (ts.isExportSpecifier(imp)) {
+					// export { El1, El2 as ExportedName } from 'module';
+					addNamedImport(importItem, imp.name, imp.propertyName || imp.name);
+					return;
+				}
+
+				if (ts.isNamespaceExport(imp)) {
+					// export * as name from 'module';
+					addNsImport(importItem, imp.name);
+					return;
+				}
+
+				if (ts.isImportClause(imp) && imp.name !== undefined) {
+					// import name from 'module';
+					addDefaultImport(importItem, imp.name);
+					return;
+				}
+
+				if (ts.isImportSpecifier(imp)) {
+					// import { El1, El2 as ImportedName } from 'module';
+					addNamedImport(importItem, imp.name, imp.propertyName || imp.name);
+					return;
+				}
+
+				if (ts.isNamespaceImport(imp)) {
+					// import * as name from 'module';
+					addNsImport(importItem, imp.name);
+					return;
+				}
+			});
+		}
+
+		type ImportOfStatement = ts.ImportEqualsDeclaration | ts.ExportSpecifier | ts.NamespaceExport | ts.ImportClause | ts.ImportSpecifier | ts.NamespaceImport;
+
+		function forEachImportOfStatement(statement: ts.DeclarationStatement | ts.SourceFile, callback: (imp: ImportOfStatement, referencedModuleInfo: ModuleInfo, importModuleSpecifier: string) => void): void {
 			if (!ts.isSourceFile(statement) && statement.name === undefined) {
 				throw new Error(`Import/usage unnamed declaration: ${statement.getText()}`);
 			}
@@ -702,15 +761,13 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 					const referencedModuleInfo = getReferencedModuleInfo(st, criteria, typeChecker);
 					// if a referenced module should be inlined we can just ignore it
-					if (referencedModuleInfo === null || referencedModuleInfo.type !== ModuleType.ShouldBeImported) {
+					if (referencedModuleInfo === null) {
 						return;
 					}
 
-					const importItem = getImportItem(importModuleSpecifier);
-
 					if (ts.isImportEqualsDeclaration(st)) {
 						if (areDeclarationSame(statement, st)) {
-							addRequireImport(importItem, st.name);
+							callback(st, referencedModuleInfo, importModuleSpecifier);
 						}
 
 						return;
@@ -722,18 +779,18 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 							st.exportClause.elements
 								.filter(areDeclarationSame.bind(null, statement))
 								.forEach((specifier: ts.ExportSpecifier) => {
-									addNamedImport(importItem, specifier.name, specifier.propertyName || specifier.name);
+									callback(specifier, referencedModuleInfo, importModuleSpecifier);
 								});
 						} else {
 							// export * as name from 'module';
 							if (isNodeUsed(st.exportClause)) {
-								addNsImport(importItem, st.exportClause.name);
+								callback(st.exportClause, referencedModuleInfo, importModuleSpecifier);
 							}
 						}
 					} else if (ts.isImportDeclaration(st) && st.importClause !== undefined) {
 						if (st.importClause.name !== undefined && areDeclarationSame(statement, st.importClause)) {
 							// import name from 'module';
-							addDefaultImport(importItem, st.importClause.name);
+							callback(st.importClause, referencedModuleInfo, importModuleSpecifier);
 						}
 
 						if (st.importClause.namedBindings !== undefined) {
@@ -742,12 +799,12 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 								st.importClause.namedBindings.elements
 									.filter(areDeclarationSame.bind(null, statement))
 									.forEach((specifier: ts.ImportSpecifier) => {
-										addNamedImport(importItem, specifier.name, specifier.propertyName || specifier.name);
+										callback(specifier, referencedModuleInfo, importModuleSpecifier);
 									});
 							} else {
 								// import * as name from 'module';
 								if (isNodeUsed(st.importClause)) {
-									addNsImport(importItem, st.importClause.namedBindings.name);
+									callback(st.importClause.namedBindings, referencedModuleInfo, importModuleSpecifier);
 								}
 							}
 						}
@@ -1000,16 +1057,22 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				addSymbolToNamespaceExports(namespaceExports, symbol);
 			}
 
+			// eslint-disable-next-line complexity
 			function getIdentifierOfNamespaceImportFromInlinedModule(nsSymbol: ts.Symbol): ts.Identifier | null {
 				// handling namespaced re-exports/imports
 				// e.g. `export * as NS from './local-module';` or `import * as NS from './local-module'; export { NS }`
 				for (const decl of getDeclarationsForSymbol(nsSymbol)) {
-					if (!ts.isNamespaceExport(decl) && !ts.isExportSpecifier(decl)) {
+					if (!ts.isNamespaceExport(decl) && !ts.isExportSpecifier(decl) && !ts.isNamespaceImport(decl)) {
 						continue;
 					}
 
 					// if it is namespace export then it should be from a inlined module (e.g. `export * as NS from './local-module';`)
 					if (ts.isNamespaceExport(decl) && !isReferencedModuleImportable(decl.parent)) {
+						return decl.name;
+					}
+
+					// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+					if (ts.isNamespaceImport(decl) && !isReferencedModuleImportable(decl.parent.parent as ts.ImportDeclaration)) {
 						return decl.name;
 					}
 
@@ -1128,8 +1191,37 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			updateFn(sourceFile.statements, currentModule);
 
 			// handle `import * as module` usage if it's used as whole module
-			if (currentModule.type === ModuleType.ShouldBeImported && isNodeUsed(sourceFile)) {
-				updateImportsForStatement(sourceFile);
+			if (isNodeUsed(sourceFile)) {
+				switch (currentModule.type) {
+					case ModuleType.ShouldBeImported: {
+						updateImportsForStatement(sourceFile);
+						break;
+					}
+
+					case ModuleType.ShouldBeInlined: {
+						const sourceFileSymbol = getNodeSymbol(sourceFile, typeChecker);
+						if (sourceFileSymbol === null || sourceFileSymbol.exports === undefined) {
+							throw new Error(`Cannot find symbol or exports for source file ${sourceFile.fileName}`);
+						}
+
+						let namespaceIdentifier: ts.Identifier | null = null;
+
+						forEachImportOfStatement(sourceFile, (imp: ImportOfStatement) => {
+							// here we want to handle creation of artificial namespace for a inlined module
+							// so we don't care about other type of imports/exports - only these that create a "namespace"
+							if (ts.isNamespaceExport(imp) || ts.isNamespaceImport(imp)) {
+								namespaceIdentifier = imp.name;
+							}
+						});
+
+						if (namespaceIdentifier === null) {
+							break;
+						}
+
+						createNamespaceForExports(sourceFileSymbol.exports, getNodeOwnSymbol(namespaceIdentifier, typeChecker));
+						break;
+					}
+				}
 			}
 		}
 
@@ -1161,10 +1253,10 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			{
 				...collectionResult,
 				resolveIdentifierName: (identifier: ts.Identifier | ts.QualifiedName | ts.PropertyAccessEntityNameExpression): string | null => {
-					if (ts.isIdentifier(identifier)) {
-						return collisionsResolver.resolveReferencedIdentifier(identifier);
-					} else {
+					if (ts.isPropertyAccessOrQualifiedName(identifier)) {
 						return collisionsResolver.resolveReferencedQualifiedName(identifier);
+					} else {
+						return collisionsResolver.resolveReferencedIdentifier(identifier);
 					}
 				},
 				// eslint-disable-next-line complexity

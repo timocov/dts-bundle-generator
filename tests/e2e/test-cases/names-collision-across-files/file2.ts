@@ -28,3 +28,5 @@ export function anotherFunc(two: NamespaceName.Local) {}
 export namespace NamespaceName {
 	export interface Local {}
 }
+
+export interface ExportedButNotUsedInterface {}

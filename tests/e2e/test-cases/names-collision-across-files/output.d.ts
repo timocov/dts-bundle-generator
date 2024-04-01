@@ -1,4 +1,3 @@
-import * as fakePackage from 'fake-package';
 import { Interface as FPI1, Interface as FPI2, Interface as Interface$2 } from 'fake-package';
 
 export type ExportEqNs = string;
@@ -68,18 +67,22 @@ export interface Inter {
 	field2: AnotherInterface$1;
 	field3: TypeName;
 	field4: AnotherInterface;
-	field5: fakePackage.Interface;
+	field5: FPI1;
 	field6: FPI1;
 	field7: Interface$2;
+}
+export interface DefaultInterface {
+	field10: number;
 }
 export interface Inter2 {
 	field: Interface;
 	field2: AnotherInterface$1;
 	field3: TypeName;
 	field4: AnotherInterface;
-	field5: fakePackage.Interface;
+	field5: FPI1;
 	field6: FPI2;
 	field7: Interface$2;
+	field8: DefaultInterface;
 }
 export type MyType = Interface$2;
 export type ExportedNsType = ExportEqNs$1.InternalNs.NewType;

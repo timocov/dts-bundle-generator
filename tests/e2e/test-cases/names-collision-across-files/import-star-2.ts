@@ -5,6 +5,7 @@ import * as file1 from './file1';
 import * as file1ButDifferent from './file1';
 import { AnotherInterface as AiFromFile1 } from './file1';
 import * as file2 from './file2';
+import * as file3 from './file3';
 
 export interface Inter2 {
 	field: file1.Interface;
@@ -14,4 +15,5 @@ export interface Inter2 {
 	field5: fakePackageButDifferent.Interface;
 	field6: FPI2;
 	field7: Interface;
+	field8: file3.default;
 }
