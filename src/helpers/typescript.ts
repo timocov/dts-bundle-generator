@@ -205,7 +205,8 @@ export function getExportsForSourceFile(typeChecker: ts.TypeChecker, sourceFileS
 			// most likely this export is part of the symbol merging situation
 			// where one of the declarations is the imported value but the other is declared locally
 			// in this case we need to add an extra export to the exports list to make sure that it is marked as "exported"
-			const referencedModule = resolveReferencedModule(importSpecifierDeclaration.parent.parent.parent, typeChecker);
+			// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+			const referencedModule = resolveReferencedModule(importSpecifierDeclaration.parent.parent.parent as ts.ImportDeclaration, typeChecker);
 			if (referencedModule !== null) {
 				const referencedModuleSymbol = getNodeSymbol(referencedModule, typeChecker);
 				if (referencedModuleSymbol !== null) {

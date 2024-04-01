@@ -481,11 +481,13 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						const exportElementSymbol = getImportExportReferencedSymbol(exportElement, typeChecker);
 
 						const namespaceImportFromImportableModule = getDeclarationsForSymbol(exportElementSymbol).find((importDecl: ts.Declaration): importDecl is ts.NamespaceImport => {
-							return ts.isNamespaceImport(importDecl) && isReferencedModuleImportable(importDecl.parent.parent);
+							// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+							return ts.isNamespaceImport(importDecl) && isReferencedModuleImportable(importDecl.parent.parent as ts.ImportDeclaration);
 						});
 
 						if (namespaceImportFromImportableModule !== undefined) {
-							const importModuleSpecifier = getImportModuleName(namespaceImportFromImportableModule.parent.parent);
+							// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+							const importModuleSpecifier = getImportModuleName(namespaceImportFromImportableModule.parent.parent as ts.ImportDeclaration);
 							if (importModuleSpecifier === null) {
 								throw new Error(`Cannot get import module name from '${namespaceImportFromImportableModule.parent.parent.getText()}'`);
 							}
@@ -987,7 +989,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						const exportElementSymbol = getImportExportReferencedSymbol(decl, typeChecker);
 						const namespaceImport = getDeclarationsForSymbol(exportElementSymbol).find(ts.isNamespaceImport);
 						if (namespaceImport !== undefined) {
-							handleNamespacedImportOrExport(namespaceImport.parent.parent, namespaceExports, symbol);
+							// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+							handleNamespacedImportOrExport(namespaceImport.parent.parent as ts.ImportDeclaration, namespaceExports, symbol);
 						}
 
 						return;
@@ -1028,7 +1031,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						// i.e. `import * as NS from './local-module'`
 						const result = getDeclarationsForSymbol(getImportExportReferencedSymbol(decl, typeChecker)).some((importDecl: ts.Declaration) => {
 							if (ts.isNamespaceImport(importDecl)) {
-								return !isReferencedModuleImportable(importDecl.parent.parent);
+								// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+								return !isReferencedModuleImportable(importDecl.parent.parent as ts.ImportDeclaration);
 							}
 
 							if (ts.isImportSpecifier(importDecl)) {
