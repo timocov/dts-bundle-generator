@@ -19,6 +19,12 @@ interface MyNamespace2 {
 }
 export type Type = MyInt;
 
+declare namespace MyNamespace4 {
+	export { Interface, MyInt$2 as MyInt, MyString$2 as MyString, MyType, MyType2, func$2 as func, subNs };
+}
+declare namespace subNs {
+	export { MyType2 };
+}
 declare namespace MyNamespace {
 	export { Interface, MyInt, MyString, func };
 }
@@ -28,13 +34,7 @@ declare namespace MyNamespace1 {
 declare namespace MyNamespace2 {
 	export { Interface, MyInt$1 as MyInt, MyString$1 as MyString, func$1 as func };
 }
-declare namespace subNs {
-	export { MyType2 };
-}
 declare namespace MyNamespace3 {
-	export { Interface, MyInt$2 as MyInt, MyString$2 as MyString, MyType, MyType2, func$2 as func, subNs };
-}
-declare namespace MyNamespace4 {
 	export { Interface, MyInt$2 as MyInt, MyString$2 as MyString, MyType, MyType2, func$2 as func, subNs };
 }
 

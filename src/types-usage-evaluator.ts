@@ -50,7 +50,7 @@ export class TypesUsageEvaluator {
 
 				visitedSymbols.add(symbol);
 				if (this.isSymbolUsedBySymbolImpl(symbol, toSymbol, visitedSymbols)) {
-					return true;
+					return this.setUsageCacheValue(fromSymbol, toSymbol, true);
 				}
 			}
 		}
@@ -109,6 +109,14 @@ export class TypesUsageEvaluator {
 			this.addUsagesForNamespacedModule(node.exportClause, node.moduleSpecifier as ts.StringLiteral);
 		}
 
+		// `import * as ns from 'mod'`
+		if (ts.isImportDeclaration(node) && node.moduleSpecifier !== undefined && node.importClause?.namedBindings !== undefined && ts.isNamespaceImport(node.importClause.namedBindings)) {
+			// for namespaced imports we don't want to include module's exports into usage
+			// because only exports actually "assign" all exports to a namespace node
+			// namespaced imports affect only local scope (unless it is exported, but it handled elsewhere)
+			this.addUsagesForNamespacedModule(node.importClause.namedBindings, node.moduleSpecifier as ts.StringLiteral, false);
+		}
+
 		// `export {}` or `export {} from 'mod'`
 		if (ts.isExportDeclaration(node) && node.exportClause !== undefined && ts.isNamedExports(node.exportClause)) {
 			for (const exportElement of node.exportClause.elements) {
@@ -162,7 +170,7 @@ export class TypesUsageEvaluator {
 		}
 	}
 
-	private addUsagesForNamespacedModule(namespaceNode: ts.NamespaceImport | ts.NamespaceExport, moduleSpecifier: ts.StringLiteral): void {
+	private addUsagesForNamespacedModule(namespaceNode: ts.NamespaceImport | ts.NamespaceExport, moduleSpecifier: ts.StringLiteral, includeExports: boolean = true): void {
 		// note that we shouldn't resolve the actual symbol for the namespace
 		// as in some circumstances it will be resolved to the source file
 		// i.e. namespaceSymbol would become referencedModuleSymbol so it would be no-op
@@ -175,8 +183,10 @@ export class TypesUsageEvaluator {
 		const resolvedNamespaceSymbol = this.getSymbol(namespaceNode.name);
 		this.addUsages(resolvedNamespaceSymbol, namespaceSymbol);
 
-		// if a referenced source file has any exports, they should be added "to the usage" as they all are re-exported/imported
-		this.addExportsToSymbol(referencedSourceFileSymbol.exports, referencedSourceFileSymbol);
+		if (includeExports) {
+			// if a referenced source file has any exports, they should be added "to the usage" as they all are re-exported/imported
+			this.addExportsToSymbol(referencedSourceFileSymbol.exports, referencedSourceFileSymbol);
+		}
 	}
 
 	private addExportsToSymbol(exports: ts.SymbolTable | undefined, parentSymbol: ts.Symbol, visitedSymbols: Set<ts.Symbol> = new Set()): void {
@@ -206,12 +216,29 @@ export class TypesUsageEvaluator {
 	}
 
 	private computeUsagesRecursively(parent: ts.Node, parentSymbol: ts.Symbol): void {
-		ts.forEachChild(parent, (child: ts.Node) => {
+		const processUsageForChild = (child: ts.Node) => {
 			if (child.kind === ts.SyntaxKind.JSDoc) {
 				return;
 			}
 
-			this.computeUsagesRecursively(child, parentSymbol);
+			let recursionStartNode = child;
+			if (ts.isQualifiedName(child) && !ts.isQualifiedName(child.parent)) {
+				const leftmostSymbol = this.getNodeOwnSymbol(child.left);
+
+				// i.e. `import * as NS from './local-module'`
+				const namespaceImport = getDeclarationsForSymbol(leftmostSymbol).find(ts.isNamespaceImport);
+				if (namespaceImport !== undefined) {
+					// if a node is a qualified name and its top-level part was created by a namespaced import
+					// then we shouldn't add usages of that "namespaced import" to the parent symbol
+					// because we can just import the referenced symbol directly, without wrapping with a namespace
+					recursionStartNode = child.right;
+
+					// recursive processing doesn't process a node itself so we need to handle it separately
+					processUsageForChild(recursionStartNode);
+				}
+			}
+
+			this.computeUsagesRecursively(recursionStartNode, parentSymbol);
 
 			if (ts.isIdentifier(child) || child.kind === ts.SyntaxKind.DefaultKeyword) {
 				// identifiers in labelled tuples don't have symbols for their labels
@@ -226,8 +253,24 @@ export class TypesUsageEvaluator {
 				}
 
 				this.addUsages(this.getSymbol(child), parentSymbol);
+
+				if (!ts.isQualifiedName(child.parent)) {
+					const childOwnSymbol = this.getNodeOwnSymbol(child);
+
+					// i.e. `import * as NS from './local-module'`
+					const namespaceImport = getDeclarationsForSymbol(childOwnSymbol).find(ts.isNamespaceImport);
+					if (namespaceImport !== undefined) {
+						// if a node is an identifier and not part of a qualified name
+						// and it was created as part of namespaced import
+						// then we need to assign all exports of referenced module into that namespace
+						// because they might not be added previously while processing imports/exports
+						this.addUsagesForNamespacedModule(namespaceImport, namespaceImport.parent.parent.moduleSpecifier as ts.StringLiteral, true);
+					}
+				}
 			}
-		});
+		};
+
+		ts.forEachChild(parent, processUsageForChild);
 	}
 
 	private addUsages(childSymbol: ts.Symbol, parentSymbol: ts.Symbol): void {
