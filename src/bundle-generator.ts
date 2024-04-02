@@ -569,7 +569,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				return;
 			}
 
-			const referencedModuleInfo = getReferencedModuleInfo(moduleDecl, criteria, typeChecker);
+			const referencedModuleInfo = getModuleLikeModuleInfo(moduleDecl, criteria, typeChecker);
 			if (referencedModuleInfo === null) {
 				return;
 			}
