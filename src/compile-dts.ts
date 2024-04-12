@@ -65,6 +65,10 @@ export function compileDts(rootFiles: readonly string[], preferredConfigPath?: s
 			const resolvedModule = ts.resolveModuleName(moduleLiteral.text, containingFile, compilerOptions, host, moduleResolutionCache).resolvedModule;
 			if (resolvedModule && !resolvedModule.isExternalLibraryImport) {
 				const newExt = declarationExtsRemapping[resolvedModule.extension];
+				if (!newExt) {
+					verboseLog(`Skipping module ${resolvedModule.resolvedFileName} because it has unsupported extension "${resolvedModule.extension}"`);
+					return { resolvedModule };
+				}
 
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
 				if (newExt !== resolvedModule.extension) {
