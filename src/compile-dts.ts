@@ -10,7 +10,7 @@ export interface CompileDtsResult {
 	rootFilesRemapping: Map<string, string>;
 }
 
-const declarationExtsRemapping: Record<string, ts.Extension> = {
+const declarationExtsRemapping: Partial<Record<string, ts.Extension>> = {
 	[ts.Extension.Js]: ts.Extension.Js,
 	[ts.Extension.Jsx]: ts.Extension.Jsx,
 	[ts.Extension.Json]: ts.Extension.Json,
@@ -65,7 +65,7 @@ export function compileDts(rootFiles: readonly string[], preferredConfigPath?: s
 			const resolvedModule = ts.resolveModuleName(moduleLiteral.text, containingFile, compilerOptions, host, moduleResolutionCache).resolvedModule;
 			if (resolvedModule && !resolvedModule.isExternalLibraryImport) {
 				const newExt = declarationExtsRemapping[resolvedModule.extension];
-				if (!newExt) {
+				if (newExt === undefined) {
 					verboseLog(`Skipping module ${resolvedModule.resolvedFileName} because it has unsupported extension "${resolvedModule.extension}"`);
 					return { resolvedModule };
 				}

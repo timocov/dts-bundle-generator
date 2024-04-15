@@ -1,3 +1,4 @@
-export declare function test(): Record<any, any>;
+declare const hello: Record<any, any>;
+export function test(): typeof hello;
 
 export {};
