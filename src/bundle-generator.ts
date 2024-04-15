@@ -194,6 +194,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 		const outputOptions: OutputOptions = entryConfig.output || {};
 		const inlineDeclareGlobals = Boolean(outputOptions.inlineDeclareGlobals);
+		const inlineDeclareExternals = Boolean(outputOptions.inlineDeclareExternals);
 
 		const collisionsResolver = new CollisionsResolver(typeChecker);
 
@@ -577,7 +578,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			// if we have declaration of external module inside internal one
 			if (!currentModule.isExternal && referencedModuleInfo.isExternal) {
 				// if it's allowed - we need to just add it to result without any processing
-				if (outputOptions.inlineDeclareExternals) {
+				if (inlineDeclareExternals) {
 					collectionResult.statements.push(moduleDecl);
 				}
 
@@ -813,9 +814,9 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			});
 		}
 
-		function getGlobalSymbolsUsingSymbol(symbol: ts.Symbol): ts.Symbol[] {
+		function getInlinedSymbolsUsingSymbol(symbol: ts.Symbol, predicate: (usedInSymbol: ts.Symbol) => boolean): ts.Symbol[] {
 			return Array.from(typesUsageEvaluator.getSymbolsUsingSymbol(symbol) ?? []).filter((usedInSymbol: ts.Symbol) => {
-				if (usedInSymbol.escapedName !== ts.InternalSymbolName.Global) {
+				if (!predicate(usedInSymbol)) {
 					return false;
 				}
 
@@ -827,7 +828,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			});
 		}
 
-		function isSymbolUsedByGlobalSymbols(symbol: ts.Symbol, visitedSymbols: Set<ts.Symbol> = new Set()): boolean {
+		function isSymbolUsedByInlinedSymbols(symbol: ts.Symbol, predicate: (usedInSymbol: ts.Symbol) => boolean, visitedSymbols: Set<ts.Symbol> = new Set()): boolean {
 			if (visitedSymbols.has(symbol)) {
 				return false;
 			}
@@ -835,8 +836,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			visitedSymbols.add(symbol);
 
 			return Array.from(typesUsageEvaluator.getSymbolsUsingSymbol(symbol) ?? []).some((usedInSymbol: ts.Symbol) => {
-				if (usedInSymbol.escapedName !== ts.InternalSymbolName.Global) {
-					return isSymbolUsedByGlobalSymbols(usedInSymbol, visitedSymbols);
+				if (!predicate(usedInSymbol)) {
+					return isSymbolUsedByInlinedSymbols(usedInSymbol, predicate, visitedSymbols);
 				}
 
 				const usedByThisSymbol = getDeclarationsForSymbol(usedInSymbol).some((decl: ts.Declaration) => {
@@ -849,10 +850,23 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					return true;
 				}
 
-				return isSymbolUsedByGlobalSymbols(usedInSymbol, visitedSymbols);
+				return isSymbolUsedByInlinedSymbols(usedInSymbol, predicate, visitedSymbols);
 			});
 		}
 
+		function isSymbolUsedByRootFileExports(symbol: ts.Symbol): boolean {
+			return rootFileExportSymbols.some((rootSymbol: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(symbol, rootSymbol));
+		}
+
+		function isSymbolForGlobalDeclaration(symbol: ts.Symbol): boolean {
+			return symbol.escapedName === ts.InternalSymbolName.Global;
+		}
+
+		function isSymbolForDeclareModuleDeclaration(symbol: ts.Symbol): boolean {
+			return getDeclarationsForSymbol(symbol).some(isDeclareModule);
+		}
+
+		// eslint-disable-next-line complexity
 		function isNodeUsed(node: ts.Node): boolean {
 			if (isNodeNamedDeclaration(node) || ts.isSourceFile(node)) {
 				const nodeSymbol = getNodeSymbol(node, typeChecker);
@@ -860,19 +874,35 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					return false;
 				}
 
-				const nodeUsedByDirectExports = rootFileExportSymbols.some((rootExport: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(nodeSymbol, rootExport));
+				// note we don't need a function similar to `isSymbolUsedByGlobalSymbols` or `isSymbolUsedByGlobalSymbols`
+				// because `TypesUsageEvaluator.isSymbolUsedBySymbol` already handles recursive checks
+				const nodeUsedByDirectExports = isSymbolUsedByRootFileExports(nodeSymbol);
 				if (nodeUsedByDirectExports) {
 					return true;
 				}
 
-				return inlineDeclareGlobals && isSymbolUsedByGlobalSymbols(nodeSymbol);
-			} else if (ts.isVariableStatement(node)) {
+				if (inlineDeclareGlobals && isSymbolUsedByInlinedSymbols(nodeSymbol, isSymbolForGlobalDeclaration)) {
+					return true;
+				}
+
+				if (inlineDeclareExternals && isSymbolUsedByInlinedSymbols(nodeSymbol, isSymbolForDeclareModuleDeclaration)) {
+					return true;
+				}
+
+				return false;
+			}
+
+			if (ts.isVariableStatement(node)) {
 				return node.declarationList.declarations.some((declaration: ts.VariableDeclaration) => {
 					return isNodeUsed(declaration);
 				});
-			} else if (ts.isExportDeclaration(node) && node.exportClause !== undefined && ts.isNamespaceExport(node.exportClause)) {
+			}
+
+			if (ts.isExportDeclaration(node) && node.exportClause !== undefined && ts.isNamespaceExport(node.exportClause)) {
 				return isNodeUsed(node.exportClause);
-			} else if (ts.isImportClause(node) && node.namedBindings !== undefined) {
+			}
+
+			if (ts.isImportClause(node) && node.namedBindings !== undefined) {
 				return isNodeUsed(node.namedBindings);
 			}
 
@@ -942,20 +972,15 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 			return [
 				...(rootFileExportSymbols.includes(nodeSymbol) ? [nodeSymbol] : []),
-				// symbols which are used in types directly
-				...Array.from(symbolsUsingNode).filter((symbol: ts.Symbol) => {
-					const symbolsDeclarations = getDeclarationsForSymbol(symbol);
-					if (symbolsDeclarations.length === 0 || symbolsDeclarations.every((decl: ts.Declaration) => {
-						// we need to make sure that at least 1 declaration is inlined
-						return getModuleLikeModuleInfo(getClosestSourceFileLikeNode(decl), criteria, typeChecker).type !== ModuleType.ShouldBeInlined;
-					})) {
-						return false;
-					}
 
-					return rootFileExportSymbols.some((rootSymbol: ts.Symbol) => typesUsageEvaluator.isSymbolUsedBySymbol(symbol, rootSymbol));
-				}),
+				// symbols which are used in types directly
+				...getInlinedSymbolsUsingSymbol(nodeSymbol, isSymbolUsedByRootFileExports),
+
 				// symbols which are used in global types i.e. in `declare global`s
-				...(inlineDeclareGlobals ? getGlobalSymbolsUsingSymbol(nodeSymbol) : []),
+				...(inlineDeclareGlobals ? getInlinedSymbolsUsingSymbol(nodeSymbol, isSymbolForGlobalDeclaration) : []),
+
+				// symbols which are used in "declare module" types
+				...(inlineDeclareExternals ? getInlinedSymbolsUsingSymbol(nodeSymbol, isSymbolForDeclareModuleDeclaration) : []),
 			];
 		}
 

@@ -83,8 +83,19 @@ export class TypesUsageEvaluator {
 	// eslint-disable-next-line complexity
 	private computeUsageForNode(node: ts.Node): void {
 		if (isDeclareModule(node) && node.body !== undefined && ts.isModuleBlock(node.body)) {
+			const moduleSymbol = this.getSymbol(node.name);
 			for (const statement of node.body.statements) {
 				this.computeUsageForNode(statement);
+
+				if (isNodeNamedDeclaration(statement)) {
+					const nodeName = getNodeName(statement);
+					if (nodeName !== undefined) {
+						// a node declared in `declare module` should adds "usage" to that module
+						// so we can track its usage later if needed
+						const statementSymbol = this.getSymbol(nodeName);
+						this.addUsages(statementSymbol, moduleSymbol);
+					}
+				}
 			}
 		}
 
