@@ -57,7 +57,11 @@ export class TypesUsageEvaluator {
 
 		visitedSymbols.add(fromSymbol);
 
-		return this.setUsageCacheValue(fromSymbol, toSymbol, false);
+		// note that we can't save negative result here because it might be not a final one
+		// because we might ended up here because of `visitedSymbols.has(symbol)` check above
+		// while actually checking that `symbol` symbol and we will store all its "children" as `false`
+		// while in reality some of them might be `true` because of cross-references or using the same children symbols
+		return false;
 	}
 
 	private setUsageCacheValue(fromSymbol: ts.Symbol, toSymbol: ts.Symbol, value: boolean): boolean {
