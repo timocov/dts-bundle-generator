@@ -14,9 +14,10 @@ const namedDeclarationKinds = [
 	ts.SyntaxKind.NamespaceExport,
 	ts.SyntaxKind.NamespaceImport,
 	ts.SyntaxKind.ExportSpecifier,
+	ts.SyntaxKind.BindingElement,
 ];
 
-export type NodeName = ts.DeclarationName | ts.DefaultKeyword | ts.QualifiedName | ts.PropertyAccessExpression;
+export type NodeName = ts.DeclarationName | ts.DefaultKeyword | ts.QualifiedName | ts.PropertyAccessExpression | ts.BindingPattern;
 
 export function isNodeNamedDeclaration(node: ts.Node): node is ts.NamedDeclaration {
 	return namedDeclarationKinds.indexOf(node.kind) !== -1;

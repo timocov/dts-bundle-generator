@@ -106,9 +106,15 @@ export class TypesUsageEvaluator {
 		if (isNodeNamedDeclaration(node)) {
 			const nodeName = getNodeName(node);
 			if (nodeName !== undefined) {
-				const childSymbol = this.getSymbol(nodeName);
-				if (childSymbol !== null) {
-					this.computeUsagesRecursively(node, childSymbol);
+				if (ts.isObjectBindingPattern(nodeName) || ts.isArrayBindingPattern(nodeName)) {
+					for (const element of nodeName.elements) {
+						this.computeUsageForNode(element);
+					}
+				} else {
+					const childSymbol = this.getSymbol(nodeName);
+					if (childSymbol !== null) {
+						this.computeUsagesRecursively(node, childSymbol);
+					}
 				}
 			}
 		}
