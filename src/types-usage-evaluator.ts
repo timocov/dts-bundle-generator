@@ -237,29 +237,12 @@ export class TypesUsageEvaluator {
 	}
 
 	private computeUsagesRecursively(parent: ts.Node, parentSymbol: ts.Symbol): void {
-		const processUsageForChild = (child: ts.Node) => {
+		ts.forEachChild(parent, (child: ts.Node) => {
 			if (child.kind === ts.SyntaxKind.JSDoc) {
 				return;
 			}
 
-			let recursionStartNode = child;
-			if (ts.isQualifiedName(child) && !ts.isQualifiedName(child.parent)) {
-				const leftmostSymbol = this.getNodeOwnSymbol(child.left);
-
-				// i.e. `import * as NS from './local-module'`
-				const namespaceImport = getDeclarationsForSymbol(leftmostSymbol).find(ts.isNamespaceImport);
-				if (namespaceImport !== undefined) {
-					// if a node is a qualified name and its top-level part was created by a namespaced import
-					// then we shouldn't add usages of that "namespaced import" to the parent symbol
-					// because we can just import the referenced symbol directly, without wrapping with a namespace
-					recursionStartNode = child.right;
-
-					// recursive processing doesn't process a node itself so we need to handle it separately
-					processUsageForChild(recursionStartNode);
-				}
-			}
-
-			this.computeUsagesRecursively(recursionStartNode, parentSymbol);
+			this.computeUsagesRecursively(child, parentSymbol);
 
 			if (ts.isIdentifier(child) || child.kind === ts.SyntaxKind.DefaultKeyword) {
 				// identifiers in labelled tuples don't have symbols for their labels
@@ -289,9 +272,7 @@ export class TypesUsageEvaluator {
 					}
 				}
 			}
-		};
-
-		ts.forEachChild(parent, processUsageForChild);
+		});
 	}
 
 	private addUsages(childSymbol: ts.Symbol, parentSymbol: ts.Symbol): void {

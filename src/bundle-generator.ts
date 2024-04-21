@@ -1002,6 +1002,12 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 		function createNamespaceForExports(exports: ts.SymbolTable, namespaceSymbol: ts.Symbol): string | null {
 			function addSymbolToNamespaceExports(namespaceExports: Map<string, string>, symbol: ts.Symbol): void {
+				// if a symbol isn't used by the namespace symbol it might mean that it shouldn't be included into the bundle because of tree-shaking
+				// in this case we shouldn't even try to add such symbol to the namespace
+				if (!typesUsageEvaluator.isSymbolUsedBySymbol(symbol, namespaceSymbol)) {
+					return;
+				}
+
 				const symbolKnownNames = collisionsResolver.namesForSymbol(symbol);
 				if (symbolKnownNames.size === 0) {
 					throw new Error(`Cannot get local names for symbol '${symbol.getName()}' while generating namespaced export`);
