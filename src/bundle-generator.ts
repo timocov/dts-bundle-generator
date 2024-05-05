@@ -645,6 +645,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				importItem = {
 					defaultImports: new Set(),
 					namedImports: new Map(),
+					typeImports: new Map(),
 					nsImport: null,
 					requireImports: new Set(),
 					reExports: new Map(),
@@ -654,6 +655,12 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			}
 
 			return importItem;
+		}
+
+		function addTypeImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier, importedIdentifier: ts.Identifier): void {
+			const newLocalName = collisionsResolver.addTopLevelIdentifier(preferredLocalName);
+			const importedName = importedIdentifier.text;
+			importItem.typeImports.set(newLocalName, importedName);
 		}
 
 		function addRequireImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier): void {
@@ -689,6 +696,12 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				}
 
 				const importItem = getImportItem(importModuleSpecifier);
+
+				if (ts.isTypeOnlyImportDeclaration(imp)) {
+					// import { type ImportedType } from 'module';
+					addTypeImport(importItem, imp.name, imp.name);
+					return;
+				}
 
 				if (ts.isImportEqualsDeclaration(imp)) {
 					// import x = require("mod");

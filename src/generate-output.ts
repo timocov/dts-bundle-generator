@@ -7,6 +7,7 @@ export interface ModuleImportsSet {
 	defaultImports: Set<string>;
 	nsImport: string | null;
 	namedImports: Map<string, string>;
+	typeImports: Map<string, string>;
 	requireImports: Set<string>;
 	reExports: Map<string, string>;
 }
@@ -327,6 +328,15 @@ function generateImports(libraryName: string, imports: ModuleImportsSet): string
 
 	Array.from(imports.requireImports).sort().forEach((importName: string) => result.push(`import ${importName} = require('${libraryName}');`));
 	Array.from(imports.defaultImports).sort().forEach((importName: string) => result.push(`import ${importName} ${fromEnding}`));
+
+	if (imports.typeImports.size !== 0) {
+		result.push(`import { ${
+			Array.from(imports.typeImports.entries())
+				.map(([localName, importedName]: [string, string]) => renamedImportValue(importedName, localName))
+				.sort()
+				.join(', type ')
+		} } ${fromEnding}`);
+	}
 
 	if (imports.namedImports.size !== 0) {
 		result.push(`import { ${
