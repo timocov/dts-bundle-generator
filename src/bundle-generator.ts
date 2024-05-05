@@ -645,6 +645,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				importItem = {
 					defaultImports: new Set(),
 					namedImports: new Map(),
+					typeImports: new Map(),
 					nsImport: null,
 					requireImports: new Set(),
 					reExports: new Map(),
@@ -660,10 +661,14 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			importItem.requireImports.add(collisionsResolver.addTopLevelIdentifier(preferredLocalName));
 		}
 
-		function addNamedImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier, importedIdentifier: ts.Identifier): void {
+		function addNamedImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier, importedIdentifier: ts.Identifier, typeImportOrExport: boolean): void {
 			const newLocalName = collisionsResolver.addTopLevelIdentifier(preferredLocalName);
 			const importedName = importedIdentifier.text;
-			importItem.namedImports.set(newLocalName, importedName);
+			if (typeImportOrExport) {
+				importItem.typeImports.set(newLocalName, importedName);
+			} else {
+				importItem.namedImports.set(newLocalName, importedName);
+			}
 		}
 
 		function addReExport(importItem: ModuleImportsSet, moduleExportedName: string, reExportedName: string): void {
@@ -698,7 +703,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				if (ts.isExportSpecifier(imp)) {
 					// export { El1, El2 as ExportedName } from 'module';
-					addNamedImport(importItem, imp.name, imp.propertyName || imp.name);
+					// export { El1, type El2 as ExportedName } from 'module';
+					addNamedImport(importItem, imp.name, imp.propertyName || imp.name, ts.isTypeOnlyExportDeclaration(imp));
 					return;
 				}
 
@@ -715,8 +721,9 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				}
 
 				if (ts.isImportSpecifier(imp)) {
+					// import { type ImportedType } from 'module';
 					// import { El1, El2 as ImportedName } from 'module';
-					addNamedImport(importItem, imp.name, imp.propertyName || imp.name);
+					addNamedImport(importItem, imp.name, imp.propertyName || imp.name, ts.isTypeOnlyImportDeclaration(imp));
 					return;
 				}
 

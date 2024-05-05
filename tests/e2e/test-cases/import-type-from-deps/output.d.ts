@@ -1,4 +1,4 @@
-import { InterfaceWithFields } from 'fake-package';
+import { type InterfaceWithFields } from 'fake-package';
 
 export declare type FakePackageType = InterfaceWithFields | string;
 export type TestType = InterfaceWithFields | FakePackageType;
