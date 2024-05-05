@@ -329,8 +329,14 @@ function generateImports(libraryName: string, imports: ModuleImportsSet): string
 	Array.from(imports.requireImports).sort().forEach((importName: string) => result.push(`import ${importName} = require('${libraryName}');`));
 	Array.from(imports.defaultImports).sort().forEach((importName: string) => result.push(`import ${importName} ${fromEnding}`));
 
+	// For each type-only import, check if it exists in the `namedImports` map and remove it
+	// otherwise we might end up with a type import and a regular import in the bundle.
+	for (const key of imports.typeImports.keys()) {
+		imports.namedImports.delete(key);
+	}
+
 	if (imports.typeImports.size !== 0) {
-		result.push(`import { ${
+		result.push(`import { type ${
 			Array.from(imports.typeImports.entries())
 				.map(([localName, importedName]: [string, string]) => renamedImportValue(importedName, localName))
 				.sort()

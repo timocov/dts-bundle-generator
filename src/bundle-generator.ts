@@ -657,20 +657,18 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			return importItem;
 		}
 
-		function addTypeImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier, importedIdentifier: ts.Identifier): void {
-			const newLocalName = collisionsResolver.addTopLevelIdentifier(preferredLocalName);
-			const importedName = importedIdentifier.text;
-			importItem.typeImports.set(newLocalName, importedName);
-		}
-
 		function addRequireImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier): void {
 			importItem.requireImports.add(collisionsResolver.addTopLevelIdentifier(preferredLocalName));
 		}
 
-		function addNamedImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier, importedIdentifier: ts.Identifier): void {
+		function addNamedImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier, importedIdentifier: ts.Identifier, typeImportOrExport: boolean): void {
 			const newLocalName = collisionsResolver.addTopLevelIdentifier(preferredLocalName);
 			const importedName = importedIdentifier.text;
-			importItem.namedImports.set(newLocalName, importedName);
+			if (typeImportOrExport) {
+				importItem.typeImports.set(newLocalName, importedName);
+			} else {
+				importItem.namedImports.set(newLocalName, importedName);
+			}
 		}
 
 		function addReExport(importItem: ModuleImportsSet, moduleExportedName: string, reExportedName: string): void {
@@ -697,12 +695,6 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				const importItem = getImportItem(importModuleSpecifier);
 
-				if (ts.isTypeOnlyImportDeclaration(imp)) {
-					// import { type ImportedType } from 'module';
-					addTypeImport(importItem, imp.name, imp.name);
-					return;
-				}
-
 				if (ts.isImportEqualsDeclaration(imp)) {
 					// import x = require("mod");
 					addRequireImport(importItem, imp.name);
@@ -711,7 +703,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				if (ts.isExportSpecifier(imp)) {
 					// export { El1, El2 as ExportedName } from 'module';
-					addNamedImport(importItem, imp.name, imp.propertyName || imp.name);
+					// export { El1, type El2 as ExportedName } from 'module';
+					addNamedImport(importItem, imp.name, imp.propertyName || imp.name, ts.isTypeOnlyExportDeclaration(imp));
 					return;
 				}
 
@@ -728,8 +721,9 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				}
 
 				if (ts.isImportSpecifier(imp)) {
+					// import { type ImportedType } from 'module';
 					// import { El1, El2 as ImportedName } from 'module';
-					addNamedImport(importItem, imp.name, imp.propertyName || imp.name);
+					addNamedImport(importItem, imp.name, imp.propertyName || imp.name, ts.isTypeOnlyImportDeclaration(imp));
 					return;
 				}
 
