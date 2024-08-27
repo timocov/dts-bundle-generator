@@ -116,19 +116,33 @@ Options:
   --version                      Show version number                                       [boolean]
 ```
 
-Examples:
+### Examples
+
+To generate a dts bundle for a single entry file:
 
 ```bash
 ./node_modules/.bin/dts-bundle-generator -o my.d.ts path/to/your/entry-file.ts
 ```
 
+To generate a dts bundle for multiple entry files:
+
 ```bash
 ./node_modules/.bin/dts-bundle-generator path/to/your/entry-file.ts path/to/your/entry-file-2.ts
 ```
 
+To generate a dts bundle for a single entry file with external inlines and imports:
+
 ```bash
-./node_modules/.bin/dts-bundle-generator --external-inlines=@mycompany/internal-project --external-imports=@angular/core rxjs path/to/your/entry-file.ts
+./node_modules/.bin/dts-bundle-generator \
+  --external-inlines=@mycompany/internal-project \
+  --external-imports=@angular/core rxjs \
+  -- path/to/your/entry-file.ts
 ```
+
+> [!NOTE]
+> Note that, as in the above example, the arguments accepting arrays (like `--external-inlines` or `--external-imports`) accept multiple values separated by spaces. Since the input file(s) are positional arguments, you need to put the `--` separator before it when it is preceded by an argument that accepts multiple values. Otherwise you will get an error (`Error: No input files specified`).
+
+To generate a dts bundle for a single entry file with external types:
 
 ```bash
 ./node_modules/.bin/dts-bundle-generator --external-types=jquery path/to/your/entry-file.ts
