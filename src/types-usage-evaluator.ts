@@ -158,7 +158,7 @@ export class TypesUsageEvaluator {
 					this.addUsages(exportElementSymbol, exportElementOwnSymbol);
 					this.addUsages(this.getActualSymbol(exportElementSymbol), exportElementOwnSymbol);
 				} catch (error) {
-					warnLog(`Unhandled declaration detected. Make sure types are installed for: ${node.moduleSpecifier?.getText()}!`);
+					warnLog(`Could not resolve declaration. Are types installed for module: ${node.moduleSpecifier?.getText()}?`);
 				}
 			}
 		}
