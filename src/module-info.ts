@@ -45,7 +45,7 @@ export interface UsedForModulesModuleInfo extends UsedModuleInfoCommon {
 export type ModuleInfo = InlinedModuleInfo | ImportedModuleInfo | ReferencedModuleInfo | UsedForModulesModuleInfo;
 
 export interface ModuleCriteria {
-	inlinedLibraries: string[];
+	inlinedLibraries?: string[];
 	importedLibraries: string[] | undefined;
 	allowedTypesLibraries: string[] | undefined;
 	typeRoots?: string[];
@@ -120,7 +120,7 @@ function getModuleInfoImpl(currentFilePath: string, originalFileName: string, cr
 	return { type: ModuleType.ShouldBeUsedForModulesOnly, fileName: originalFileName, isExternal: true };
 }
 
-function shouldLibraryBeInlined(npmLibraryName: string, typesLibraryName: string | null, inlinedLibraries: string[]): boolean {
+function shouldLibraryBeInlined(npmLibraryName: string, typesLibraryName: string | null, inlinedLibraries?: string[]): boolean {
 	return isLibraryAllowed(npmLibraryName, inlinedLibraries) || typesLibraryName !== null && isLibraryAllowed(typesLibraryName, inlinedLibraries);
 }
 

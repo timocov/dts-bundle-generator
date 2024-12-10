@@ -173,7 +173,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		const criteria: ModuleCriteria = {
 			allowedTypesLibraries: librariesOptions.allowedTypesLibraries,
 			importedLibraries: librariesOptions.importedLibraries,
-			inlinedLibraries: librariesOptions.inlinedLibraries || [],
+			inlinedLibraries: librariesOptions.inlinedLibraries,
 			typeRoots,
 		};
 
@@ -1392,11 +1392,9 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			warnLog(`The following type nodes were renamed because of the name collisions and will not be exported from the generated bundle:\n- ${
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				renamedAndNotExplicitlyExportedTypes.map(node => `${getNodeName(node)!.getText()} (from ${node.getSourceFile().fileName})`).join('\n- ')
-			}${
-				'\n'
-			}This might lead to unpredictable and unexpected output, and possible breaking changes to your API.${
-				'\n'
-			}Consider either (re-)exporting them explicitly from the entry point, or disable --export-referenced-types option ('output.exportReferencedTypes' in the config).`);
+				}${'\n'
+				}This might lead to unpredictable and unexpected output, and possible breaking changes to your API.${'\n'
+				}Consider either (re-)exporting them explicitly from the entry point, or disable --export-referenced-types option ('output.exportReferencedTypes' in the config).`);
 		}
 
 		return output;
