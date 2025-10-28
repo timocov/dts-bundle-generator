@@ -1,7 +1,7 @@
 import * as ts from 'typescript';
 
 import { packageVersion } from './helpers/package-version';
-import { getModifiers, getNodeName, modifiersToMap, recreateRootLevelNodeWithModifiers } from './helpers/typescript';
+import { getClosestModuleLikeNode, getModifiers, getNodeName, isAmbientModule, modifiersToMap, recreateRootLevelNodeWithModifiers } from './helpers/typescript';
 
 export interface ModuleImportsSet {
 	defaultImports: Set<string>;
@@ -229,6 +229,16 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 						if (ts.isIdentifier(node) && ts.isImportTypeNode(node.parent) && node.parent.qualifier === node) {
 							// identifiers in dynamic imports should be ignored as they don't use local scope
 							return node;
+						}
+
+						if (ts.isIdentifier(node) && (node.parent as ts.NamedDeclaration).name === node && (
+							ts.isInterfaceDeclaration(node.parent) ||
+							ts.isClassDeclaration(node.parent)
+						)) {
+							const moduleNode = getClosestModuleLikeNode(node);
+							if (isAmbientModule(moduleNode)) {
+								return node;
+							}
 						}
 
 						return recreateEntityName(node, helpers);
