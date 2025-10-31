@@ -11,6 +11,7 @@ import {
 	isNodeNamedDeclaration,
 	splitTransientSymbol,
 } from './helpers/typescript';
+import { warnLog } from './logger';
 
 export class TypesUsageEvaluator {
 	private readonly typeChecker: ts.TypeChecker;
@@ -141,20 +142,24 @@ export class TypesUsageEvaluator {
 		// `export {}` or `export {} from 'mod'`
 		if (ts.isExportDeclaration(node) && node.exportClause !== undefined && ts.isNamedExports(node.exportClause)) {
 			for (const exportElement of node.exportClause.elements) {
-				const exportElementSymbol = getImportExportReferencedSymbol(exportElement, this.typeChecker);
+				try {
+					const exportElementSymbol = getImportExportReferencedSymbol(exportElement, this.typeChecker);
 
-				// i.e. `import * as NS from './local-module'`
-				const namespaceImportForElement = getDeclarationsForSymbol(exportElementSymbol).find(ts.isNamespaceImport);
-				if (namespaceImportForElement !== undefined) {
-					// the namespaced import itself doesn't add a "usage", but re-export of that imported namespace does
-					// so here we're handling the case where previously imported namespace import has been re-exported from a module
-					this.addUsagesForNamespacedModule(namespaceImportForElement, namespaceImportForElement.parent.parent.moduleSpecifier as ts.StringLiteral);
+					// i.e. `import * as NS from './local-module'`
+					const namespaceImportForElement = getDeclarationsForSymbol(exportElementSymbol).find(ts.isNamespaceImport);
+					if (namespaceImportForElement !== undefined) {
+						// the namespaced import itself doesn't add a "usage", but re-export of that imported namespace does
+						// so here we're handling the case where previously imported namespace import has been re-exported from a module
+						this.addUsagesForNamespacedModule(namespaceImportForElement, namespaceImportForElement.parent.parent.moduleSpecifier as ts.StringLiteral);
+					}
+
+					// "link" referenced symbol with its import
+					const exportElementOwnSymbol = this.getNodeOwnSymbol(exportElement.name);
+					this.addUsages(exportElementSymbol, exportElementOwnSymbol);
+					this.addUsages(this.getActualSymbol(exportElementSymbol), exportElementOwnSymbol);
+				} catch (error) {
+					warnLog(`Could not resolve declaration. Are types installed for module: ${node.moduleSpecifier?.getText()}?`);
 				}
-
-				// "link" referenced symbol with its import
-				const exportElementOwnSymbol = this.getNodeOwnSymbol(exportElement.name);
-				this.addUsages(exportElementSymbol, exportElementOwnSymbol);
-				this.addUsages(this.getActualSymbol(exportElementSymbol), exportElementOwnSymbol);
 			}
 		}
 
