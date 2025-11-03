@@ -131,7 +131,7 @@ function changeExtensionToDts(fileName: string): string {
 	let ext: ts.Extension | undefined;
 
 	// `path.extname` doesn't handle `.d.ts` cases (it returns `.ts` instead of `.d.ts`)
-	if (fileName.endsWith(ts.Extension.Dts)) {
+	if (fileName.endsWith(ts.Extension.Dts) || fileName.endsWith(ts.Extension.Dmts) || fileName.endsWith(ts.Extension.Dcts)) {
 		return fileName;
 	}
 

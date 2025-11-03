@@ -31,7 +31,7 @@ export function loadConfigFile(configPath: string): BundlerConfig {
 	const possibleConfig = require(getAbsolutePath(configPath));
 
 	const errors: string[] = [];
-	if (!checkSchemaMatch(possibleConfig, configScheme, errors)) {
+	if (!checkSchemaMatch<BundlerConfig>(possibleConfig, configScheme, errors)) {
 		errorLog(errors.join('\n'));
 		throw new Error('Cannot parse config file');
 	}
@@ -67,9 +67,9 @@ const configScheme: SchemeDescriptor<BundlerConfig> = {
 			failOnClass: schemaPrimitiveValues.boolean,
 			noCheck: schemaPrimitiveValues.boolean,
 			libraries: {
-				allowedTypesLibraries: [schemaPrimitiveValues.string],
-				importedLibraries: [schemaPrimitiveValues.string],
-				inlinedLibraries: [schemaPrimitiveValues.string],
+				allowedTypesLibraries: [schemaPrimitiveValues.stringOrRegExp],
+				importedLibraries: [schemaPrimitiveValues.stringOrRegExp],
+				inlinedLibraries: [schemaPrimitiveValues.stringOrRegExp],
 			},
 			output: {
 				inlineDeclareGlobals: schemaPrimitiveValues.boolean,

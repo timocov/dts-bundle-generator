@@ -98,6 +98,7 @@ export interface OutputOptions {
 	/**
 	 * By default all interfaces, types and const enums are marked as exported even if they aren't exported directly.
 	 * This option allows you to disable this behavior so a node will be exported if it is exported from root source file only.
+	 * @default true
 	 */
 	exportReferencedTypes?: boolean;
 }
@@ -107,20 +108,20 @@ export interface LibrariesOptions {
 	 * Array of package names from node_modules to inline typings from.
 	 * Used types will be inlined into the output file.
 	 */
-	inlinedLibraries?: string[];
+	inlinedLibraries?: (string | RegExp)[];
 
 	/**
 	 * Array of package names from node_modules to import typings from.
 	 * Used types will be imported using `import { First, Second } from 'library-name';`.
-	 * By default all libraries will be imported (except inlined libraries and libraries from @types).
+	 * By default all libraries will be imported (except inlined libraries and `@types`).
 	 */
-	importedLibraries?: string[];
+	importedLibraries?: (string | RegExp)[];
 
 	/**
-	 * Array of package names from @types to import typings from via the triple-slash reference directive.
+	 * Array of package names from `@types` to import typings from via the triple-slash reference directive.
 	 * By default all packages are allowed and will be used according to their usages.
 	 */
-	allowedTypesLibraries?: string[];
+	allowedTypesLibraries?: (string | RegExp)[];
 }
 
 export interface EntryPointConfig {
@@ -660,7 +661,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			importItem.requireImports.add(collisionsResolver.addTopLevelIdentifier(preferredLocalName));
 		}
 
-		function addNamedImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier, importedIdentifier: ts.Identifier): void {
+		function addNamedImport(importItem: ModuleImportsSet, preferredLocalName: ts.ModuleExportName, importedIdentifier: ts.ModuleExportName): void {
 			const newLocalName = collisionsResolver.addTopLevelIdentifier(preferredLocalName);
 			const importedName = importedIdentifier.text;
 			importItem.namedImports.set(newLocalName, importedName);
@@ -671,7 +672,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			importItem.reExports.set(reExportedName, moduleExportedName);
 		}
 
-		function addNsImport(importItem: ModuleImportsSet, preferredLocalName: ts.Identifier): void {
+		function addNsImport(importItem: ModuleImportsSet, preferredLocalName: ts.ModuleExportName): void {
 			if (importItem.nsImport === null) {
 				importItem.nsImport = collisionsResolver.addTopLevelIdentifier(preferredLocalName);
 			}
@@ -1092,7 +1093,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			}
 
 			// eslint-disable-next-line complexity
-			function getIdentifierOfNamespaceImportFromInlinedModule(nsSymbol: ts.Symbol): ts.Identifier | null {
+			function getIdentifierOfNamespaceImportFromInlinedModule(nsSymbol: ts.Symbol): ts.ModuleExportName | null {
 				// handling namespaced re-exports/imports
 				// e.g. `export * as NS from './local-module';` or `import * as NS from './local-module'; export { NS }`
 				for (const decl of getDeclarationsForSymbol(nsSymbol)) {
@@ -1238,7 +1239,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 							throw new Error(`Cannot find symbol or exports for source file ${sourceFile.fileName}`);
 						}
 
-						let namespaceIdentifier: ts.Identifier | null = null;
+						let namespaceIdentifier: ts.ModuleExportName | null = null;
 
 						forEachImportOfStatement(sourceFile, (imp: ImportOfStatement) => {
 							// here we want to handle creation of artificial namespace for a inlined module

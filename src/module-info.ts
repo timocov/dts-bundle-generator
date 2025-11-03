@@ -45,9 +45,9 @@ export interface UsedForModulesModuleInfo extends UsedModuleInfoCommon {
 export type ModuleInfo = InlinedModuleInfo | ImportedModuleInfo | ReferencedModuleInfo | UsedForModulesModuleInfo;
 
 export interface ModuleCriteria {
-	inlinedLibraries: string[];
-	importedLibraries: string[] | undefined;
-	allowedTypesLibraries: string[] | undefined;
+	inlinedLibraries: (string | RegExp)[];
+	importedLibraries: (string | RegExp)[] | undefined;
+	allowedTypesLibraries: (string | RegExp)[] | undefined;
 	typeRoots?: string[];
 }
 
@@ -120,15 +120,15 @@ function getModuleInfoImpl(currentFilePath: string, originalFileName: string, cr
 	return { type: ModuleType.ShouldBeUsedForModulesOnly, fileName: originalFileName, isExternal: true };
 }
 
-function shouldLibraryBeInlined(npmLibraryName: string, typesLibraryName: string | null, inlinedLibraries: string[]): boolean {
+function shouldLibraryBeInlined(npmLibraryName: string, typesLibraryName: string | null, inlinedLibraries: (string | RegExp)[]): boolean {
 	return isLibraryAllowed(npmLibraryName, inlinedLibraries) || typesLibraryName !== null && isLibraryAllowed(typesLibraryName, inlinedLibraries);
 }
 
 function shouldLibraryBeImported(
 	npmLibraryName: string,
 	typesLibraryName: string | null,
-	importedLibraries: string[] | undefined,
-	allowedTypesLibraries: string[] | undefined
+	importedLibraries: (string | RegExp)[] | undefined,
+	allowedTypesLibraries: (string | RegExp)[] | undefined
 ): boolean {
 	if (typesLibraryName === null) {
 		return isLibraryAllowed(npmLibraryName, importedLibraries);
@@ -144,8 +144,10 @@ function shouldLibraryBeImported(
 	return false;
 }
 
-function isLibraryAllowed(libraryName: string, allowedArray?: string[]): boolean {
-	return allowedArray === undefined || allowedArray.indexOf(libraryName) !== -1;
+function isLibraryAllowed(libraryName: string, allowed: (string | RegExp)[] | undefined): boolean {
+	return Array.isArray(allowed)
+		? allowed.some(item => typeof item === 'string' ? item === libraryName : item.test(libraryName))
+		: true;
 }
 
 function remapToTypesFromNodeModules(pathRelativeToTypesRoot: string): string {
