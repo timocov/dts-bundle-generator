@@ -580,7 +580,7 @@ export type NodeWithReferencedModule =
 	| ts.ImportEqualsDeclaration
 	| ts.ImportTypeNode
 	| ts.ModuleDeclaration
-;
+	;
 
 export function resolveReferencedModule(node: NodeWithReferencedModule, typeChecker: ts.TypeChecker): ts.SourceFile | ts.ModuleDeclaration | null {
 	let moduleName: ts.Expression | ts.LiteralTypeNode | undefined;
@@ -621,14 +621,14 @@ export function getImportModuleName(imp: ts.ImportEqualsDeclaration | ts.ImportD
 		return imp.importClause === undefined
 			? null
 			: (imp.moduleSpecifier as ts.StringLiteral).text
-		;
+			;
 	}
 
 	if (ts.isExportDeclaration(imp)) {
 		return imp.moduleSpecifier === undefined
 			? null
 			: (imp.moduleSpecifier as ts.StringLiteral).text
-		;
+			;
 	}
 
 	if (ts.isExternalModuleReference(imp.moduleReference)) {
@@ -649,12 +649,16 @@ export function getImportModuleName(imp: ts.ImportEqualsDeclaration | ts.ImportD
  * For example, for given `export { Value }` it returns a declaration of `Value` whatever it is (import statement, interface declaration, etc).
  */
 export function getImportExportReferencedSymbol(importExportSpecifier: ts.ExportSpecifier | ts.ImportSpecifier, typeChecker: ts.TypeChecker): ts.Symbol {
-	return importExportSpecifier.propertyName !== undefined
+	if (importExportSpecifier.propertyName !== undefined) {
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		? typeChecker.getSymbolAtLocation(importExportSpecifier.propertyName)!
+		return typeChecker.getSymbolAtLocation(importExportSpecifier.propertyName)!;
+	} else {
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		: typeChecker.getImmediateAliasedSymbol(typeChecker.getSymbolAtLocation(importExportSpecifier.name)!)!
-	;
+		const nameLocation = typeChecker.getSymbolAtLocation(importExportSpecifier.name)!;
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		const result = typeChecker.getImmediateAliasedSymbol(nameLocation)!;
+		return result || nameLocation;
+	}
 }
 
 export function getSymbolExportStarDeclarations(symbol: ts.Symbol): ts.ExportDeclaration[] {

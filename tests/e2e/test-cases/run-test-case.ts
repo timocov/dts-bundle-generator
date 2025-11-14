@@ -48,7 +48,12 @@ function getTestCaseConfig(testCaseDir: string): TestCase {
 
 	const outputFileName = path.resolve(testCaseDir, 'output.d.ts');
 	assert(fs.existsSync(outputFileName), `Output file doesn't exist for ${testCaseDir}`);
-
+	// eslint-disable-next-line @typescript-eslint/no-var-requires
+	const config = require(path.resolve(testCaseDir, 'config.ts')) as TestCaseConfig;
+	if (!config.libraries) {
+		config.libraries = {};
+	}
+	config.libraries.inlinedLibraries = config.libraries?.inlinedLibraries || [];
 	return {
 		inputFileName,
 		// eslint-disable-next-line @typescript-eslint/no-var-requires

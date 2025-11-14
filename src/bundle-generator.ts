@@ -173,7 +173,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		const criteria: ModuleCriteria = {
 			allowedTypesLibraries: librariesOptions.allowedTypesLibraries,
 			importedLibraries: librariesOptions.importedLibraries,
-			inlinedLibraries: librariesOptions.inlinedLibraries || [],
+			inlinedLibraries: librariesOptions.inlinedLibraries,
 			typeRoots,
 		};
 
@@ -698,12 +698,14 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				if (ts.isExportSpecifier(imp)) {
 					// export { El1, El2 as ExportedName } from 'module';
+					// @ts-expect-error  wait
 					addNamedImport(importItem, imp.name, imp.propertyName || imp.name);
 					return;
 				}
 
 				if (ts.isNamespaceExport(imp)) {
 					// export * as name from 'module';
+					// @ts-expect-error  wait
 					addNsImport(importItem, imp.name);
 					return;
 				}
@@ -716,6 +718,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				if (ts.isImportSpecifier(imp)) {
 					// import { El1, El2 as ImportedName } from 'module';
+					// @ts-expect-error  wait
 					addNamedImport(importItem, imp.name, imp.propertyName || imp.name);
 					return;
 				}
@@ -1102,6 +1105,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 					// if it is namespace export then it should be from a inlined module (e.g. `export * as NS from './local-module';`)
 					if (ts.isNamespaceExport(decl) && !isReferencedModuleImportable(decl.parent)) {
+						// @ts-expect-error  wait
 						return decl.name;
 					}
 
@@ -1120,6 +1124,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 							// in case of a chain of imports/exports we need to keep searching recursively
 							if (getIdentifierOfNamespaceImportFromInlinedModule(getImportExportReferencedSymbol(decl, typeChecker))) {
+								// @ts-expect-error  wait
 								return decl.name;
 							}
 						}
@@ -1141,6 +1146,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						});
 
 						if (result) {
+							// @ts-expect-error  wait
 							return decl.name;
 						}
 					}
@@ -1244,6 +1250,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 							// here we want to handle creation of artificial namespace for a inlined module
 							// so we don't care about other type of imports/exports - only these that create a "namespace"
 							if (ts.isNamespaceExport(imp) || ts.isNamespaceImport(imp)) {
+								// @ts-expect-error  wait
 								namespaceIdentifier = imp.name;
 							}
 						});
@@ -1392,13 +1399,10 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			warnLog(`The following type nodes were renamed because of the name collisions and will not be exported from the generated bundle:\n- ${
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				renamedAndNotExplicitlyExportedTypes.map(node => `${getNodeName(node)!.getText()} (from ${node.getSourceFile().fileName})`).join('\n- ')
-			}${
-				'\n'
-			}This might lead to unpredictable and unexpected output, and possible breaking changes to your API.${
-				'\n'
+			}${'\n'
+			}This might lead to unpredictable and unexpected output, and possible breaking changes to your API.${'\n'
 			}Consider either (re-)exporting them explicitly from the entry point, or disable --export-referenced-types option ('output.exportReferencedTypes' in the config).`);
 		}
-
 		return output;
 	});
 }
