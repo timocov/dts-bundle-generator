@@ -3,10 +3,16 @@ import { Interface } from 'fake-package';
 type MyString = string;
 interface MyInt {
 }
+/**
+ * A function that does nothing.
+ */
 declare function func(): void;
 type MyString$1 = string;
 interface MyInt$1 {
 }
+/**
+ * Another function that does nothing.
+ */
 declare function func$1(): void;
 type MyType = string;
 type MyType2 = string;

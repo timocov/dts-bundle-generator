@@ -191,6 +191,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			renamedExports: new Map(),
 			wrappedNamespaces: new Map(),
 		};
+		const namespaceExportedSymbols = new Set<ts.Symbol>();
 
 		const outputOptions: OutputOptions = entryConfig.output || {};
 		const inlineDeclareGlobals = Boolean(outputOptions.inlineDeclareGlobals);
@@ -1008,6 +1009,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					return;
 				}
 
+				namespaceExportedSymbols.add(getActualSymbol(symbol, typeChecker));
+
 				const symbolKnownNames = collisionsResolver.namesForSymbol(symbol);
 				if (symbolKnownNames.size === 0) {
 					throw new Error(`Cannot get local names for symbol '${symbol.getName()}' while generating namespaced export`);
@@ -1283,6 +1286,19 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 		const renamedAndNotExplicitlyExportedTypes: ts.NamedDeclaration[] = [];
 
+		function isExportedThroughNamespace(statement: ts.Statement): boolean {
+			const declarations = ts.isVariableStatement(statement)
+				? statement.declarationList.declarations
+				: isNodeNamedDeclaration(statement)
+					? [statement]
+					: [];
+
+			return declarations.some(declaration => {
+				const symbol = getNodeSymbol(declaration, typeChecker);
+				return symbol !== null && namespaceExportedSymbols.has(symbol);
+			});
+		}
+
 		const output = generateOutput(
 			{
 				...collectionResult,
@@ -1300,6 +1316,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					}
 
 					const statementExports = getExportsForStatement(rootFileExports, typeChecker, statement);
+					const shouldHaveJSDoc = statementExports.length !== 0 || isExportedThroughNamespace(statement);
 
 					// If true, then no direct export was found. That means that node might have
 					// an export keyword (like interface, type, etc) otherwise, if there are
@@ -1343,14 +1360,14 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 					if (onlyExplicitlyExportedShouldBeExported) {
 						// "valuable" statements must be re-exported from root source file
 						// to having export keyword in declaration file
-						return { shouldHaveExportKeyword: isExplicitlyExportedWithOriginalName, shouldHaveJSDoc: statementExports.length !== 0 };
+						return { shouldHaveExportKeyword: isExplicitlyExportedWithOriginalName, shouldHaveJSDoc };
 					}
 
 					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					if (isNodeNamedDeclaration(statement) && !isExportedWithLocalName(statement, getNodeName(statement)!.getText())) {
 						// if a type node was renamed because of name collisions it shouldn't be exported with its new name
 						renamedAndNotExplicitlyExportedTypes.push(statement);
-						return { shouldHaveExportKeyword: false, shouldHaveJSDoc: statementExports.length !== 0 };
+						return { shouldHaveExportKeyword: false, shouldHaveJSDoc };
 					}
 
 					// at this point a statement of a type (interface, const enum, etc) will be exported 100% (it's just a matter of a name)
