@@ -117,6 +117,24 @@ Config file might be either JSON file or JS file with CommonJS export of the con
                  * This option allows you to disable this behavior so a node will be exported if it is exported from root source file only.
                  */
                 exportReferencedTypes: true,
+
+                /**
+                 * Emit an adjacent declaration map for this entry.
+                 * Optional. Default value is `false`.
+                 */
+                declarationMap: true,
+
+                /**
+                 * Include original source text in the declaration map.
+                 * Requires `declarationMap: true`.
+                 */
+                declarationMapInlineSources: false,
+
+                /**
+                 * Set the declaration map's sourceRoot.
+                 * Requires `declarationMap: true`.
+                 */
+                declarationMapSourceRoot: '../src',
             },
         },
     ],

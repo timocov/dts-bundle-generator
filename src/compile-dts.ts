@@ -4,10 +4,12 @@ import { verboseLog, warnLog } from './logger';
 
 import { getCompilerOptions } from './get-compiler-options';
 import { checkProgramDiagnosticsErrors, checkDiagnosticsErrors } from './helpers/check-diagnostics-errors';
+import { DeclarationMapStore } from './source-map';
 
 export interface CompileDtsResult {
 	program: ts.Program;
 	rootFilesRemapping: Map<string, string>;
+	declarationMaps: DeclarationMapStore;
 }
 
 const declarationExtsRemapping: Partial<Record<string, ts.Extension>> = {
@@ -29,7 +31,7 @@ const declarationExtsRemapping: Partial<Record<string, ts.Extension>> = {
 	[ts.Extension.Dcts]: ts.Extension.Dcts,
 } satisfies Record<ts.Extension, ts.Extension>;
 
-export function compileDts(rootFiles: readonly string[], preferredConfigPath?: string, followSymlinks: boolean = true): CompileDtsResult {
+export function compileDts(rootFiles: readonly string[], preferredConfigPath?: string, followSymlinks: boolean = true, captureDeclarationMaps: boolean = false): CompileDtsResult {
 	const compilerOptions = getCompilerOptions(rootFiles, preferredConfigPath);
 
 	// currently we don't support these compiler options
@@ -50,7 +52,12 @@ export function compileDts(rootFiles: readonly string[], preferredConfigPath?: s
 
 	const host = createCachingCompilerHost(compilerOptions);
 
-	const dtsFiles = getDeclarationFiles(rootFiles, compilerOptions, host);
+	const declarationMaps = new DeclarationMapStore(host.getCanonicalFileName);
+	const dtsFiles = getDeclarationFiles(rootFiles, compilerOptions, host, declarationMaps, captureDeclarationMaps);
+	if (captureDeclarationMaps) {
+		// The second program only checks declarations; emitting again would overwrite an allowJs input.
+		compilerOptions.noEmit = true;
+	}
 
 	if (!followSymlinks) {
 		// note that this shouldn't affect the previous call as there we actually want to use actual path in order to compile files
@@ -104,7 +111,7 @@ export function compileDts(rootFiles: readonly string[], preferredConfigPath?: s
 	checkProgramDiagnosticsErrors(program);
 	warnAboutTypeScriptFilesInProgram(program);
 
-	return { program, rootFilesRemapping };
+	return { program, rootFilesRemapping, declarationMaps };
 }
 
 function createCachingCompilerHost(compilerOptions: ts.CompilerOptions): ts.CompilerHost {
@@ -131,7 +138,7 @@ function changeExtensionToDts(fileName: string): string {
 	let ext: ts.Extension | undefined;
 
 	// `path.extname` doesn't handle `.d.ts` cases (it returns `.ts` instead of `.d.ts`)
-	if (fileName.endsWith(ts.Extension.Dts)) {
+	if (fileName.endsWith(ts.Extension.Dts) || fileName.endsWith(ts.Extension.Dmts) || fileName.endsWith(ts.Extension.Dcts)) {
 		return fileName;
 	}
 
@@ -155,7 +162,7 @@ function changeExtensionToDts(fileName: string): string {
 /**
  * @description Compiles source files into d.ts files and returns map of absolute path to file content
  */
-function getDeclarationFiles(rootFiles: readonly string[], compilerOptions: ts.CompilerOptions, host: ts.CompilerHost): Map<string, string> {
+function getDeclarationFiles(rootFiles: readonly string[], compilerOptions: ts.CompilerOptions, host: ts.CompilerHost, declarationMaps: DeclarationMapStore, captureDeclarationMaps: boolean): Map<string, string> {
 	// we must pass `declaration: true` and `noEmit: false` if we want to generate declaration files
 	// see https://github.com/microsoft/TypeScript/issues/24002#issuecomment-550549393
 	// also, we don't want to generate anything apart from declarations so that's why `emitDeclarationOnly: true` is here
@@ -165,6 +172,7 @@ function getDeclarationFiles(rootFiles: readonly string[], compilerOptions: ts.C
 		...compilerOptions,
 		noEmit: false,
 		declaration: true,
+		declarationMap: captureDeclarationMaps ? true : compilerOptions.declarationMap,
 		emitDeclarationOnly: true,
 	};
 
@@ -185,16 +193,29 @@ function getDeclarationFiles(rootFiles: readonly string[], compilerOptions: ts.C
 
 	checkProgramDiagnosticsErrors(program);
 
+	const emittedFiles = new Map<string, string>();
 	const emitResult = program.emit(
 		undefined,
-		(fileName: string, data: string) => declarations.set(host.getCanonicalFileName(fileName), data),
+		(fileName: string, data: string) => emittedFiles.set(fileName, data),
 		undefined,
 		true
 	);
 
 	checkDiagnosticsErrors(emitResult.diagnostics, 'Errors while emitting declarations');
 
+	for (const [fileName, data] of emittedFiles) {
+		if (captureDeclarationMaps && fileName.endsWith('.map')) {
+			declarationMaps.add(fileName, data);
+		} else {
+			declarations.set(host.getCanonicalFileName(fileName), captureDeclarationMaps ? removeSourceMappingUrl(data) : data);
+		}
+	}
+
 	return declarations;
+}
+
+function removeSourceMappingUrl(value: string): string {
+	return value.replace(/\r?\n?\/\/# sourceMappingURL=.*?(?:\r?\n)?$/u, '\n');
 }
 
 function warnAboutTypeScriptFilesInProgram(program: ts.Program): void {
