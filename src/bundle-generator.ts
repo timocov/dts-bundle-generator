@@ -36,7 +36,9 @@ import {
 	ModuleType,
 } from './module-info';
 
-import { generateOutput, ModuleImportsSet, OutputInputData, StatementSettings } from './generate-output';
+import { generateOutputWithStatementPositions, ModuleImportsSet, OutputInputData, StatementSettings } from './generate-output';
+import { GeneratedPosition, generateSourceMap } from './source-map';
+import { mapStatementTokens } from './statement-mappings';
 
 import {
 	normalLog,
@@ -100,6 +102,15 @@ export interface OutputOptions {
 	 * This option allows you to disable this behavior so a node will be exported if it is exported from root source file only.
 	 */
 	exportReferencedTypes?: boolean;
+
+	/** Emit a Source Map v3 declaration map for this entry. */
+	declarationMap?: boolean;
+
+	/** Include original source text in the declaration map. Requires declarationMap. */
+	declarationMapInlineSources?: boolean;
+
+	/** Set sourceRoot in the declaration map. Requires declarationMap. */
+	declarationMapSourceRoot?: string;
 }
 
 export interface LibrariesOptions {
@@ -139,10 +150,20 @@ export interface EntryPointConfig {
 	output?: OutputOptions;
 }
 
+export interface GeneratedDtsBundle {
+	declarationText: string;
+	declarationMap: string | null;
+}
+
 export function generateDtsBundle(entries: readonly EntryPointConfig[], options: CompilationOptions = {}): string[] {
+	return generateDtsBundleWithMaps(entries, options).map(result => result.declarationText);
+}
+
+export function generateDtsBundleWithMaps(entries: readonly EntryPointConfig[], options: CompilationOptions = {}, outputFileNames?: readonly string[]): GeneratedDtsBundle[] {
 	normalLog('Compiling input files...');
 
-	const { program, rootFilesRemapping } = compileDts(entries.map((entry: EntryPointConfig) => entry.filePath), options.preferredConfigPath, options.followSymlinks);
+	const captureDeclarationMaps = entries.some(entry => entry.output?.declarationMap === true);
+	const { program, rootFilesRemapping, declarationMaps } = compileDts(entries.map((entry: EntryPointConfig) => entry.filePath), options.preferredConfigPath, options.followSymlinks, captureDeclarationMaps);
 	const typeChecker = program.getTypeChecker();
 
 	const typeRoots = ts.getEffectiveTypeRoots(program.getCompilerOptions(), {});
@@ -154,7 +175,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker);
 
 	// eslint-disable-next-line complexity
-	return entries.map((entryConfig: EntryPointConfig) => {
+	return entries.map((entryConfig: EntryPointConfig, entryIndex: number) => {
 		normalLog(`Processing ${entryConfig.filePath}`);
 
 		const newRootFilePath = rootFilesRemapping.get(entryConfig.filePath);
@@ -193,6 +214,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		};
 
 		const outputOptions: OutputOptions = entryConfig.output || {};
+		validateDeclarationMapOptions(outputOptions);
 		const inlineDeclareGlobals = Boolean(outputOptions.inlineDeclareGlobals);
 		const inlineDeclareExternals = Boolean(outputOptions.inlineDeclareExternals);
 
@@ -1283,7 +1305,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 		const renamedAndNotExplicitlyExportedTypes: ts.NamedDeclaration[] = [];
 
-		const output = generateOutput(
+		const generatedOutput = generateOutputWithStatementPositions(
 			{
 				...collectionResult,
 				resolveIdentifierName: (identifier: ts.Identifier | ts.QualifiedName | ts.PropertyAccessEntityNameExpression): string | null => {
@@ -1385,7 +1407,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 				sortStatements: outputOptions.sortNodes,
 				umdModuleName: outputOptions.umdModuleName,
 				noBanner: outputOptions.noBanner,
-			}
+			},
+			outputOptions.declarationMap === true
 		);
 
 		if (renamedAndNotExplicitlyExportedTypes.length !== 0) {
@@ -1399,6 +1422,52 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			}Consider either (re-)exporting them explicitly from the entry point, or disable --export-referenced-types option ('output.exportReferencedTypes' in the config).`);
 		}
 
-		return output;
+		if (!outputOptions.declarationMap) {
+			return { declarationText: generatedOutput.text, declarationMap: null };
+		}
+
+		const outputFile = outputFileNames?.[entryIndex] || defaultDeclarationOutputFile(entryConfig.filePath);
+		const mappings: GeneratedPosition[] = [];
+		for (const generatedPosition of generatedOutput.statementPositions) {
+			mappings.push(...mapStatementTokens(generatedPosition, declarationMaps));
+		}
+
+		const declarationMap = generateSourceMap(mappings, {
+			outputFile,
+			sourceRoot: outputOptions.declarationMapSourceRoot,
+			inlineSources: outputOptions.declarationMapInlineSources,
+		});
+		const sourceMappingUrl = `//# sourceMappingURL=${pathBasename(outputFile)}.map`;
+		return {
+			declarationText: `${generatedOutput.text.trimEnd()}\n${sourceMappingUrl}\n`,
+			declarationMap,
+		};
 	});
+}
+
+function validateDeclarationMapOptions(options: OutputOptions): void {
+	if (!options.declarationMap && options.declarationMapInlineSources) {
+		throw new Error('declarationMapInlineSources requires declarationMap');
+	}
+	if (!options.declarationMap && options.declarationMapSourceRoot !== undefined) {
+		throw new Error('declarationMapSourceRoot requires declarationMap');
+	}
+}
+
+function defaultDeclarationOutputFile(inputFile: string): string {
+	return inputFile.replace(/(?:\.d)?\.(?:[cm]?ts|tsx|jsx|js)$/u, '') + declarationExtension(inputFile);
+}
+
+function declarationExtension(fileName: string): string {
+	if (/\.(?:d\.)?mts$/u.test(fileName)) {
+		return '.d.mts';
+	}
+	if (/\.(?:d\.)?cts$/u.test(fileName)) {
+		return '.d.cts';
+	}
+	return '.d.ts';
+}
+
+function pathBasename(fileName: string): string {
+	return fileName.replace(/^.*[\\/]/u, '');
 }
