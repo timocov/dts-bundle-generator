@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@types/mocha": "~10.0.0",
-    "@types/node": "~14.18.26",
+    "@types/node": "~24.19.0",
     "@types/yargs": "~17.0.13",
     "@typescript-eslint/eslint-plugin": "~7.4.0",
     "@typescript-eslint/parser": "~7.4.0",
@@ -30,7 +30,7 @@
     "eslint-plugin-deprecation": "~2.0.0",
     "eslint-plugin-import": "~2.29.0",
     "eslint-plugin-unicorn": "~51.0.1",
-    "mocha": "~10.4.0",
+    "mocha": "~11.7.0",
     "npm-run-all": "~4.1.5",
     "rimraf": "~5.0.1",
     "ts-compiler": "npm:typescript@5.4.3",
@@ -43,7 +43,7 @@
     "url": "git+https://github.com/timocov/dts-bundle-generator.git"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "clean": "rimraf dist/ dts-out/",
