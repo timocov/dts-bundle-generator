@@ -2,7 +2,7 @@ module.exports = {
 	root: true,
 	plugins: [
 		'@typescript-eslint',
-		'eslint-plugin-deprecation',
+		'@stylistic/ts',
 		'eslint-plugin-import',
 		'eslint-plugin-unicorn',
 	],
@@ -67,7 +67,7 @@ module.exports = {
 			extends: [
 				'plugin:@typescript-eslint/eslint-recommended',
 				'plugin:@typescript-eslint/recommended',
-				'plugin:@typescript-eslint/recommended-requiring-type-checking',
+				'plugin:@typescript-eslint/recommended-type-checked',
 				'plugin:import/typescript',
 			],
 			parser: '@typescript-eslint/parser',
@@ -82,7 +82,7 @@ module.exports = {
 						default: 'array',
 					},
 				],
-				'@typescript-eslint/brace-style': ['error', '1tbs', { allowSingleLine: true }],
+				'@stylistic/ts/brace-style': ['error', '1tbs', { allowSingleLine: true }],
 				'@typescript-eslint/consistent-type-assertions': [
 					'error',
 					{
@@ -102,8 +102,8 @@ module.exports = {
 						},
 					},
 				],
-				'@typescript-eslint/indent': ['error', 'tab'],
-				'@typescript-eslint/member-delimiter-style': 'error',
+				'@stylistic/ts/indent': ['error', 'tab'],
+				'@stylistic/ts/member-delimiter-style': 'error',
 				'@typescript-eslint/member-ordering': [
 					'error',
 					{
@@ -160,10 +160,10 @@ module.exports = {
 				'@typescript-eslint/prefer-function-type': 'error',
 				'@typescript-eslint/prefer-readonly': 'off', // TODO
 				'@typescript-eslint/promise-function-async': 'off',
-				'@typescript-eslint/quotes': ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }],
+				'@stylistic/ts/quotes': ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }],
 				'@typescript-eslint/restrict-plus-operands': 'off',
 				'@typescript-eslint/restrict-template-expressions': 'off',
-				'@typescript-eslint/semi': [
+				'@stylistic/ts/semi': [
 					'error',
 					'always',
 				],
@@ -176,7 +176,7 @@ module.exports = {
 						lib: 'never',
 					},
 				],
-				'@typescript-eslint/type-annotation-spacing': 'error',
+				'@stylistic/ts/type-annotation-spacing': 'error',
 				'@typescript-eslint/typedef': [
 					'error',
 					{
@@ -187,7 +187,7 @@ module.exports = {
 				],
 				'@typescript-eslint/unbound-method': 'off',
 
-				'deprecation/deprecation': 'error',
+				'@typescript-eslint/no-deprecated': 'error',
 			},
 		},
 	],

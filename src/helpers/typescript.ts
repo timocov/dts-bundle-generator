@@ -414,7 +414,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 			node.isTypeOnly,
 			node.exportClause,
 			node.moduleSpecifier,
-			// eslint-disable-next-line deprecation/deprecation
+			// eslint-disable-next-line @typescript-eslint/no-deprecated
 			(node as Ts53CompatExportDeclaration).attributes || node.assertClause
 		);
 	}
@@ -452,7 +452,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 			modifiers,
 			node.importClause,
 			node.moduleSpecifier,
-			// eslint-disable-next-line deprecation/deprecation
+			// eslint-disable-next-line @typescript-eslint/no-deprecated
 			(node as Ts53CompatImportDeclaration).attributes || node.assertClause
 		);
 	}

@@ -10,6 +10,7 @@
 		"noUnusedLocals": true,
 		"strict": true,
 		"stripInternal": true,
+		"types": ["node"],
 		"target": "es2020"
 	}
 }

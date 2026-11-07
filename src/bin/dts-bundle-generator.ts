@@ -2,7 +2,7 @@
 
 import * as path from 'path';
 import * as ts from 'typescript';
-import * as yargs from 'yargs';
+import yargs, { Arguments } from 'yargs';
 
 import { loadConfigFile, BundlerConfig, ConfigEntryPoint } from '../config-file/load-config-file';
 
@@ -27,14 +27,14 @@ function toStringsArray(data: unknown): string[] | undefined {
 	}
 
 	if (!Array.isArray(data)) {
-		throw new Error(`${data} is not a array`);
+		throw new Error(`${JSON.stringify(data)} is not an array`);
 	}
 
 	return data.map(String);
 }
 
 /* eslint-disable @typescript-eslint/naming-convention */
-interface ParsedArgs extends yargs.Arguments {
+interface ParsedArgs extends Arguments {
 	sort: boolean;
 	silent: boolean;
 	verbose: boolean;
@@ -59,7 +59,8 @@ interface ParsedArgs extends yargs.Arguments {
 /* eslint-enable @typescript-eslint/naming-convention */
 
 function parseArgs(): ParsedArgs {
-	return yargs
+	const yargsInstance = yargs(process.argv.slice(2));
+	return yargsInstance
 		.parserConfiguration({
 			/* eslint-disable @typescript-eslint/naming-convention */
 			'boolean-negation': false,
@@ -166,7 +167,7 @@ function parseArgs(): ParsedArgs {
 		.example('$0 path/to/your/entry-file.ts', '')
 		.example('$0 path/to/your/entry-file.ts path/to/your/entry-file-2.ts', '')
 		.example('$0 --external-types jquery react -- entry-file.ts', '')
-		.wrap(Math.min(100, yargs.terminalWidth()))
+		.wrap(Math.min(100, yargsInstance.terminalWidth()))
 		.argv as ParsedArgs;
 }
 
