@@ -50,6 +50,16 @@ Config file might be either JSON file or JS file with CommonJS export of the con
              */
             noCheck: false,
 
+            /**
+             * Path to the tsconfig file that will be used for the validation of the generated d.ts file (absolute or relative to config file).
+             * If not specified, `compilationOptions.preferredConfigPath` is used.
+             * Only compiler options are used - `files`/`include`/`exclude` are ignored.
+             * Can be used e.g. to validate output with stricter options (`strict: true`) than the ones used for the compilation.
+             * Cannot be used together with `noCheck`.
+             * Optional.
+             */
+            checkConfigPath: './tsconfig.check.json',
+
             libraries: {
                 /**
                  * Array of package names from @types to import typings from via the triple-slash reference directive.
