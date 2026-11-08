@@ -4,6 +4,8 @@ declare global {
 	type Promise$2 = string;
 
 	type Date$1 = string;
+
+	interface Interface1 {}
 }
 
 export interface Promise {}
