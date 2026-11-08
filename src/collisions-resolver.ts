@@ -16,7 +16,9 @@ const renamingSupportedSymbols: readonly ts.SymbolFlags[] = [
 	ts.SymbolFlags.Enum,
 	ts.SymbolFlags.Function,
 	ts.SymbolFlags.Interface,
+	ts.SymbolFlags.Method,
 	ts.SymbolFlags.NamespaceModule,
+	ts.SymbolFlags.Property,
 	ts.SymbolFlags.TypeAlias,
 	ts.SymbolFlags.ValueModule,
 ];

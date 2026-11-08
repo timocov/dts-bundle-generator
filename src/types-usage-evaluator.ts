@@ -25,11 +25,36 @@ export class TypesUsageEvaluator {
 	}
 
 	public isSymbolUsedBySymbol(symbol: ts.Symbol, by: ts.Symbol): boolean {
-		return this.getSymbolsReaching(this.getActualSymbol(by)).has(this.getActualSymbol(symbol));
+		const symbols = this.getSymbolParts(symbol);
+		return this.getSymbolParts(by).some((bySymbol: ts.Symbol) => {
+			const reachingSymbols = this.getSymbolsReaching(bySymbol);
+			return symbols.some((s: ts.Symbol) => reachingSymbols.has(s));
+		});
 	}
 
 	public getSymbolsUsingSymbol(symbol: ts.Symbol): Set<ts.Symbol> | null {
-		return this.nodesParentsMap.get(this.getActualSymbol(symbol)) || null;
+		const usingSymbolsSets: Set<ts.Symbol>[] = [];
+		for (const symbolPart of this.getSymbolParts(symbol)) {
+			const usingSymbols = this.nodesParentsMap.get(symbolPart);
+			if (usingSymbols !== undefined) {
+				usingSymbolsSets.push(usingSymbols);
+			}
+		}
+
+		if (usingSymbolsSets.length === 0) {
+			return null;
+		}
+
+		return usingSymbolsSets.length === 1 ? usingSymbolsSets[0] : new Set(usingSymbolsSets.flatMap((set: Set<ts.Symbol>) => Array.from(set)));
+	}
+
+	/**
+	 * The usages are stored for parts of a transient symbol (see {@link addUsages}), so we need to look them up in the same way.
+	 * E.g. a named import of a member of `export =` module could be resolved to a transient symbol
+	 * which combines a type from the module's namespace with a property of the exported value (see `combineValueAndTypeSymbols` in the TypeScript's checker).
+	 */
+	private getSymbolParts(symbol: ts.Symbol): ts.Symbol[] {
+		return Array.from(splitTransientSymbol(this.getActualSymbol(symbol), this.typeChecker));
 	}
 
 	// Returns every symbol from which `toSymbol` is reachable via `nodesParentsMap` edges (including `toSymbol` itself).
