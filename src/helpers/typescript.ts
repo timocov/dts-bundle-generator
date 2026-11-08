@@ -19,6 +19,18 @@ const namedDeclarationKinds = [
 
 export type NodeName = ts.DeclarationName | ts.DefaultKeyword | ts.QualifiedName | ts.PropertyAccessExpression | ts.BindingPattern;
 
+/**
+ * Narrows a module export/import name (an identifier, or a string literal for arbitrary module namespace identifiers) to an identifier.
+ * String-literal names (e.g. `export { x as "a-b" }`) aren't supported yet.
+ */
+export function getModuleExportNameIdentifier(name: ts.ExportSpecifier['name']): ts.Identifier {
+	if (!ts.isIdentifier(name)) {
+		throw new Error(`Arbitrary module namespace identifiers are not supported (found ${(name as ts.Node).getText()})`);
+	}
+
+	return name;
+}
+
 export function isNodeNamedDeclaration(node: ts.Node): node is ts.NamedDeclaration {
 	return namedDeclarationKinds.indexOf(node.kind) !== -1;
 }
