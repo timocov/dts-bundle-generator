@@ -1,7 +1,7 @@
 export interface Interface {
 }
 export type Type = number | string;
-declare module ModuleWithoutQuotes {
+declare namespace ModuleWithoutQuotes {
 	export type A = string;
 }
 export interface Base {

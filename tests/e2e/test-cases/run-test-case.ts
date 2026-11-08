@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as assert from 'assert';
+import assert from 'assert';
+import * as ts from 'typescript';
 
 import { generateDtsBundle } from '../../../src/bundle-generator';
 
@@ -14,6 +15,48 @@ interface TestCase {
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 const currentPackageVersion = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../package.json'), { encoding: 'utf-8' })).version as string;
+
+const sharedConfigPath = path.resolve(__dirname, 'tsconfig.json');
+
+/**
+ * Compiler options as they are written in a tsconfig file (e.g. `"module": "commonjs"`),
+ * not the parsed `ts.CompilerOptions` (e.g. `ts.ModuleKind.CommonJS`).
+ */
+type TsConfigCompilerOptions = Record<string, string | number | boolean>;
+
+/**
+ * Returns tsconfig options that should be added on top of a test case's config for the currently installed TypeScript version.
+ */
+function getVersionSpecificCompilerOptions(): TsConfigCompilerOptions | null {
+	const majorVersion = parseInt(ts.versionMajorMinor, 10);
+
+	if (majorVersion >= 6) {
+		// `esModuleInterop: false` (used by test cases) is deprecated in TS 6 and requires this option, TS < 6 doesn't accept this value
+		return { ignoreDeprecations: '6.0' };
+	}
+
+	return null;
+}
+
+/**
+ * Creates a tsconfig that extends the test case's config (or the shared one) and adds version-specific options.
+ * Returns `undefined` if nothing needs to be changed, so the tool will find the test case's config by itself.
+ */
+function createVersionSpecificConfig(testCaseDir: string): string | undefined {
+	const compilerOptions = getVersionSpecificCompilerOptions();
+	if (compilerOptions === null) {
+		return undefined;
+	}
+
+	const testCaseConfigPath = path.join(testCaseDir, 'tsconfig.json');
+	const baseConfigPath = fs.existsSync(testCaseConfigPath) ? testCaseConfigPath : sharedConfigPath;
+
+	// the config should be placed next to the test case's one because `types` and other options are resolved relatively to the config's folder
+	const generatedConfigPath = path.join(testCaseDir, 'tsconfig.generated.json');
+	fs.writeFileSync(generatedConfigPath, JSON.stringify({ extends: baseConfigPath, compilerOptions }, null, 2));
+
+	return generatedConfigPath;
+}
 
 function prepareString(str: string): string {
 	return str.replace(/\r\n/g, '\n');
@@ -59,25 +102,41 @@ function getTestCaseConfig(testCaseDir: string): TestCase {
 
 export function runTestCase(testCaseDirPath: string): void {
 	const testCaseName = path.basename(testCaseDirPath);
-	it(`e2e | ${testCaseName}`, () => {
-		const testCase = getTestCaseConfig(testCaseDirPath);
 
-		const outputOptions = testCase.config.output || {};
-		if (outputOptions.noBanner === undefined) {
-			// hide banner by default for all tests except these who set it explicitly
-			outputOptions.noBanner = true;
-		}
+	describe('e2e |', () => {
+		let preferredConfigPath: string | undefined;
 
-		const dtsResult = generateDtsBundle(
-			[
-				{
-					...testCase.config,
-					output: outputOptions,
-					filePath: testCase.inputFileName,
-				},
-			]
-		)[0];
-		const result = prepareString(dtsResult);
-		assert.strictEqual(result, testCase.outputFileContent, 'Output should be the same as expected');
+		before(() => {
+			preferredConfigPath = createVersionSpecificConfig(testCaseDirPath);
+		});
+
+		after(() => {
+			if (preferredConfigPath !== undefined) {
+				fs.unlinkSync(preferredConfigPath);
+			}
+		});
+
+		it(testCaseName, () => {
+			const testCase = getTestCaseConfig(testCaseDirPath);
+
+			const outputOptions = testCase.config.output || {};
+			if (outputOptions.noBanner === undefined) {
+				// hide banner by default for all tests except these who set it explicitly
+				outputOptions.noBanner = true;
+			}
+
+			const dtsResult = generateDtsBundle(
+				[
+					{
+						...testCase.config,
+						output: outputOptions,
+						filePath: testCase.inputFileName,
+					},
+				],
+				{ preferredConfigPath }
+			)[0];
+			const result = prepareString(dtsResult);
+			assert.strictEqual(result, testCase.outputFileContent, 'Output should be the same as expected');
+		});
 	});
 }

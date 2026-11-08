@@ -14,7 +14,7 @@ export interface _Type1 extends Type1 {
 }
 export interface _Type2 extends Type2 {
 }
-export declare module ExportedType {
+export declare namespace ExportedType {
 	interface Type1 extends _Type1 {
 	}
 	interface Type2 extends _Type2 {

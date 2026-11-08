@@ -49,8 +49,8 @@ jobs:
     - run: npm run test
     - run: npm run bundle-dts
 
-  ts-next:
-    name: The next TS
+  ts-latest:
+    name: Latest supported TS (6.x)
     runs-on: ubuntu-latest
 
     steps:
@@ -59,7 +59,7 @@ jobs:
       with:
         node-version: 24
     - run: npm install
-    - run: npm install typescript@next
+    - run: npm install typescript@6
     - run: npm run tsc
     - run: npm run test
     - run: npm run bundle-dts

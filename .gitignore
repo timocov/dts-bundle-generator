@@ -8,3 +8,5 @@ package-lock.json.*
 
 *.tsbuildinfo
 config-schema.d.ts
+
+/tests/e2e/test-cases/*/tsconfig.generated.json
