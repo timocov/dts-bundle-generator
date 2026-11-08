@@ -16,7 +16,8 @@ export class TypesUsageEvaluator {
 	private readonly typeChecker: ts.TypeChecker;
 	private readonly nodesParentsMap: Map<ts.Symbol, Set<ts.Symbol>> = new Map();
 
-	private readonly usageResultCache: Map<ts.Symbol, Map<ts.Symbol, boolean>> = new Map();
+	private nodesChildrenMap: Map<ts.Symbol, Set<ts.Symbol>> | undefined;
+	private readonly symbolsReachingCache: Map<ts.Symbol, Set<ts.Symbol>> = new Map();
 
 	public constructor(files: ts.SourceFile[], typeChecker: ts.TypeChecker) {
 		this.typeChecker = typeChecker;
@@ -24,60 +25,68 @@ export class TypesUsageEvaluator {
 	}
 
 	public isSymbolUsedBySymbol(symbol: ts.Symbol, by: ts.Symbol): boolean {
-		return this.isSymbolUsedBySymbolImpl(this.getActualSymbol(symbol), this.getActualSymbol(by), new Set<ts.Symbol>());
+		return this.getSymbolsReaching(this.getActualSymbol(by)).has(this.getActualSymbol(symbol));
 	}
 
 	public getSymbolsUsingSymbol(symbol: ts.Symbol): Set<ts.Symbol> | null {
 		return this.nodesParentsMap.get(this.getActualSymbol(symbol)) || null;
 	}
 
-	private isSymbolUsedBySymbolImpl(fromSymbol: ts.Symbol, toSymbol: ts.Symbol, visitedSymbols: Set<ts.Symbol>): boolean {
-		if (fromSymbol === toSymbol) {
-			return this.setUsageCacheValue(fromSymbol, toSymbol, true);
+	// Returns every symbol from which `toSymbol` is reachable via `nodesParentsMap` edges (including `toSymbol` itself).
+	// The usage graph is not mutated after construction, so one traversal per `toSymbol` answers all queries against it.
+	private getSymbolsReaching(toSymbol: ts.Symbol): Set<ts.Symbol> {
+		const cachedResult = this.symbolsReachingCache.get(toSymbol);
+		if (cachedResult !== undefined) {
+			return cachedResult;
 		}
 
-		const cacheResult = this.usageResultCache.get(fromSymbol)?.get(toSymbol);
-		if (cacheResult !== undefined) {
-			return cacheResult;
-		}
+		const childrenMap = this.getNodesChildrenMap();
+		const reachingSymbols = new Set<ts.Symbol>([toSymbol]);
+		const symbolsToVisit: ts.Symbol[] = [toSymbol];
 
-		const reachableNodes = this.nodesParentsMap.get(fromSymbol);
-		if (reachableNodes !== undefined) {
-			for (const symbol of reachableNodes) {
-				if (visitedSymbols.has(symbol)) {
-					continue;
-				}
+		for (let current = symbolsToVisit.pop(); current !== undefined; current = symbolsToVisit.pop()) {
+			const children = childrenMap.get(current);
+			if (children === undefined) {
+				continue;
+			}
 
-				visitedSymbols.add(symbol);
-				if (this.isSymbolUsedBySymbolImpl(symbol, toSymbol, visitedSymbols)) {
-					return this.setUsageCacheValue(fromSymbol, toSymbol, true);
+			for (const child of children) {
+				if (!reachingSymbols.has(child)) {
+					reachingSymbols.add(child);
+					symbolsToVisit.push(child);
 				}
 			}
 		}
 
-		visitedSymbols.add(fromSymbol);
-
-		// note that we can't save negative result here because it might be not a final one
-		// because we might ended up here because of `visitedSymbols.has(symbol)` check above
-		// while actually checking that `symbol` symbol and we will store all its "children" as `false`
-		// while in reality some of them might be `true` because of cross-references or using the same children symbols
-		return false;
+		this.symbolsReachingCache.set(toSymbol, reachingSymbols);
+		return reachingSymbols;
 	}
 
-	private setUsageCacheValue(fromSymbol: ts.Symbol, toSymbol: ts.Symbol, value: boolean): boolean {
-		let fromSymbolCacheMap = this.usageResultCache.get(fromSymbol);
-		if (fromSymbolCacheMap === undefined) {
-			fromSymbolCacheMap = new Map();
-			this.usageResultCache.set(fromSymbol, fromSymbolCacheMap);
+	private getNodesChildrenMap(): Map<ts.Symbol, Set<ts.Symbol>> {
+		if (this.nodesChildrenMap === undefined) {
+			const childrenMap = new Map<ts.Symbol, Set<ts.Symbol>>();
+			for (const [childSymbol, parentSymbols] of this.nodesParentsMap) {
+				for (const parentSymbol of parentSymbols) {
+					let children = childrenMap.get(parentSymbol);
+					if (children === undefined) {
+						children = new Set<ts.Symbol>();
+						childrenMap.set(parentSymbol, children);
+					}
+
+					children.add(childSymbol);
+				}
+			}
+
+			this.nodesChildrenMap = childrenMap;
 		}
 
-		fromSymbolCacheMap.set(toSymbol, value);
-
-		return value;
+		return this.nodesChildrenMap;
 	}
 
 	private computeUsages(files: ts.SourceFile[]): void {
 		this.nodesParentsMap.clear();
+		this.nodesChildrenMap = undefined;
+		this.symbolsReachingCache.clear();
 
 		for (const file of files) {
 			ts.forEachChild(file, this.computeUsageForNode.bind(this));
