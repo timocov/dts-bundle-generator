@@ -97,8 +97,13 @@ export interface OutputOptions {
 	respectPreserveConstEnum?: boolean;
 
 	/**
-	 * By default all interfaces, types and const enums are marked as exported even if they aren't exported directly.
-	 * This option allows you to disable this behavior so a node will be exported if it is exported from root source file only.
+	 * If enabled, all interfaces, types and const enums are marked as exported even if they aren't exported directly.
+	 * By default (when disabled) a node will be exported only if it is exported from the root source file.
+	 *
+	 * If a referenced type cannot be exported because it was renamed due to name collisions, generation fails.
+	 * Export such types explicitly from the root source file or disable this option.
+	 *
+	 * @default false
 	 */
 	exportReferencedTypes?: boolean;
 }
@@ -1270,8 +1275,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 		syncExports();
 
-		// by default this option should be enabled
-		const exportReferencedTypes = outputOptions.exportReferencedTypes !== false;
+		// by default this option is disabled
+		const exportReferencedTypes = outputOptions.exportReferencedTypes === true;
 
 		function isExportedWithLocalName(namedDeclaration: ts.NamedDeclaration, exportedName: string): boolean {
 			const nodeName = getNodeName(namedDeclaration);
@@ -1390,14 +1395,10 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		);
 
 		if (renamedAndNotExplicitlyExportedTypes.length !== 0) {
-			warnLog(`The following type nodes were renamed because of the name collisions and will not be exported from the generated bundle:\n- ${
+			throw new Error(`The following type nodes were renamed because of the name collisions and cannot be exported from the generated bundle:\n- ${
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				renamedAndNotExplicitlyExportedTypes.map(node => `${getNodeName(node)!.getText()} (from ${node.getSourceFile().fileName})`).join('\n- ')
-			}${
-				'\n'
-			}This might lead to unpredictable and unexpected output, and possible breaking changes to your API.${
-				'\n'
-			}Consider either (re-)exporting them explicitly from the entry point, or disable --export-referenced-types option ('output.exportReferencedTypes' in the config).`);
+			}\nEither export them explicitly from the entry point, or disable --export-referenced-types option ('output.exportReferencedTypes' in the config).`);
 		}
 
 		return output;

@@ -1,6 +1,6 @@
-export interface Interface {
+interface Interface {
 }
-export type Decl = string;
+type Decl = string;
 export interface ExportedInterface extends Interface {
 	foo: Decl;
 }

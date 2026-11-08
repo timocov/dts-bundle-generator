@@ -1,4 +1,4 @@
-export interface Interface {
+interface Interface {
 	field: Interface;
 }
 declare namespace ExportedModule {
