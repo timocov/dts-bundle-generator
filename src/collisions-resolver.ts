@@ -7,7 +7,6 @@ import {
 	getDeclarationsForSymbol,
 	getNodeName,
 	resolveGlobalName,
-	resolveName,
 } from './helpers/typescript';
 import { verboseLog } from './logger';
 
@@ -283,9 +282,9 @@ export class CollisionsResolver {
 			.reduce((result: ts.SymbolFlags, flag: ts.SymbolFlags) => result | flag, ts.SymbolFlags.None);
 
 		return (this.shadowableReferences.get(symbol) ?? []).some((reference: ts.Identifier) => {
-			const resolvedSymbol = resolveName(this.typeChecker, name, reference, meaning, true);
+			const resolvedSymbol = this.typeChecker.resolveName(name, reference, meaning, true);
 			return resolvedSymbol !== undefined
-				&& resolvedSymbol !== resolveName(this.typeChecker, name, reference.getSourceFile(), meaning, true)
+				&& resolvedSymbol !== this.typeChecker.resolveName(name, reference.getSourceFile(), meaning, true)
 				&& getActualSymbol(resolvedSymbol, this.typeChecker) !== symbol;
 		});
 	}
