@@ -108,11 +108,12 @@ export function splitTransientSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChec
 	const declarations = getDeclarationsForSymbol(symbol);
 	const result = new Set<ts.Symbol>();
 	for (const declaration of declarations) {
-		if (!isNodeNamedDeclaration(declaration) || declaration.name === undefined) {
+		const declarationName = ts.getNameOfDeclaration(declaration);
+		if (declarationName === undefined) {
 			continue;
 		}
 
-		const sym = typeChecker.getSymbolAtLocation(declaration.name);
+		const sym = typeChecker.getSymbolAtLocation(declarationName);
 		if (sym === undefined) {
 			continue;
 		}
