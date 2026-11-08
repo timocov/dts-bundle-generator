@@ -64,7 +64,30 @@ export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker):
 		symbol = typeChecker.getAliasedSymbol(symbol);
 	}
 
-	return (typeChecker as TypeCheckerCompat).getMergedSymbol(symbol);
+	symbol = (typeChecker as TypeCheckerCompat).getMergedSymbol(symbol);
+
+	return getOriginalModuleSymbol(symbol, typeChecker);
+}
+
+/**
+ * With `esModuleInterop` enabled, TypeScript creates a synthetic copy of a module symbol (a new "Transient" symbol with the same declarations)
+ * for every `import * as ns from 'module'` statement if the module has a `default` export.
+ * Because of that the same module is represented by different symbols and none of them are known for us (e.g. in the usage map),
+ * so we have to get back to the original module symbol.
+ *
+ * @see `cloneTypeAsModuleType` in the TypeScript's checker
+ */
+function getOriginalModuleSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker): ts.Symbol {
+	if ((symbol.flags & ts.SymbolFlags.Transient) === 0 || (symbol.flags & ts.SymbolFlags.ValueModule) === 0) {
+		return symbol;
+	}
+
+	const sourceFile = getDeclarationsForSymbol(symbol).find(ts.isSourceFile);
+	if (sourceFile === undefined) {
+		return symbol;
+	}
+
+	return typeChecker.getSymbolAtLocation(sourceFile) ?? symbol;
 }
 
 export function getDeclarationNameSymbol(name: NodeName, typeChecker: ts.TypeChecker): ts.Symbol | null {
