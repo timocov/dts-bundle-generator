@@ -1,4 +1,4 @@
-export type FooBar = string;
+type FooBar = string;
 declare namespace Ns1 {
 	namespace SubNs1 {
 		interface Interface1 {

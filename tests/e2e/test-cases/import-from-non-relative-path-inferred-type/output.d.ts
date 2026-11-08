@@ -1,4 +1,4 @@
-export interface MyType {
+interface MyType {
 	field: string;
 }
 export declare function test(): MyType;

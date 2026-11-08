@@ -1,4 +1,4 @@
-export declare const enum NonDirectlyExportedConstEnum {
+declare const enum NonDirectlyExportedConstEnum {
 	FooBar = 0
 }
 export declare enum DirectlyReExportedConstEnum {

@@ -1,5 +1,5 @@
-export type TypeName = string | number;
-export interface InterfaceName {
+type TypeName = string | number;
+interface InterfaceName {
 	prop: number;
 	prop2: TypeName;
 }

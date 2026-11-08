@@ -1,4 +1,4 @@
-export interface Interface {
+interface Interface {
 	foo: number;
 }
 export declare const a: [

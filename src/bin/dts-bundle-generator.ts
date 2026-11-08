@@ -150,8 +150,8 @@ function parseArgs(): ParsedArgs {
 		})
 		.option('export-referenced-types', {
 			type: 'boolean',
-			default: true,
-			description: 'By default all interfaces, types and const enums are marked as exported even if they aren\'t exported directly. This option allows you to disable this behavior so a node will be exported if it is exported from root source file only.',
+			default: false,
+			description: 'Marks all interfaces, types and const enums as exported even if they aren\'t exported directly. By default a node is exported only if it is exported from the root source file. Fails if a referenced type cannot be exported because it was renamed due to name collisions.',
 		})
 		.option('config', {
 			type: 'string',
