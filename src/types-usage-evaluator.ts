@@ -256,6 +256,24 @@ export class TypesUsageEvaluator {
 					return;
 				}
 
+				/**
+				 * For qualifiers in import() type expressions, symbols may not always be resolvable. For example:
+				 * 
+				 * import("node:util").TextEncoderEncodeIntoResult exists in Node 25, but not in Node 24
+				 * 
+				 * Without this check, exporting types on older Node versions will throw an error on missing symbols,
+				 * with the check, the missing type will be logged but will not crash dts-bundle-generator.
+				 */
+				if (child.parent && (
+					ts.isImportTypeNode(child.parent) ||
+					(ts.isQualifiedName(child.parent) && child.parent.parent && ts.isImportTypeNode(child.parent.parent))
+				)) {
+					if (this.typeChecker.getSymbolAtLocation(child) === undefined) {
+						console.warn(`[dts-bundle-generator] Cannot resolve symbol for "${child.getText()}" in "${child.parent.getText()}" from "${child.getSourceFile().fileName}". Type may be a forward reference not available in installed @types.`);
+						return;
+					}
+				}
+
 				this.addUsages(this.getSymbol(child), parentSymbol);
 
 				if (!ts.isQualifiedName(child.parent)) {
