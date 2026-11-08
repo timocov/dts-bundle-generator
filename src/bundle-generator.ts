@@ -59,6 +59,15 @@ export interface CompilationOptions {
 	 * Path to the tsconfig file that will be used for the compilation.
 	 */
 	preferredConfigPath?: string;
+
+	/**
+	 * If enabled, `import()` types whose module cannot be resolved (e.g. `import('optional-module').Type`)
+	 * are kept as is in the output and a warning is printed. This is useful for libraries that intentionally check for optional modules in their typings.
+	 * By default (when disabled) generation fails in such case.
+	 *
+	 * @default false
+	 */
+	allowUnresolvedImportTypes?: boolean;
 }
 
 export interface OutputOptions {
@@ -157,7 +166,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		return !program.isSourceFileDefaultLibrary(file);
 	});
 
-	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker);
+	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker, { allowUnresolvedImportTypes: options.allowUnresolvedImportTypes });
 
 	// eslint-disable-next-line complexity
 	return entries.map((entryConfig: EntryPointConfig) => {

@@ -68,14 +68,16 @@ export function runTestCase(testCaseDirPath: string): void {
 			outputOptions.noBanner = true;
 		}
 
+		const { compilationOptions, ...entryConfig } = testCase.config;
 		const dtsResult = generateDtsBundle(
 			[
 				{
-					...testCase.config,
+					...entryConfig,
 					output: outputOptions,
 					filePath: testCase.inputFileName,
 				},
-			]
+			],
+			compilationOptions
 		)[0];
 		const result = prepareString(dtsResult);
 		assert.strictEqual(result, testCase.outputFileContent, 'Output should be the same as expected');

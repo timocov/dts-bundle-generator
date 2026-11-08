@@ -75,6 +75,7 @@ const configScheme: SchemeDescriptor<BundlerConfig> = {
 	compilationOptions: {
 		followSymlinks: schemaPrimitiveValues.boolean,
 		preferredConfigPath: schemaPrimitiveValues.string,
+		allowUnresolvedImportTypes: schemaPrimitiveValues.boolean,
 	},
 	entries: [
 		{
