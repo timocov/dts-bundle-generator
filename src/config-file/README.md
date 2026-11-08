@@ -21,6 +21,15 @@ Config file might be either JSON file or JS file with CommonJS export of the con
          * Must be set if entries count more than 1.
          */
         preferredConfigPath: './tsconfig.json',
+
+        /**
+         * If enabled, `import()` types whose module cannot be resolved (e.g. `import('optional-module').Type`)
+         * are kept as is in the output and a warning is printed.
+         * Useful for libraries that intentionally check for optional modules in their typings.
+         * By default generation fails in such case.
+         * Optional. Default value is `false`.
+         */
+        allowUnresolvedImportTypes: false,
     },
 
     // non-empty array of entries

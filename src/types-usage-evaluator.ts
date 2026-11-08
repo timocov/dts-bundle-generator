@@ -11,16 +11,27 @@ import {
 	isNodeNamedDeclaration,
 	splitTransientSymbol,
 } from './helpers/typescript';
+import { warnLog } from './logger';
+
+export interface TypesUsageEvaluatorOptions {
+	/**
+	 * If enabled, identifiers in `import()` types whose module cannot be resolved are skipped with a warning (and kept as is in the output).
+	 * Otherwise generation fails.
+	 */
+	allowUnresolvedImportTypes?: boolean;
+}
 
 export class TypesUsageEvaluator {
 	private readonly typeChecker: ts.TypeChecker;
+	private readonly options: TypesUsageEvaluatorOptions;
 	private readonly nodesParentsMap: Map<ts.Symbol, Set<ts.Symbol>> = new Map();
 
 	private nodesChildrenMap: Map<ts.Symbol, Set<ts.Symbol>> | undefined;
 	private readonly symbolsReachingCache: Map<ts.Symbol, Set<ts.Symbol>> = new Map();
 
-	public constructor(files: ts.SourceFile[], typeChecker: ts.TypeChecker) {
+	public constructor(files: ts.SourceFile[], typeChecker: ts.TypeChecker, options: TypesUsageEvaluatorOptions = {}) {
 		this.typeChecker = typeChecker;
+		this.options = options;
 		this.computeUsages(files);
 	}
 
@@ -272,41 +283,85 @@ export class TypesUsageEvaluator {
 
 	private computeUsagesRecursively(parent: ts.Node, parentSymbol: ts.Symbol): void {
 		ts.forEachChild(parent, (child: ts.Node) => {
-			if (child.kind === ts.SyntaxKind.JSDoc) {
+			this.computeUsagesForChild(child, parentSymbol);
+		});
+	}
+
+	private computeUsagesForChild(child: ts.Node, parentSymbol: ts.Symbol): void {
+		if (child.kind === ts.SyntaxKind.JSDoc) {
+			return;
+		}
+
+		if (ts.isImportTypeNode(child) && this.isUnresolvedImportType(child)) {
+			// the qualifier has no symbols to track, but type arguments (if any) might reference other symbols
+			// note that type arguments must be handled as children (not via `computeUsagesRecursively`)
+			// because they might be unresolved import types themselves, e.g. `import('a').A<import('b').B>`
+			child.typeArguments?.forEach((typeArgument: ts.TypeNode) => {
+				this.computeUsagesForChild(typeArgument, parentSymbol);
+			});
+
+			return;
+		}
+
+		this.computeUsagesRecursively(child, parentSymbol);
+
+		if (ts.isIdentifier(child) || child.kind === ts.SyntaxKind.DefaultKeyword) {
+			// identifiers in labelled tuples don't have symbols for their labels
+			// so let's just skip them from collecting
+			if (ts.isNamedTupleMember(child.parent) && child.parent.name === child) {
 				return;
 			}
 
-			this.computeUsagesRecursively(child, parentSymbol);
+			// `{ propertyName: name }` - in this case we don't need to handle `propertyName` as it has no symbol
+			if (ts.isBindingElement(child.parent) && child.parent.propertyName === child) {
+				return;
+			}
 
-			if (ts.isIdentifier(child) || child.kind === ts.SyntaxKind.DefaultKeyword) {
-				// identifiers in labelled tuples don't have symbols for their labels
-				// so let's just skip them from collecting
-				if (ts.isNamedTupleMember(child.parent) && child.parent.name === child) {
-					return;
-				}
+			this.addUsages(this.getSymbol(child), parentSymbol);
 
-				// `{ propertyName: name }` - in this case we don't need to handle `propertyName` as it has no symbol
-				if (ts.isBindingElement(child.parent) && child.parent.propertyName === child) {
-					return;
-				}
+			if (!ts.isQualifiedName(child.parent)) {
+				const childOwnSymbol = this.getNodeOwnSymbol(child);
 
-				this.addUsages(this.getSymbol(child), parentSymbol);
-
-				if (!ts.isQualifiedName(child.parent)) {
-					const childOwnSymbol = this.getNodeOwnSymbol(child);
-
-					// i.e. `import * as NS from './local-module'`
-					const namespaceImport = getDeclarationsForSymbol(childOwnSymbol).find(ts.isNamespaceImport);
-					if (namespaceImport !== undefined) {
-						// if a node is an identifier and not part of a qualified name
-						// and it was created as part of namespaced import
-						// then we need to assign all exports of referenced module into that namespace
-						// because they might not be added previously while processing imports/exports
-						this.addUsagesForNamespacedModule(namespaceImport, namespaceImport.parent.parent.moduleSpecifier as ts.StringLiteral, true);
-					}
+				// i.e. `import * as NS from './local-module'`
+				const namespaceImport = getDeclarationsForSymbol(childOwnSymbol).find(ts.isNamespaceImport);
+				if (namespaceImport !== undefined) {
+					// if a node is an identifier and not part of a qualified name
+					// and it was created as part of namespaced import
+					// then we need to assign all exports of referenced module into that namespace
+					// because they might not be added previously while processing imports/exports
+					this.addUsagesForNamespacedModule(namespaceImport, namespaceImport.parent.parent.moduleSpecifier as ts.StringLiteral, true);
 				}
 			}
-		});
+		}
+	}
+
+	/**
+	 * Checks whether an `import()` type with a qualifier (e.g. `import('module').A.B`) refers to a module that cannot be resolved.
+	 * Some libraries intentionally probe for optional modules in their declarations (usually with `// @ts-ignore`),
+	 * so such types are treated as "given" (i.e. kept as is) if it is allowed by the options, otherwise it throws.
+	 *
+	 * @returns `true` if the import type is unresolved (and allowed), so it should be skipped
+	 */
+	private isUnresolvedImportType(importType: ts.ImportTypeNode): boolean {
+		// without a qualifier there is nothing to track (and nothing could fail), e.g. `typeof import('module')`
+		if (importType.qualifier === undefined || !ts.isLiteralTypeNode(importType.argument) || !ts.isStringLiteral(importType.argument.literal)) {
+			return false;
+		}
+
+		if (this.typeChecker.getSymbolAtLocation(importType.argument.literal) !== undefined) {
+			// the module is resolved, so any further failure is not about an unresolved module
+			return false;
+		}
+
+		const moduleName = importType.argument.literal.text;
+		const location = `"${importType.getText()}" from "${importType.getSourceFile().fileName}"`;
+		if (!this.options.allowUnresolvedImportTypes) {
+			throw new Error(`Cannot resolve module "${moduleName}" in the import type ${location}.
+If this is expected (e.g. a library checks for optional modules in its typings), enable the "--allow-unresolved-import-types" option ('compilationOptions.allowUnresolvedImportTypes' in the config) to keep such types as they are.`);
+		}
+
+		warnLog(`Skipping the import type ${location}: cannot resolve module "${moduleName}". The type is kept as is.`);
+		return true;
 	}
 
 	private addUsages(childSymbol: ts.Symbol, parentSymbol: ts.Symbol): void {

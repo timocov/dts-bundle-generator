@@ -46,6 +46,7 @@ interface ParsedArgs extends Arguments {
 	'no-banner': boolean;
 	'respect-preserve-const-enum': boolean;
 	'export-referenced-types': boolean;
+	'allow-unresolved-import-types': boolean;
 
 	'out-file': string | undefined;
 	'umd-module-name': string | undefined;
@@ -158,6 +159,11 @@ function parseArgs(): ParsedArgs {
 			default: false,
 			description: 'Marks all interfaces, types and const enums as exported even if they aren\'t exported directly. By default a node is exported only if it is exported from the root source file. Fails if a referenced type cannot be exported because it was renamed due to name collisions.',
 		})
+		.option('allow-unresolved-import-types', {
+			type: 'boolean',
+			default: false,
+			description: 'Keeps `import()` types whose module cannot be resolved as is (and prints a warning) instead of failing. Useful for libraries that intentionally check for optional modules in their typings',
+		})
 		.option('config', {
 			type: 'string',
 			description: 'File path to the generator config file',
@@ -262,6 +268,7 @@ function main(): void {
 			compilationOptions: {
 				preferredConfigPath: args.project,
 				followSymlinks: !args['disable-symlinks-following'],
+				allowUnresolvedImportTypes: args['allow-unresolved-import-types'],
 			},
 		};
 	}
