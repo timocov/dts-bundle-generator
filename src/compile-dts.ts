@@ -29,6 +29,9 @@ const declarationExtsRemapping: Partial<Record<string, ts.Extension>> = {
 	[ts.Extension.Dcts]: ts.Extension.Dcts,
 } satisfies Record<ts.Extension, ts.Extension>;
 
+// longest first, because we need to match `.d.ts` before `.ts` (path.extname doesn't handle such cases, it returns `.ts` instead of `.d.ts`)
+const knownExtensions = (Object.keys(declarationExtsRemapping) as ts.Extension[]).sort((a: ts.Extension, b: ts.Extension) => b.length - a.length);
+
 export function compileDts(rootFiles: readonly string[], preferredConfigPath?: string, followSymlinks: boolean = true): CompileDtsResult {
 	const compilerOptions = getCompilerOptions(rootFiles, preferredConfigPath);
 
@@ -134,31 +137,7 @@ function createCachingCompilerHost(compilerOptions: ts.CompilerOptions): ts.Comp
 }
 
 function changeExtensionToDts(fileName: string): string {
-	let ext: ts.Extension | undefined;
-
-	// `path.extname` doesn't handle `.d.ts` cases (it returns `.ts` instead of `.d.ts`)
-	if (fileName.endsWith(ts.Extension.Dts)) {
-		return fileName;
-	}
-
-	if (fileName.endsWith(ts.Extension.Cjs)) {
-		ext = ts.Extension.Cjs;
-	} else if (fileName.endsWith(ts.Extension.Mjs)) {
-		ext = ts.Extension.Mjs;
-	} else if (fileName.endsWith(ts.Extension.Jsx)) {
-		ext = ts.Extension.Jsx;
-	} else if (fileName.endsWith(ts.Extension.Js)) {
-		ext = ts.Extension.Js;
-	} else if (fileName.endsWith(ts.Extension.Cts)) {
-		ext = ts.Extension.Cts;
-	} else if (fileName.endsWith(ts.Extension.Mts)) {
-		ext = ts.Extension.Mts;
-	} else if (fileName.endsWith(ts.Extension.Ts)) {
-		ext = ts.Extension.Ts;
-	} else if (fileName.endsWith(ts.Extension.Tsx)) {
-		ext = ts.Extension.Tsx;
-	}
-
+	const ext = knownExtensions.find((e: ts.Extension) => fileName.endsWith(e));
 	if (ext === undefined) {
 		return fileName;
 	}
