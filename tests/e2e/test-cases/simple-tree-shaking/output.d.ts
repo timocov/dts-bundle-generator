@@ -1,4 +1,4 @@
-export interface UsedInterface {
+interface UsedInterface {
 	field: number;
 }
 export interface InterfaceName {

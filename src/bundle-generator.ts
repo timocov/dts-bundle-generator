@@ -13,6 +13,7 @@ import {
 	getExportsForSourceFile,
 	getExportsForStatement,
 	getImportModuleName,
+	getModuleExportNameIdentifier,
 	getNodeName,
 	getNodeOwnSymbol,
 	getNodeSymbol,
@@ -58,6 +59,15 @@ export interface CompilationOptions {
 	 * Path to the tsconfig file that will be used for the compilation.
 	 */
 	preferredConfigPath?: string;
+
+	/**
+	 * If enabled, `import()` types whose module cannot be resolved (e.g. `import('optional-module').Type`)
+	 * are kept as is in the output and a warning is printed. This is useful for libraries that intentionally check for optional modules in their typings.
+	 * By default (when disabled) generation fails in such case.
+	 *
+	 * @default false
+	 */
+	allowUnresolvedImportTypes?: boolean;
 }
 
 export interface OutputOptions {
@@ -96,8 +106,13 @@ export interface OutputOptions {
 	respectPreserveConstEnum?: boolean;
 
 	/**
-	 * By default all interfaces, types and const enums are marked as exported even if they aren't exported directly.
-	 * This option allows you to disable this behavior so a node will be exported if it is exported from root source file only.
+	 * If enabled, all interfaces, types and const enums are marked as exported even if they aren't exported directly.
+	 * By default (when disabled) a node will be exported only if it is exported from the root source file.
+	 *
+	 * If a referenced type cannot be exported because it was renamed due to name collisions, generation fails.
+	 * Export such types explicitly from the root source file or disable this option.
+	 *
+	 * @default false
 	 */
 	exportReferencedTypes?: boolean;
 }
@@ -151,7 +166,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		return !program.isSourceFileDefaultLibrary(file);
 	});
 
-	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker);
+	const typesUsageEvaluator = new TypesUsageEvaluator(sourceFiles, typeChecker, { allowUnresolvedImportTypes: options.allowUnresolvedImportTypes });
 
 	// eslint-disable-next-line complexity
 	return entries.map((entryConfig: EntryPointConfig) => {
@@ -197,6 +212,33 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		const inlineDeclareExternals = Boolean(outputOptions.inlineDeclareExternals);
 
 		const collisionsResolver = new CollisionsResolver(typeChecker);
+
+		// the result depends on the exports of the current entry point only, and it is requested more than once for the same statements
+		const isNodeUsedCache = new Map<ts.Node, boolean>();
+
+		// a reference matters only if it is printed to the output, so here we need the same statements that are collected below
+		// `export =` and `export default` statements could be skipped as they are at the top level and nothing can shadow their references
+		// it is fine to include a statement that isn't printed (it might only cause an unnecessary rename), but the opposite might produce a wrong output
+		collisionsResolver.collectShadowableReferences(
+			sourceFiles
+				.filter((file: ts.SourceFile) => getFileModuleInfo(file.fileName, criteria).type === ModuleType.ShouldBeInlined)
+				.flatMap((file: ts.SourceFile) => file.statements.filter((statement: ts.Statement) => {
+					return isDeclareModule(statement) || (inlineDeclareGlobals && isDeclareGlobalStatement(statement)) || isNodeUsed(statement);
+				})),
+			(node: ts.ImportTypeNode) => !needStripImportFromImportTypeNode(node)
+		);
+
+		function needStripImportFromImportTypeNode(node: ts.ImportTypeNode): boolean {
+			if (node.qualifier === undefined) {
+				return false;
+			}
+
+			if (!ts.isLiteralTypeNode(node.argument) || !ts.isStringLiteral(node.argument.literal)) {
+				return false;
+			}
+
+			return getReferencedModuleInfo(node, criteria, typeChecker)?.type === ModuleType.ShouldBeInlined;
+		}
 
 		function updateResultForAnyModule(statements: readonly ts.Statement[], currentModule: ModuleInfo): void {
 			// contains a set of modules that were visited already
@@ -698,13 +740,13 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				if (ts.isExportSpecifier(imp)) {
 					// export { El1, El2 as ExportedName } from 'module';
-					addNamedImport(importItem, imp.name, imp.propertyName || imp.name);
+					addNamedImport(importItem, getModuleExportNameIdentifier(imp.name), getModuleExportNameIdentifier(imp.propertyName || imp.name));
 					return;
 				}
 
 				if (ts.isNamespaceExport(imp)) {
 					// export * as name from 'module';
-					addNsImport(importItem, imp.name);
+					addNsImport(importItem, getModuleExportNameIdentifier(imp.name));
 					return;
 				}
 
@@ -716,13 +758,13 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				if (ts.isImportSpecifier(imp)) {
 					// import { El1, El2 as ImportedName } from 'module';
-					addNamedImport(importItem, imp.name, imp.propertyName || imp.name);
+					addNamedImport(importItem, getModuleExportNameIdentifier(imp.name), getModuleExportNameIdentifier(imp.propertyName || imp.name));
 					return;
 				}
 
 				if (ts.isNamespaceImport(imp)) {
 					// import * as name from 'module';
-					addNsImport(importItem, imp.name);
+					addNsImport(importItem, getModuleExportNameIdentifier(imp.name));
 					return;
 				}
 			});
@@ -865,8 +907,18 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			return getDeclarationsForSymbol(symbol).some(isDeclareModule);
 		}
 
-		// eslint-disable-next-line complexity
 		function isNodeUsed(node: ts.Node): boolean {
+			let isUsed = isNodeUsedCache.get(node);
+			if (isUsed === undefined) {
+				isUsed = computeIsNodeUsed(node);
+				isNodeUsedCache.set(node, isUsed);
+			}
+
+			return isUsed;
+		}
+
+		// eslint-disable-next-line complexity
+		function computeIsNodeUsed(node: ts.Node): boolean {
 			if (isNodeNamedDeclaration(node) || ts.isSourceFile(node)) {
 				const nodeSymbol = getNodeSymbol(node, typeChecker);
 				if (nodeSymbol === null) {
@@ -1102,12 +1154,12 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 					// if it is namespace export then it should be from a inlined module (e.g. `export * as NS from './local-module';`)
 					if (ts.isNamespaceExport(decl) && !isReferencedModuleImportable(decl.parent)) {
-						return decl.name;
+						return getModuleExportNameIdentifier(decl.name);
 					}
 
 					// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 					if (ts.isNamespaceImport(decl) && !isReferencedModuleImportable(decl.parent.parent as ts.ImportDeclaration)) {
-						return decl.name;
+						return getModuleExportNameIdentifier(decl.name);
 					}
 
 					if (ts.isExportSpecifier(decl)) {
@@ -1120,7 +1172,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 							// in case of a chain of imports/exports we need to keep searching recursively
 							if (getIdentifierOfNamespaceImportFromInlinedModule(getImportExportReferencedSymbol(decl, typeChecker))) {
-								return decl.name;
+								return getModuleExportNameIdentifier(decl.name);
 							}
 						}
 
@@ -1141,7 +1193,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						});
 
 						if (result) {
-							return decl.name;
+							return getModuleExportNameIdentifier(decl.name);
 						}
 					}
 				}
@@ -1244,7 +1296,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 							// here we want to handle creation of artificial namespace for a inlined module
 							// so we don't care about other type of imports/exports - only these that create a "namespace"
 							if (ts.isNamespaceExport(imp) || ts.isNamespaceImport(imp)) {
-								namespaceIdentifier = imp.name;
+								namespaceIdentifier = getModuleExportNameIdentifier(imp.name);
 							}
 						});
 
@@ -1269,8 +1321,8 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 		syncExports();
 
-		// by default this option should be enabled
-		const exportReferencedTypes = outputOptions.exportReferencedTypes !== false;
+		// by default this option is disabled
+		const exportReferencedTypes = outputOptions.exportReferencedTypes === true;
 
 		function isExportedWithLocalName(namedDeclaration: ts.NamedDeclaration, exportedName: string): boolean {
 			const nodeName = getNodeName(namedDeclaration);
@@ -1369,17 +1421,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 					return rootFileExportSymbols.includes(enumSymbol);
 				},
-				needStripImportFromImportTypeNode: (node: ts.ImportTypeNode) => {
-					if (node.qualifier === undefined) {
-						return false;
-					}
-
-					if (!ts.isLiteralTypeNode(node.argument) || !ts.isStringLiteral(node.argument.literal)) {
-						return false;
-					}
-
-					return getReferencedModuleInfo(node, criteria, typeChecker)?.type === ModuleType.ShouldBeInlined;
-				},
+				needStripImportFromImportTypeNode,
 			},
 			{
 				sortStatements: outputOptions.sortNodes,
@@ -1389,14 +1431,10 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 		);
 
 		if (renamedAndNotExplicitlyExportedTypes.length !== 0) {
-			warnLog(`The following type nodes were renamed because of the name collisions and will not be exported from the generated bundle:\n- ${
+			throw new Error(`The following type nodes were renamed because of the name collisions and cannot be exported from the generated bundle:\n- ${
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				renamedAndNotExplicitlyExportedTypes.map(node => `${getNodeName(node)!.getText()} (from ${node.getSourceFile().fileName})`).join('\n- ')
-			}${
-				'\n'
-			}This might lead to unpredictable and unexpected output, and possible breaking changes to your API.${
-				'\n'
-			}Consider either (re-)exporting them explicitly from the entry point, or disable --export-referenced-types option ('output.exportReferencedTypes' in the config).`);
+			}\nEither export them explicitly from the entry point, or disable --export-referenced-types option ('output.exportReferencedTypes' in the config).`);
 		}
 
 		return output;

@@ -16,6 +16,14 @@ export interface ConfigEntryPoint extends EntryPointConfig {
 	 * Skip validation of generated d.ts file
 	 */
 	noCheck?: boolean;
+
+	/**
+	 * Path to the tsconfig file that will be used for the validation of the generated d.ts file.
+	 * If not specified, `compilationOptions.preferredConfigPath` is used (or the config is found automatically for a single entry).
+	 * Only compiler options are used, `files`/`include`/`exclude` are ignored.
+	 * Cannot be used together with `noCheck`.
+	 */
+	checkConfigPath?: string;
 }
 
 export interface BundlerConfig {
@@ -46,6 +54,14 @@ export function loadConfigFile(configPath: string): BundlerConfig {
 		if (entry.outFile !== undefined) {
 			entry.outFile = getAbsolutePath(entry.outFile, configFolder);
 		}
+
+		if (entry.checkConfigPath !== undefined) {
+			if (entry.noCheck) {
+				throw new Error(`"checkConfigPath" cannot be used together with "noCheck" (entry ${entry.filePath})`);
+			}
+
+			entry.checkConfigPath = getAbsolutePath(entry.checkConfigPath, configFolder);
+		}
 	});
 
 	if (possibleConfig.compilationOptions !== undefined && possibleConfig.compilationOptions.preferredConfigPath !== undefined) {
@@ -59,6 +75,7 @@ const configScheme: SchemeDescriptor<BundlerConfig> = {
 	compilationOptions: {
 		followSymlinks: schemaPrimitiveValues.boolean,
 		preferredConfigPath: schemaPrimitiveValues.string,
+		allowUnresolvedImportTypes: schemaPrimitiveValues.boolean,
 	},
 	entries: [
 		{
@@ -66,6 +83,7 @@ const configScheme: SchemeDescriptor<BundlerConfig> = {
 			outFile: schemaPrimitiveValues.string,
 			failOnClass: schemaPrimitiveValues.boolean,
 			noCheck: schemaPrimitiveValues.boolean,
+			checkConfigPath: schemaPrimitiveValues.string,
 			libraries: {
 				allowedTypesLibraries: [schemaPrimitiveValues.string],
 				importedLibraries: [schemaPrimitiveValues.string],

@@ -2,7 +2,7 @@
 
 import * as path from 'path';
 import * as ts from 'typescript';
-import * as yargs from 'yargs';
+import yargs, { Arguments } from 'yargs';
 
 import { loadConfigFile, BundlerConfig, ConfigEntryPoint } from '../config-file/load-config-file';
 
@@ -27,14 +27,14 @@ function toStringsArray(data: unknown): string[] | undefined {
 	}
 
 	if (!Array.isArray(data)) {
-		throw new Error(`${data} is not a array`);
+		throw new Error(`${JSON.stringify(data)} is not an array`);
 	}
 
 	return data.map(String);
 }
 
 /* eslint-disable @typescript-eslint/naming-convention */
-interface ParsedArgs extends yargs.Arguments {
+interface ParsedArgs extends Arguments {
 	sort: boolean;
 	silent: boolean;
 	verbose: boolean;
@@ -46,10 +46,12 @@ interface ParsedArgs extends yargs.Arguments {
 	'no-banner': boolean;
 	'respect-preserve-const-enum': boolean;
 	'export-referenced-types': boolean;
+	'allow-unresolved-import-types': boolean;
 
 	'out-file': string | undefined;
 	'umd-module-name': string | undefined;
 	project: string | undefined;
+	'check-project': string | undefined;
 	config: string | undefined;
 
 	'external-inlines': string[] | undefined;
@@ -59,7 +61,8 @@ interface ParsedArgs extends yargs.Arguments {
 /* eslint-enable @typescript-eslint/naming-convention */
 
 function parseArgs(): ParsedArgs {
-	return yargs
+	const yargsInstance = yargs(process.argv.slice(2));
+	return yargsInstance
 		.parserConfiguration({
 			/* eslint-disable @typescript-eslint/naming-convention */
 			'boolean-negation': false,
@@ -122,6 +125,10 @@ function parseArgs(): ParsedArgs {
 			type: 'string',
 			description: 'Path to the tsconfig.json file that will be used for the compilation',
 		})
+		.option('check-project', {
+			type: 'string',
+			description: 'Path to the tsconfig.json file that will be used for the validation of generated d.ts files (the --project value is used by default)',
+		})
 		.option('sort', {
 			type: 'boolean',
 			default: false,
@@ -149,8 +156,13 @@ function parseArgs(): ParsedArgs {
 		})
 		.option('export-referenced-types', {
 			type: 'boolean',
-			default: true,
-			description: 'By default all interfaces, types and const enums are marked as exported even if they aren\'t exported directly. This option allows you to disable this behavior so a node will be exported if it is exported from root source file only.',
+			default: false,
+			description: 'Marks all interfaces, types and const enums as exported even if they aren\'t exported directly. By default a node is exported only if it is exported from the root source file. Fails if a referenced type cannot be exported because it was renamed due to name collisions.',
+		})
+		.option('allow-unresolved-import-types', {
+			type: 'boolean',
+			default: false,
+			description: 'Keeps `import()` types whose module cannot be resolved as is (and prints a warning) instead of failing. Useful for libraries that intentionally check for optional modules in their typings',
 		})
 		.option('config', {
 			type: 'string',
@@ -166,13 +178,37 @@ function parseArgs(): ParsedArgs {
 		.example('$0 path/to/your/entry-file.ts', '')
 		.example('$0 path/to/your/entry-file.ts path/to/your/entry-file-2.ts', '')
 		.example('$0 --external-types jquery react -- entry-file.ts', '')
-		.wrap(Math.min(100, yargs.terminalWidth()))
+		.wrap(Math.min(100, yargsInstance.terminalWidth()))
 		.argv as ParsedArgs;
 }
 
 function generateOutFileName(inputFilePath: string): string {
 	const inputFileName = path.parse(inputFilePath).name;
 	return fixPath(path.join(inputFilePath, '..', inputFileName + '.d.ts'));
+}
+
+/**
+ * Validates a generated d.ts file by compiling it.
+ * Compiler options are taken from the config file at `configPath`, or found automatically if it isn't specified.
+ * Only compiler options matter - `files`/`include`/`exclude` are ignored because the generated file is used as a root file.
+ *
+ * @throws if the file has errors
+ */
+function checkGeneratedFile(filePath: string, configPath: string | undefined): void {
+	const compilerOptions = getCompilerOptions([filePath], configPath);
+	if (compilerOptions.skipLibCheck) {
+		compilerOptions.skipLibCheck = false;
+		warnLog('Compiler option "skipLibCheck" is disabled to properly check generated output');
+	}
+
+	// we want to turn this option on because in this case the compile will generate declaration diagnostics out of the box
+	compilerOptions.declaration = true;
+
+	checkProgramDiagnosticsErrors(ts.createProgram([filePath], compilerOptions));
+}
+
+function getOutFile(entry: ConfigEntryPoint): string {
+	return entry.outFile !== undefined ? entry.outFile : generateOutFileName(entry.filePath);
 }
 
 // eslint-disable-next-line complexity
@@ -185,6 +221,10 @@ function main(): void {
 		enableVerbose();
 	} else if (!args.silent) {
 		enableNormalLog();
+	}
+
+	if (args['no-check'] && args['check-project'] !== undefined) {
+		throw new Error('Cannot use both no-check and check-project options at the same time');
 	}
 
 	let bundlerConfig: BundlerConfig;
@@ -207,6 +247,7 @@ function main(): void {
 					filePath: String(entryPath),
 					outFile: args['out-file'],
 					noCheck: args['no-check'],
+					checkConfigPath: args['check-project'],
 					libraries: {
 						allowedTypesLibraries: args['external-types'],
 						importedLibraries: args['external-imports'],
@@ -227,6 +268,7 @@ function main(): void {
 			compilationOptions: {
 				preferredConfigPath: args.project,
 				followSymlinks: !args['disable-symlinks-following'],
+				allowUnresolvedImportTypes: args['allow-unresolved-import-types'],
 			},
 		};
 	}
@@ -235,41 +277,25 @@ function main(): void {
 
 	const generatedDts = generateDtsBundle(bundlerConfig.entries, bundlerConfig.compilationOptions);
 
-	const outFilesToCheck: string[] = [];
 	for (let i = 0; i < bundlerConfig.entries.length; ++i) {
 		const entry = bundlerConfig.entries[i];
-		const outFile = entry.outFile !== undefined ? entry.outFile : generateOutFileName(entry.filePath);
+		const outFile = getOutFile(entry);
 
 		normalLog(`Writing ${entry.filePath} -> ${outFile}`);
 		ts.sys.writeFile(outFile, generatedDts[i]);
-
-		if (!entry.noCheck) {
-			outFilesToCheck.push(outFile);
-		}
 	}
 
-	if (outFilesToCheck.length === 0) {
+	const entriesToCheck = bundlerConfig.entries.filter((entry: ConfigEntryPoint) => !entry.noCheck);
+	if (entriesToCheck.length === 0) {
 		normalLog('File checking is skipped (due nothing to check)');
 		return;
 	}
 
 	normalLog('Checking generated files...');
-	const preferredConfigFile = bundlerConfig.compilationOptions !== undefined ? bundlerConfig.compilationOptions.preferredConfigPath : undefined;
-	const compilerOptions = getCompilerOptions(outFilesToCheck, preferredConfigFile);
-	if (compilerOptions.skipLibCheck) {
-		compilerOptions.skipLibCheck = false;
-		warnLog('Compiler option "skipLibCheck" is disabled to properly check generated output');
-	}
-
-	// we want to turn this option on because in this case the compile will generate declaration diagnostics out of the box
-	compilerOptions.declaration = true;
-
 	let checkFailed = false;
-	for (const outputFile of outFilesToCheck) {
-		const program = ts.createProgram([outputFile], compilerOptions);
-
+	for (const entry of entriesToCheck) {
 		try {
-			checkProgramDiagnosticsErrors(program);
+			checkGeneratedFile(getOutFile(entry), entry.checkConfigPath ?? bundlerConfig.compilationOptions?.preferredConfigPath);
 		} catch (e) {
 			checkFailed = true;
 		}

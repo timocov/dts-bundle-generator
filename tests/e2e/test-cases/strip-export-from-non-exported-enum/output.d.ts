@@ -1,7 +1,7 @@
 declare enum NonExportedEnum {
 	First = 0
 }
-export declare const enum NonExportedConstEnum {
+declare const enum NonExportedConstEnum {
 	First = 0
 }
 declare class NonExportedClass {

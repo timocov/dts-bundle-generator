@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as assert from 'assert';
+import assert from 'assert';
 
 const testCasesDir = path.resolve(__dirname, 'test-cases');
 
