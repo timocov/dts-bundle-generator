@@ -11,12 +11,12 @@ export interface CompileDtsResult {
 }
 
 const declarationExtsRemapping: Partial<Record<string, ts.Extension>> = {
-	[ts.Extension.Js]: ts.Extension.Js,
-	[ts.Extension.Jsx]: ts.Extension.Jsx,
+	[ts.Extension.Js]: ts.Extension.Dts,
+	[ts.Extension.Jsx]: ts.Extension.Dts,
 	[ts.Extension.Json]: ts.Extension.Json,
 	[ts.Extension.TsBuildInfo]: ts.Extension.TsBuildInfo,
-	[ts.Extension.Mjs]: ts.Extension.Mjs,
-	[ts.Extension.Cjs]: ts.Extension.Cjs,
+	[ts.Extension.Mjs]: ts.Extension.Dmts,
+	[ts.Extension.Cjs]: ts.Extension.Dcts,
 
 	[ts.Extension.Ts]: ts.Extension.Dts,
 	[ts.Extension.Tsx]: ts.Extension.Dts,
@@ -42,6 +42,12 @@ export function compileDts(rootFiles: readonly string[], preferredConfigPath?: s
 
 	// we want to turn this option on because in this case the compile will generate declaration diagnostics out of the box
 	compilerOptions.declaration = true;
+
+	// we never emit anything apart from declarations (and even then only in memory) so let's make it explicit for all programs we create
+	// otherwise projects with `allowJs`/`checkJs` flags enabled fail with the error like:
+	// error TS5055: Cannot write file '<filename>' because it would overwrite input file.
+	compilerOptions.emitDeclarationOnly = true;
+	compilerOptions.noEmit = false;
 
 	if (compilerOptions.composite) {
 		warnLog(`Composite projects aren't supported at the time. Prefer to use non-composite project to generate declarations instead or just ignore this message if everything works fine. See https://github.com/timocov/dts-bundle-generator/issues/93`);
@@ -135,7 +141,15 @@ function changeExtensionToDts(fileName: string): string {
 		return fileName;
 	}
 
-	if (fileName.endsWith(ts.Extension.Cts)) {
+	if (fileName.endsWith(ts.Extension.Cjs)) {
+		ext = ts.Extension.Cjs;
+	} else if (fileName.endsWith(ts.Extension.Mjs)) {
+		ext = ts.Extension.Mjs;
+	} else if (fileName.endsWith(ts.Extension.Jsx)) {
+		ext = ts.Extension.Jsx;
+	} else if (fileName.endsWith(ts.Extension.Js)) {
+		ext = ts.Extension.Js;
+	} else if (fileName.endsWith(ts.Extension.Cts)) {
 		ext = ts.Extension.Cts;
 	} else if (fileName.endsWith(ts.Extension.Mts)) {
 		ext = ts.Extension.Mts;
@@ -158,9 +172,7 @@ function changeExtensionToDts(fileName: string): string {
 function getDeclarationFiles(rootFiles: readonly string[], compilerOptions: ts.CompilerOptions, host: ts.CompilerHost): Map<string, string> {
 	// we must pass `declaration: true` and `noEmit: false` if we want to generate declaration files
 	// see https://github.com/microsoft/TypeScript/issues/24002#issuecomment-550549393
-	// also, we don't want to generate anything apart from declarations so that's why `emitDeclarationOnly: true` is here
-	// it allows to run the tool for projects with allowJs flag enabled to avoid errors like:
-	// error TS5055: Cannot write file '<filename>' because it would overwrite input file.
+	// also, `emitDeclarationOnly: true` is required (see `compileDts`), but we keep them all here too to make this function self-contained
 	compilerOptions = {
 		...compilerOptions,
 		noEmit: false,
