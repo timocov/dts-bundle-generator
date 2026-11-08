@@ -53,18 +53,12 @@ export function getNodeName(node: ts.Node): NodeName | undefined {
 	return nodeName;
 }
 
-interface TypeCheckerCompat extends ts.TypeChecker {
-	// this method will be added in the further typescript releases
-	// see https://github.com/microsoft/TypeScript/pull/56193
-	getMergedSymbol(symbol: ts.Symbol): ts.Symbol;
-}
-
 export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker): ts.Symbol {
 	if (symbol.flags & ts.SymbolFlags.Alias) {
 		symbol = typeChecker.getAliasedSymbol(symbol);
 	}
 
-	symbol = (typeChecker as TypeCheckerCompat).getMergedSymbol(symbol);
+	symbol = typeChecker.getMergedSymbol(symbol);
 
 	return getOriginalModuleSymbol(symbol, typeChecker);
 }
@@ -440,17 +434,12 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isExportDeclaration(node)) {
-		interface Ts53CompatExportDeclaration extends ts.ExportDeclaration {
-			attributes?: ts.ExportDeclaration['assertClause'];
-		}
-
 		return ts.factory.createExportDeclaration(
 			modifiers,
 			node.isTypeOnly,
 			node.exportClause,
 			node.moduleSpecifier,
-			// eslint-disable-next-line @typescript-eslint/no-deprecated
-			(node as Ts53CompatExportDeclaration).attributes || node.assertClause
+			node.attributes
 		);
 	}
 
@@ -479,16 +468,11 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isImportDeclaration(node)) {
-		interface Ts53CompatImportDeclaration extends ts.ImportDeclaration {
-			attributes?: ts.ImportDeclaration['assertClause'];
-		}
-
 		return ts.factory.createImportDeclaration(
 			modifiers,
 			node.importClause,
 			node.moduleSpecifier,
-			// eslint-disable-next-line @typescript-eslint/no-deprecated
-			(node as Ts53CompatImportDeclaration).attributes || node.assertClause
+			node.attributes
 		);
 	}
 
