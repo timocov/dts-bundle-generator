@@ -5,7 +5,9 @@ import {
 	getClosestModuleLikeNode,
 	getDeclarationNameSymbol,
 	getDeclarationsForSymbol,
+	getNodeName,
 	resolveGlobalName,
+	resolveName,
 } from './helpers/typescript';
 import { verboseLog } from './logger';
 
@@ -36,9 +38,41 @@ export class CollisionsResolver {
 
 	private collisionsMap: Map<string, Map<ts.Symbol, string>> = new Map();
 	private generatedNames: Map<ts.Symbol, Set<string>> = new Map();
+	private shadowableReferences: Map<ts.Symbol, ts.Identifier[]> = new Map();
 
 	public constructor(typeChecker: ts.TypeChecker) {
 		this.typeChecker = typeChecker;
+	}
+
+	/**
+	 * Collects references in {@link statements} that could be shadowed by names declared in nested scopes (namespaces, parameters, type parameters and so on).
+	 *
+	 * Names declared in nested scopes are printed as they are written and cannot be renamed, so a top-level name has to avoid them wherever its symbol is used.
+	 * Different names of a symbol (an alias, `import('module').Name`, `default`) are replaced with its top-level name in a bundle and that might change the meaning of the code.
+	 * E.g. `namespace a { var fn: typeof import('./other').fn }` must not become `namespace a { var fn: typeof fn }`.
+	 *
+	 * It must be called before any top-level identifier gets registered, as a declaration is often processed before the statements that use it.
+	 *
+	 * @param statements Statements that are printed to the output.
+	 * @param isImportTypeKept Returns whether a given import type stays in the output as is, so its qualifier isn't replaced with a top-level name.
+	 */
+	public collectShadowableReferences(statements: readonly ts.Statement[], isImportTypeKept: (node: ts.ImportTypeNode) => boolean): void {
+		const visit = (node: ts.Node): void => {
+			if (ts.isIdentifier(node)) {
+				this.addShadowableReference(node);
+				return;
+			}
+
+			ts.forEachChild(node, (child: ts.Node) => {
+				if (child.kind === ts.SyntaxKind.JSDoc || (ts.isImportTypeNode(node) && child === node.qualifier && isImportTypeKept(node))) {
+					return;
+				}
+
+				visit(child);
+			});
+		};
+
+		statements.forEach(visit);
 	}
 
 	/**
@@ -219,6 +253,43 @@ export class CollisionsResolver {
 		return scopeIdentifiersPath.reverse();
 	}
 
+	private addShadowableReference(identifier: ts.Identifier): void {
+		// a name of a declaration isn't a reference (but `name` of a property access is)
+		if (!ts.isPropertyAccessExpression(identifier.parent) && getNodeName(identifier.parent) === identifier) {
+			return;
+		}
+
+		const symbol = getDeclarationNameSymbol(identifier, this.typeChecker);
+		if (symbol === null) {
+			return;
+		}
+
+		const references = this.shadowableReferences.get(symbol);
+		if (references === undefined) {
+			this.shadowableReferences.set(symbol, [identifier]);
+		} else {
+			references.push(identifier);
+		}
+	}
+
+	/**
+	 * Returns whether at least one reference to {@link symbol} would be resolved to something declared in a nested scope if it was named {@link name}.
+	 * Collisions between top-level names aren't considered here, they are handled while registering a symbol.
+	 */
+	private isNameShadowedInNestedScopes(name: string, symbol: ts.Symbol): boolean {
+		// a name is shadowed by anything having the same kind of meaning, e.g. a function is shadowed by a variable
+		const meaning = [ts.SymbolFlags.Value, ts.SymbolFlags.Type, ts.SymbolFlags.Namespace]
+			.filter((flag: ts.SymbolFlags) => symbol.flags & flag)
+			.reduce((result: ts.SymbolFlags, flag: ts.SymbolFlags) => result | flag, ts.SymbolFlags.None);
+
+		return (this.shadowableReferences.get(symbol) ?? []).some((reference: ts.Identifier) => {
+			const resolvedSymbol = resolveName(this.typeChecker, name, reference, meaning, true);
+			return resolvedSymbol !== undefined
+				&& resolvedSymbol !== resolveName(this.typeChecker, name, reference.getSourceFile(), meaning, true)
+				&& getActualSymbol(resolvedSymbol, this.typeChecker) !== symbol;
+		});
+	}
+
 	private registerSymbol(identifierSymbol: ts.Symbol, preferredName: string): string | null {
 		if (!renamingSupportedSymbols.some((flag: ts.SymbolFlags) => identifierSymbol.flags & flag)) {
 			// if a symbol for something else that we don't support yet - skip
@@ -250,14 +321,21 @@ export class CollisionsResolver {
 			return storedSymbolName;
 		}
 
+		const takenNames = new Set(collisionSymbols.values());
+		const isNameAvailable = (name: string): boolean => {
+			if (takenNames.has(name) || this.isNameShadowedInNestedScopes(name, identifierSymbol)) {
+				return false;
+			}
+
+			const resolvedGlobalSymbol = resolveGlobalName(this.typeChecker, name);
+			return resolvedGlobalSymbol === undefined || resolvedGlobalSymbol === identifierSymbol;
+		};
+
 		let nameIndex = collisionSymbols.size;
 		let newName = collisionSymbols.size === 0 ? symbolName : `${symbolName}$${nameIndex}`;
-
-		let resolvedGlobalSymbol = resolveGlobalName(this.typeChecker, newName);
-		while (resolvedGlobalSymbol !== undefined && resolvedGlobalSymbol !== identifierSymbol) {
+		while (!isNameAvailable(newName)) {
 			nameIndex += 1;
 			newName = `${symbolName}$${nameIndex}`;
-			resolvedGlobalSymbol = resolveGlobalName(this.typeChecker, newName);
 		}
 
 		collisionSymbols.set(identifierSymbol, newName);

@@ -702,13 +702,17 @@ export function getDeclarationsForExportedValues(exp: ts.ExportAssignment | ts.E
 }
 
 export function resolveGlobalName(typeChecker: ts.TypeChecker, name: string): ts.Symbol | undefined {
+	// this value isn't available in all typescript versions so lets assign its value here instead
+	const tsSymbolFlagsAll = /* ts.SymbolFlags.All */ -1 as ts.SymbolFlags;
+
+	return resolveName(typeChecker, name, undefined, tsSymbolFlagsAll, false);
+}
+
+export function resolveName(typeChecker: ts.TypeChecker, name: string, location: ts.Node | undefined, meaning: ts.SymbolFlags, excludeGlobals: boolean): ts.Symbol | undefined {
 	interface Ts54CompatTypeChecker extends ts.TypeChecker {
 		resolveName(name: string, location: ts.Node | undefined, meaning: ts.SymbolFlags, excludeGlobals: boolean): ts.Symbol | undefined;
 	}
 
-	// this value isn't available in all typescript versions so lets assign its value here instead
-	const tsSymbolFlagsAll = /* ts.SymbolFlags.All */ -1 as ts.SymbolFlags;
-
 	// see https://github.com/microsoft/TypeScript/pull/56932
-	return (typeChecker as Ts54CompatTypeChecker).resolveName(name, undefined, tsSymbolFlagsAll, false);
+	return (typeChecker as Ts54CompatTypeChecker).resolveName(name, location, meaning, excludeGlobals);
 }
