@@ -50,6 +50,7 @@ interface ParsedArgs extends Arguments {
 	'out-file': string | undefined;
 	'umd-module-name': string | undefined;
 	project: string | undefined;
+	'check-project': string | undefined;
 	config: string | undefined;
 
 	'external-inlines': string[] | undefined;
@@ -123,6 +124,10 @@ function parseArgs(): ParsedArgs {
 			type: 'string',
 			description: 'Path to the tsconfig.json file that will be used for the compilation',
 		})
+		.option('check-project', {
+			type: 'string',
+			description: 'Path to the tsconfig.json file that will be used for the validation of generated d.ts files (the --project value is used by default)',
+		})
 		.option('sort', {
 			type: 'boolean',
 			default: false,
@@ -176,6 +181,30 @@ function generateOutFileName(inputFilePath: string): string {
 	return fixPath(path.join(inputFilePath, '..', inputFileName + '.d.ts'));
 }
 
+/**
+ * Validates a generated d.ts file by compiling it.
+ * Compiler options are taken from the config file at `configPath`, or found automatically if it isn't specified.
+ * Only compiler options matter - `files`/`include`/`exclude` are ignored because the generated file is used as a root file.
+ *
+ * @throws if the file has errors
+ */
+function checkGeneratedFile(filePath: string, configPath: string | undefined): void {
+	const compilerOptions = getCompilerOptions([filePath], configPath);
+	if (compilerOptions.skipLibCheck) {
+		compilerOptions.skipLibCheck = false;
+		warnLog('Compiler option "skipLibCheck" is disabled to properly check generated output');
+	}
+
+	// we want to turn this option on because in this case the compile will generate declaration diagnostics out of the box
+	compilerOptions.declaration = true;
+
+	checkProgramDiagnosticsErrors(ts.createProgram([filePath], compilerOptions));
+}
+
+function getOutFile(entry: ConfigEntryPoint): string {
+	return entry.outFile !== undefined ? entry.outFile : generateOutFileName(entry.filePath);
+}
+
 // eslint-disable-next-line complexity
 function main(): void {
 	const args = parseArgs();
@@ -186,6 +215,10 @@ function main(): void {
 		enableVerbose();
 	} else if (!args.silent) {
 		enableNormalLog();
+	}
+
+	if (args['no-check'] && args['check-project'] !== undefined) {
+		throw new Error('Cannot use both no-check and check-project options at the same time');
 	}
 
 	let bundlerConfig: BundlerConfig;
@@ -208,6 +241,7 @@ function main(): void {
 					filePath: String(entryPath),
 					outFile: args['out-file'],
 					noCheck: args['no-check'],
+					checkConfigPath: args['check-project'],
 					libraries: {
 						allowedTypesLibraries: args['external-types'],
 						importedLibraries: args['external-imports'],
@@ -236,41 +270,25 @@ function main(): void {
 
 	const generatedDts = generateDtsBundle(bundlerConfig.entries, bundlerConfig.compilationOptions);
 
-	const outFilesToCheck: string[] = [];
 	for (let i = 0; i < bundlerConfig.entries.length; ++i) {
 		const entry = bundlerConfig.entries[i];
-		const outFile = entry.outFile !== undefined ? entry.outFile : generateOutFileName(entry.filePath);
+		const outFile = getOutFile(entry);
 
 		normalLog(`Writing ${entry.filePath} -> ${outFile}`);
 		ts.sys.writeFile(outFile, generatedDts[i]);
-
-		if (!entry.noCheck) {
-			outFilesToCheck.push(outFile);
-		}
 	}
 
-	if (outFilesToCheck.length === 0) {
+	const entriesToCheck = bundlerConfig.entries.filter((entry: ConfigEntryPoint) => !entry.noCheck);
+	if (entriesToCheck.length === 0) {
 		normalLog('File checking is skipped (due nothing to check)');
 		return;
 	}
 
 	normalLog('Checking generated files...');
-	const preferredConfigFile = bundlerConfig.compilationOptions !== undefined ? bundlerConfig.compilationOptions.preferredConfigPath : undefined;
-	const compilerOptions = getCompilerOptions(outFilesToCheck, preferredConfigFile);
-	if (compilerOptions.skipLibCheck) {
-		compilerOptions.skipLibCheck = false;
-		warnLog('Compiler option "skipLibCheck" is disabled to properly check generated output');
-	}
-
-	// we want to turn this option on because in this case the compile will generate declaration diagnostics out of the box
-	compilerOptions.declaration = true;
-
 	let checkFailed = false;
-	for (const outputFile of outFilesToCheck) {
-		const program = ts.createProgram([outputFile], compilerOptions);
-
+	for (const entry of entriesToCheck) {
 		try {
-			checkProgramDiagnosticsErrors(program);
+			checkGeneratedFile(getOutFile(entry), entry.checkConfigPath ?? bundlerConfig.compilationOptions?.preferredConfigPath);
 		} catch (e) {
 			checkFailed = true;
 		}

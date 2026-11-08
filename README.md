@@ -90,6 +90,9 @@ Options:
                                  ModuleName;` will be emitted                               [string]
   --project                      Path to the tsconfig.json file that will be used for the
                                  compilation                                                [string]
+  --check-project                Path to the tsconfig.json file that will be used for the validation
+                                 of generated d.ts files (the --project value is used by default)
+                                                                                            [string]
   --sort                         Sort output nodes                        [boolean] [default: false]
   --inline-declare-global        Enables inlining of `declare global` statements contained in files
                                  which should be inlined (all local files and packages from
