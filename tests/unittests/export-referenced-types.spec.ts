@@ -21,4 +21,11 @@ describe('exportReferencedTypes with name collisions', () => {
 			/Foo \(from .*b\.d\.ts\)[\s\S]*output\.exportReferencedTypes/
 		);
 	});
+
+	it('should fail when enabled and a referenced type is renamed because its name is shadowed in a nested scope', () => {
+		assert.throws(
+			() => generateDtsBundle([{ filePath: path.resolve(__dirname, 'export-referenced-types-shadowing', 'input.ts'), output: { noBanner: true, exportReferencedTypes: true } }]),
+			/Target \(from .*other\.d\.ts\)[\s\S]*output\.exportReferencedTypes/
+		);
+	});
 });

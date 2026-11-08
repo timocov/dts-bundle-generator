@@ -204,6 +204,33 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 		const collisionsResolver = new CollisionsResolver(typeChecker);
 
+		// the result depends on the exports of the current entry point only, and it is requested more than once for the same statements
+		const isNodeUsedCache = new Map<ts.Node, boolean>();
+
+		// a reference matters only if it is printed to the output, so here we need the same statements that are collected below
+		// `export =` and `export default` statements could be skipped as they are at the top level and nothing can shadow their references
+		// it is fine to include a statement that isn't printed (it might only cause an unnecessary rename), but the opposite might produce a wrong output
+		collisionsResolver.collectShadowableReferences(
+			sourceFiles
+				.filter((file: ts.SourceFile) => getFileModuleInfo(file.fileName, criteria).type === ModuleType.ShouldBeInlined)
+				.flatMap((file: ts.SourceFile) => file.statements.filter((statement: ts.Statement) => {
+					return isDeclareModule(statement) || (inlineDeclareGlobals && isDeclareGlobalStatement(statement)) || isNodeUsed(statement);
+				})),
+			(node: ts.ImportTypeNode) => !needStripImportFromImportTypeNode(node)
+		);
+
+		function needStripImportFromImportTypeNode(node: ts.ImportTypeNode): boolean {
+			if (node.qualifier === undefined) {
+				return false;
+			}
+
+			if (!ts.isLiteralTypeNode(node.argument) || !ts.isStringLiteral(node.argument.literal)) {
+				return false;
+			}
+
+			return getReferencedModuleInfo(node, criteria, typeChecker)?.type === ModuleType.ShouldBeInlined;
+		}
+
 		function updateResultForAnyModule(statements: readonly ts.Statement[], currentModule: ModuleInfo): void {
 			// contains a set of modules that were visited already
 			// can be used to prevent infinite recursion in updating results in re-exports
@@ -871,8 +898,18 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 			return getDeclarationsForSymbol(symbol).some(isDeclareModule);
 		}
 
-		// eslint-disable-next-line complexity
 		function isNodeUsed(node: ts.Node): boolean {
+			let isUsed = isNodeUsedCache.get(node);
+			if (isUsed === undefined) {
+				isUsed = computeIsNodeUsed(node);
+				isNodeUsedCache.set(node, isUsed);
+			}
+
+			return isUsed;
+		}
+
+		// eslint-disable-next-line complexity
+		function computeIsNodeUsed(node: ts.Node): boolean {
 			if (isNodeNamedDeclaration(node) || ts.isSourceFile(node)) {
 				const nodeSymbol = getNodeSymbol(node, typeChecker);
 				if (nodeSymbol === null) {
@@ -1375,17 +1412,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 					return rootFileExportSymbols.includes(enumSymbol);
 				},
-				needStripImportFromImportTypeNode: (node: ts.ImportTypeNode) => {
-					if (node.qualifier === undefined) {
-						return false;
-					}
-
-					if (!ts.isLiteralTypeNode(node.argument) || !ts.isStringLiteral(node.argument.literal)) {
-						return false;
-					}
-
-					return getReferencedModuleInfo(node, criteria, typeChecker)?.type === ModuleType.ShouldBeInlined;
-				},
+				needStripImportFromImportTypeNode,
 			},
 			{
 				sortStatements: outputOptions.sortNodes,
