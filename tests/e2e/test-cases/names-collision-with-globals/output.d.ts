@@ -1,4 +1,4 @@
-import { BaseEncodingOptions as Alias1, BigIntOptions as Alias2 } from 'node:fs';
+import { InterfaceToAugment as Alias1, InterfaceToAugmentWithClass as Alias2 } from 'package-with-augmentable-declarations';
 
 declare global {
 	type Promise$1 = string;
@@ -21,11 +21,11 @@ interface Interface1$1 extends Alias1 {
 }
 interface Interface2$1 extends Alias2 {
 }
-declare module "node:fs" {
-	interface BaseEncodingOptions {
+declare module "package-with-augmentable-declarations" {
+	interface InterfaceToAugment {
 		newField: string;
 	}
-	class BigIntOptions {
+	class InterfaceToAugmentWithClass {
 		newField: string;
 	}
 	interface Interface1 {

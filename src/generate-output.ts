@@ -233,7 +233,9 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 
 						if (ts.isIdentifier(node) && (node.parent as ts.NamedDeclaration).name === node && (
 							ts.isInterfaceDeclaration(node.parent) ||
-							ts.isClassDeclaration(node.parent)
+							ts.isClassDeclaration(node.parent) ||
+							ts.isEnumDeclaration(node.parent) ||
+							ts.isModuleDeclaration(node.parent)
 						)) {
 							const moduleNode = getClosestModuleLikeNode(node);
 							if (isAmbientModule(moduleNode)) {
