@@ -19,6 +19,18 @@ const namedDeclarationKinds = [
 
 export type NodeName = ts.DeclarationName | ts.DefaultKeyword | ts.QualifiedName | ts.PropertyAccessExpression | ts.BindingPattern;
 
+/**
+ * Narrows a module export/import name (an identifier, or a string literal for arbitrary module namespace identifiers) to an identifier.
+ * String-literal names (e.g. `export { x as "a-b" }`) aren't supported yet.
+ */
+export function getModuleExportNameIdentifier(name: ts.ExportSpecifier['name']): ts.Identifier {
+	if (!ts.isIdentifier(name)) {
+		throw new Error(`Arbitrary module namespace identifiers are not supported (found ${(name as ts.Node).getText()})`);
+	}
+
+	return name;
+}
+
 export function isNodeNamedDeclaration(node: ts.Node): node is ts.NamedDeclaration {
 	return namedDeclarationKinds.indexOf(node.kind) !== -1;
 }
@@ -41,18 +53,35 @@ export function getNodeName(node: ts.Node): NodeName | undefined {
 	return nodeName;
 }
 
-interface TypeCheckerCompat extends ts.TypeChecker {
-	// this method will be added in the further typescript releases
-	// see https://github.com/microsoft/TypeScript/pull/56193
-	getMergedSymbol(symbol: ts.Symbol): ts.Symbol;
-}
-
 export function getActualSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker): ts.Symbol {
 	if (symbol.flags & ts.SymbolFlags.Alias) {
 		symbol = typeChecker.getAliasedSymbol(symbol);
 	}
 
-	return (typeChecker as TypeCheckerCompat).getMergedSymbol(symbol);
+	symbol = typeChecker.getMergedSymbol(symbol);
+
+	return getOriginalModuleSymbol(symbol, typeChecker);
+}
+
+/**
+ * With `esModuleInterop` enabled, TypeScript creates a synthetic copy of a module symbol (a new "Transient" symbol with the same declarations)
+ * for every `import * as ns from 'module'` statement if the module has a `default` export.
+ * Because of that the same module is represented by different symbols and none of them are known for us (e.g. in the usage map),
+ * so we have to get back to the original module symbol.
+ *
+ * @see `cloneTypeAsModuleType` in the TypeScript's checker
+ */
+function getOriginalModuleSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker): ts.Symbol {
+	if ((symbol.flags & ts.SymbolFlags.Transient) === 0 || (symbol.flags & ts.SymbolFlags.ValueModule) === 0) {
+		return symbol;
+	}
+
+	const sourceFile = getDeclarationsForSymbol(symbol).find(ts.isSourceFile);
+	if (sourceFile === undefined) {
+		return symbol;
+	}
+
+	return typeChecker.getSymbolAtLocation(sourceFile) ?? symbol;
 }
 
 export function getDeclarationNameSymbol(name: NodeName, typeChecker: ts.TypeChecker): ts.Symbol | null {
@@ -405,17 +434,12 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isExportDeclaration(node)) {
-		interface Ts53CompatExportDeclaration extends ts.ExportDeclaration {
-			attributes?: ts.ExportDeclaration['assertClause'];
-		}
-
 		return ts.factory.createExportDeclaration(
 			modifiers,
 			node.isTypeOnly,
 			node.exportClause,
 			node.moduleSpecifier,
-			// eslint-disable-next-line deprecation/deprecation
-			(node as Ts53CompatExportDeclaration).attributes || node.assertClause
+			node.attributes
 		);
 	}
 
@@ -444,16 +468,11 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 	}
 
 	if (ts.isImportDeclaration(node)) {
-		interface Ts53CompatImportDeclaration extends ts.ImportDeclaration {
-			attributes?: ts.ImportDeclaration['assertClause'];
-		}
-
 		return ts.factory.createImportDeclaration(
 			modifiers,
 			node.importClause,
 			node.moduleSpecifier,
-			// eslint-disable-next-line deprecation/deprecation
-			(node as Ts53CompatImportDeclaration).attributes || node.assertClause
+			node.attributes
 		);
 	}
 

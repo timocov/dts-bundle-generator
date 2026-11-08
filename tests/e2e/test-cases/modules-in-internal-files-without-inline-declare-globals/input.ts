@@ -6,7 +6,7 @@ import { Interface, ExportedModule } from './interface';
 
 export interface InterfaceInternal extends Interface {}
 
-declare module ModuleName {
+declare namespace ModuleName {
 	export interface Interface extends InterfaceInternal {}
 	export type Bar = ExportedModule.Foo;
 }

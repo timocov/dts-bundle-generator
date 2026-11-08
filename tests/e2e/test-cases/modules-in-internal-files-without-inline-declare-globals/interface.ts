@@ -2,6 +2,6 @@ export interface Interface {
 	field: Interface;
 }
 
-export module ExportedModule {
+export namespace ExportedModule {
 	export type Foo = string;
 }

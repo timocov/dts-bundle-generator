@@ -13,6 +13,7 @@ import {
 	getExportsForSourceFile,
 	getExportsForStatement,
 	getImportModuleName,
+	getModuleExportNameIdentifier,
 	getNodeName,
 	getNodeOwnSymbol,
 	getNodeSymbol,
@@ -698,13 +699,13 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				if (ts.isExportSpecifier(imp)) {
 					// export { El1, El2 as ExportedName } from 'module';
-					addNamedImport(importItem, imp.name, imp.propertyName || imp.name);
+					addNamedImport(importItem, getModuleExportNameIdentifier(imp.name), getModuleExportNameIdentifier(imp.propertyName || imp.name));
 					return;
 				}
 
 				if (ts.isNamespaceExport(imp)) {
 					// export * as name from 'module';
-					addNsImport(importItem, imp.name);
+					addNsImport(importItem, getModuleExportNameIdentifier(imp.name));
 					return;
 				}
 
@@ -716,13 +717,13 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 				if (ts.isImportSpecifier(imp)) {
 					// import { El1, El2 as ImportedName } from 'module';
-					addNamedImport(importItem, imp.name, imp.propertyName || imp.name);
+					addNamedImport(importItem, getModuleExportNameIdentifier(imp.name), getModuleExportNameIdentifier(imp.propertyName || imp.name));
 					return;
 				}
 
 				if (ts.isNamespaceImport(imp)) {
 					// import * as name from 'module';
-					addNsImport(importItem, imp.name);
+					addNsImport(importItem, getModuleExportNameIdentifier(imp.name));
 					return;
 				}
 			});
@@ -1102,12 +1103,12 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 					// if it is namespace export then it should be from a inlined module (e.g. `export * as NS from './local-module';`)
 					if (ts.isNamespaceExport(decl) && !isReferencedModuleImportable(decl.parent)) {
-						return decl.name;
+						return getModuleExportNameIdentifier(decl.name);
 					}
 
 					// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 					if (ts.isNamespaceImport(decl) && !isReferencedModuleImportable(decl.parent.parent as ts.ImportDeclaration)) {
-						return decl.name;
+						return getModuleExportNameIdentifier(decl.name);
 					}
 
 					if (ts.isExportSpecifier(decl)) {
@@ -1120,7 +1121,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 							// in case of a chain of imports/exports we need to keep searching recursively
 							if (getIdentifierOfNamespaceImportFromInlinedModule(getImportExportReferencedSymbol(decl, typeChecker))) {
-								return decl.name;
+								return getModuleExportNameIdentifier(decl.name);
 							}
 						}
 
@@ -1141,7 +1142,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 						});
 
 						if (result) {
-							return decl.name;
+							return getModuleExportNameIdentifier(decl.name);
 						}
 					}
 				}
@@ -1244,7 +1245,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 							// here we want to handle creation of artificial namespace for a inlined module
 							// so we don't care about other type of imports/exports - only these that create a "namespace"
 							if (ts.isNamespaceExport(imp) || ts.isNamespaceImport(imp)) {
-								namespaceIdentifier = imp.name;
+								namespaceIdentifier = getModuleExportNameIdentifier(imp.name);
 							}
 						});
 
