@@ -1,6 +1,6 @@
-export interface Type1 {
+interface Type1 {
 }
-export interface Type2 {
+interface Type2 {
 }
 export declare interface ExportedType {
 	Type1: {
@@ -10,11 +10,11 @@ export declare interface ExportedType {
 		prototype: Type2;
 	};
 }
-export interface _Type1 extends Type1 {
+interface _Type1 extends Type1 {
 }
-export interface _Type2 extends Type2 {
+interface _Type2 extends Type2 {
 }
-export declare module ExportedType {
+export declare namespace ExportedType {
 	interface Type1 extends _Type1 {
 	}
 	interface Type2 extends _Type2 {

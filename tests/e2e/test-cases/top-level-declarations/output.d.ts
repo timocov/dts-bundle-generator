@@ -2,7 +2,7 @@ declare function functionName(): void;
 declare const variable: string;
 declare class SampleClass {
 }
-export interface ISample {
+interface ISample {
 }
 declare namespace SampleNS { }
 export namespace Sample {

@@ -1,4 +1,4 @@
-import * as assert from 'assert';
+import assert from 'assert';
 
 import { getTypesLibraryName, getLibraryName } from '../../src/helpers/node-modules';
 

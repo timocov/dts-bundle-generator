@@ -1,4 +1,4 @@
-export interface MyInterface {
+interface MyInterface {
 }
 declare class MyClass {
 }

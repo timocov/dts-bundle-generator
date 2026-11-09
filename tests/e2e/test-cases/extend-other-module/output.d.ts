@@ -1,12 +1,12 @@
 declare function getRandom(): number;
-export interface SomeInterface {
+interface SomeInterface {
 	field: typeof getRandom;
 }
 export declare function justFunction(input: SomeInterface): void;
-export interface SomeInterface {
+interface SomeInterface {
 	field2: typeof justFunction;
 }
-export interface SomeInterface {
+interface SomeInterface {
 	field3: typeof justFunction;
 }
 

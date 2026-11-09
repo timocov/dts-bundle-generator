@@ -21,6 +21,15 @@ Config file might be either JSON file or JS file with CommonJS export of the con
          * Must be set if entries count more than 1.
          */
         preferredConfigPath: './tsconfig.json',
+
+        /**
+         * If enabled, `import()` types whose module cannot be resolved (e.g. `import('optional-module').Type`)
+         * are kept as is in the output and a warning is printed.
+         * Useful for libraries that intentionally check for optional modules in their typings.
+         * By default generation fails in such case.
+         * Optional. Default value is `false`.
+         */
+        allowUnresolvedImportTypes: false,
     },
 
     // non-empty array of entries
@@ -49,6 +58,16 @@ Config file might be either JSON file or JS file with CommonJS export of the con
              * Optional. Default value is `false`.
              */
             noCheck: false,
+
+            /**
+             * Path to the tsconfig file that will be used for the validation of the generated d.ts file (absolute or relative to config file).
+             * If not specified, `compilationOptions.preferredConfigPath` is used.
+             * Only compiler options are used - `files`/`include`/`exclude` are ignored.
+             * Can be used e.g. to validate output with stricter options (`strict: true`) than the ones used for the compilation.
+             * Cannot be used together with `noCheck`.
+             * Optional.
+             */
+            checkConfigPath: './tsconfig.check.json',
 
             libraries: {
                 /**
@@ -113,10 +132,11 @@ Config file might be either JSON file or JS file with CommonJS export of the con
                 respectPreserveConstEnum: false,
 
                 /**
-                 * By default all interfaces, types and const enums are marked as exported even if they aren't exported directly.
-                 * This option allows you to disable this behavior so a node will be exported if it is exported from root source file only.
+                 * If enabled, all interfaces, types and const enums are marked as exported even if they aren't exported directly.
+                 * By default a node is exported only if it is exported from the root source file.
+                 * Fails if a referenced type cannot be exported because it was renamed due to name collisions.
                  */
-                exportReferencedTypes: true,
+                exportReferencedTypes: false,
             },
         },
     ],

@@ -72,7 +72,7 @@ export interface Inter {
 	field6: FPI1;
 	field7: Interface$2;
 }
-export interface DefaultInterface {
+interface DefaultInterface {
 	field10: number;
 }
 export interface Inter2 {

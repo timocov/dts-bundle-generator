@@ -1,13 +1,13 @@
-export interface Interface {
+interface Interface {
 }
-export type Type = number | string;
-declare module ModuleWithoutQuotes {
+type Type = number | string;
+declare namespace ModuleWithoutQuotes {
 	export type A = string;
 }
-export interface Base {
+interface Base {
 	id: string;
 }
-export interface Derived extends Base {
+interface Derived extends Base {
 	name: string;
 }
 declare class SomeClass {

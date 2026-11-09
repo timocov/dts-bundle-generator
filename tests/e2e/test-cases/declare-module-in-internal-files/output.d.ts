@@ -2,7 +2,7 @@ import { ModuleWithoutQuotes } from 'fake-package';
 
 declare module "ambient-module" {
 }
-export interface Interface {
+interface Interface {
 	field: Interface;
 }
 declare namespace ExportedModule {

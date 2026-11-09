@@ -1,6 +1,7 @@
 {
 	"compilerOptions": {
 		"declaration": true,
+		"esModuleInterop": true,
 		"lib": ["es2020"],
 		"module": "commonjs",
 		"newLine": "LF",
@@ -10,6 +11,7 @@
 		"noUnusedLocals": true,
 		"strict": true,
 		"stripInternal": true,
+		"types": ["node"],
 		"target": "es2020"
 	}
 }

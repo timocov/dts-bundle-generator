@@ -3,7 +3,8 @@
 	"compilerOptions": {
 		"composite": true,
 		"incremental": true,
-		"outDir": "./.tsc-out"
+		"outDir": "./.tsc-out",
+		"types": ["node", "mocha"]
 	},
 	"references": [
 		{ "path": "../../src" },
