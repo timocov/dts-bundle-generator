@@ -185,8 +185,8 @@ but:
 1. `A` is not used at all and most probably you do not want to export it.
 1. If you bundle your code in a way when all modules are merged (like when using Webpack or Rollup) then there should be no such modules as `a` or `b` (actually `entry` too) in the resulting file.
 
-[ci-img]: https://github.com/timocov/dts-bundle-generator/workflows/CI%20Test/badge.svg?branch=master
-[ci-link]: https://github.com/timocov/dts-bundle-generator/actions?query=branch%3Amaster
+[ci-img]: https://github.com/timocov/dts-bundle-generator/actions/workflows/ci.yml/badge.svg
+[ci-link]: https://github.com/timocov/dts-bundle-generator/actions/workflows/ci.yml
 
 [npm-version-img]: https://badge.fury.io/js/dts-bundle-generator.svg
 [npm-downloads-img]: https://img.shields.io/npm/dm/dts-bundle-generator.svg
