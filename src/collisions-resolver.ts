@@ -113,17 +113,19 @@ export class CollisionsResolver {
 			return null;
 		}
 
-		const symbolScopePath = this.getSymbolScope(identifierSymbol);
+		const symbolDeclarationScopePath = this.getSymbolScope(identifierSymbol);
 
 		// this scope defines where the current identifier is located
 		const currentIdentifierScope = this.getNodeScope(referencedIdentifier);
 
-		if (symbolScopePath.length > 0 && currentIdentifierScope.length > 0 && symbolScopePath[0] === currentIdentifierScope[0]) {
+		if (symbolDeclarationScopePath.length > 0 && currentIdentifierScope.length > 0 && symbolDeclarationScopePath[0] === currentIdentifierScope[0]) {
 			// if a referenced symbol is declared in the same scope where it is located
 			// then just return its reference as is without any modification
 			// also note that in this method we're working with identifiers only (i.e. it cannot be a qualified name)
 			return referencedIdentifier.getText();
 		}
+
+		const symbolScopePath = this.isReferenceToNamedImportOfNamespaceMember(referencedIdentifier, identifierSymbol, symbolDeclarationScopePath) ? [] : symbolDeclarationScopePath;
 
 		const topLevelIdentifierSymbol = symbolScopePath.length === 0 ? identifierSymbol : symbolScopePath[0];
 
@@ -215,6 +217,23 @@ export class CollisionsResolver {
 		identifierParts[0] = topLevelName;
 
 		return identifierParts.join('.');
+	}
+
+	/**
+	 * Returns whether {@link identifier} refers to a namespace member via a top-level named import while the namespace itself isn't available in a bundle.
+	 * E.g. `Request` in `import { Request } from 'express'`, where the module has `export = e` and `Request` is declared in `namespace e`.
+	 *
+	 * Other identifiers resolved to the same symbol (e.g. a qualifier of an import type or a name of a declaration augmenting the namespace) don't use a top-level scope.
+	 */
+	private isReferenceToNamedImportOfNamespaceMember(identifier: ts.Identifier, symbol: ts.Symbol, symbolScopePath: readonly ts.Symbol[]): boolean {
+		if (symbolScopePath.length === 0 || this.namesForSymbol(symbolScopePath[0]).size !== 0 || this.namesForSymbol(symbol).size === 0) {
+			return false;
+		}
+
+		const localSymbol = this.typeChecker.getSymbolAtLocation(identifier);
+		return localSymbol !== undefined && getDeclarationsForSymbol(localSymbol).some((declaration: ts.Declaration) => {
+			return ts.isImportSpecifier(declaration) && ts.isSourceFile(getClosestModuleLikeNode(declaration));
+		});
 	}
 
 	private getSymbolScope(identifierSymbol: ts.Symbol): ts.Symbol[] {
