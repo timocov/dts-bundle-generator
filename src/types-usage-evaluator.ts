@@ -28,6 +28,7 @@ export class TypesUsageEvaluator {
 
 	private nodesChildrenMap: Map<ts.Symbol, Set<ts.Symbol>> | undefined;
 	private readonly symbolsReachingCache: Map<ts.Symbol, Set<ts.Symbol>> = new Map();
+	private readonly symbolPartsCache: Map<ts.Symbol, ts.Symbol[]> = new Map();
 
 	public constructor(files: ts.SourceFile[], typeChecker: ts.TypeChecker, options: TypesUsageEvaluatorOptions = {}) {
 		this.typeChecker = typeChecker;
@@ -65,7 +66,15 @@ export class TypesUsageEvaluator {
 	 * which combines a type from the module's namespace with a property of the exported value (see `combineValueAndTypeSymbols` in the TypeScript's checker).
 	 */
 	private getSymbolParts(symbol: ts.Symbol): ts.Symbol[] {
-		return Array.from(splitTransientSymbol(this.getActualSymbol(symbol), this.typeChecker));
+		// the result depends only on the symbol and the type checker, but it is requested many times for the same symbols
+		// (e.g. once per every export in `isSymbolUsedBySymbol`) so it is worth to cache it
+		let symbolParts = this.symbolPartsCache.get(symbol);
+		if (symbolParts === undefined) {
+			symbolParts = Array.from(splitTransientSymbol(this.getActualSymbol(symbol), this.typeChecker));
+			this.symbolPartsCache.set(symbol, symbolParts);
+		}
+
+		return symbolParts;
 	}
 
 	// Returns every symbol from which `toSymbol` is reachable via `nodesParentsMap` edges (including `toSymbol` itself).
@@ -123,6 +132,7 @@ export class TypesUsageEvaluator {
 		this.nodesParentsMap.clear();
 		this.nodesChildrenMap = undefined;
 		this.symbolsReachingCache.clear();
+		this.symbolPartsCache.clear();
 
 		for (const file of files) {
 			ts.forEachChild(file, this.computeUsageForNode.bind(this));
