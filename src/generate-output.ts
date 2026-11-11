@@ -1,7 +1,15 @@
 import * as ts from 'typescript';
 
 import { packageVersion } from './helpers/package-version';
-import { getClosestModuleLikeNode, getModifiers, getNodeName, isAmbientModule, modifiersToMap, recreateRootLevelNodeWithModifiers } from './helpers/typescript';
+import {
+	getClosestModuleLikeNode,
+	getModifiers,
+	getNodeName,
+	isAmbientModule,
+	isModuleKeywordNamespace,
+	modifiersToMap,
+	recreateRootLevelNodeWithModifiers,
+} from './helpers/typescript';
 
 export interface ModuleImportsSet {
 	defaultImports: Set<string>;
@@ -258,6 +266,13 @@ function getStatementText(statement: ts.Statement, includeSortingValue: boolean,
 				}
 
 				if (node !== statement) {
+					// nested `module Name {}` should be printed as `namespace Name {}` (the root level statement is handled below)
+					if (isModuleKeywordNamespace(node)) {
+						const newNode = ts.factory.createModuleDeclaration(node.modifiers, node.name, node.body, node.flags | ts.NodeFlags.Namespace);
+						ts.setCommentRange(newNode, ts.getCommentRange(node));
+						return newNode;
+					}
+
 					return node;
 				}
 
