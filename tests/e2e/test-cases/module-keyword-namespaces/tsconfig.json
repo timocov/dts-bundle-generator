@@ -1,0 +1,8 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		// `module` keyword for namespaces is an error since TypeScript 6.0,
+		// but it should be still possible to bundle such declarations (e.g. from 3rd party libraries)
+		"skipLibCheck": true
+	}
+}
