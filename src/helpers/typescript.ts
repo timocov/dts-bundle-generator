@@ -140,12 +140,32 @@ export function isAmbientModule(node: ts.Node): boolean {
 }
 
 /**
- * Returns whether node is `declare module` ModuleDeclaration (not `declare global` or `namespace`)
+ * Returns whether node is `declare module "name"` ModuleDeclaration (not `declare global` or `namespace`)
  */
-export function isDeclareModule(node: ts.Node): node is ts.ModuleDeclaration {
-	// `declare module ""`, `declare global` and `namespace {}` are ModuleDeclaration
-	// but here we need to check only `declare module` statements
-	return ts.isModuleDeclaration(node) && !(node.flags & ts.NodeFlags.Namespace) && !isGlobalScopeAugmentation(node);
+export function isDeclareModule(node: ts.Node): node is ts.ModuleDeclaration & { name: ts.StringLiteral } {
+	// `declare module ""`, `declare global`, `namespace Name {}` and `module Name {}` are ModuleDeclaration
+	// but here we need to check only `declare module ""` statements
+	// note that `module Name {}` is just a deprecated syntax of `namespace Name {}` so it is not a module
+	return ts.isModuleDeclaration(node) && ts.isStringLiteral(node.name);
+}
+
+/**
+ * Returns whether node is a namespace declared via deprecated `module` keyword (e.g. `module Name {}` instead of `namespace Name {}`)
+ */
+export function isModuleKeywordNamespace(node: ts.Node): node is ts.ModuleDeclaration {
+	return ts.isModuleDeclaration(node)
+		&& ts.isIdentifier(node.name)
+		&& !(node.flags & (ts.NodeFlags.Namespace | ts.NodeFlags.NestedNamespace))
+		&& !isGlobalScopeAugmentation(node);
+}
+
+/**
+ * Returns flags for a module declaration that should be used to print it,
+ * so namespaces declared via deprecated `module` keyword are printed with `namespace` keyword instead.
+ */
+export function getModuleDeclarationOutputFlags(node: ts.ModuleDeclaration): ts.NodeFlags {
+	const flags = node.flags;
+	return isModuleKeywordNamespace(node) ? flags | ts.NodeFlags.Namespace : flags;
 }
 
 /**
@@ -501,7 +521,7 @@ function recreateRootLevelNodeWithModifiersImpl(node: ts.Node, modifiersMap: Mod
 			modifiers,
 			node.name,
 			node.body,
-			node.flags
+			getModuleDeclarationOutputFlags(node)
 		);
 	}
 

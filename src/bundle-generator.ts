@@ -303,11 +303,7 @@ export function generateDtsBundle(entries: readonly EntryPointConfig[], options:
 
 						// if a statement is `declare module "module" {}` then don't process it below
 						// as it is handled already in `updateResultForModuleDeclaration`
-						// but if it is `declare module Module {}` then it can be used in types and imports
-						// so in this case it needs to be checked for "usages" below
-						if (ts.isStringLiteral(statement.name)) {
-							continue;
-						}
+						continue;
 					}
 
 					if (currentModule.type === ModuleType.ShouldBeUsedForModulesOnly) {
