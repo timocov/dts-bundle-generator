@@ -1,4 +1,4 @@
-import { TestCaseConfig } from '../../test-cases/test-case-config';
+import type { TestCaseConfig } from '../../test-cases/test-case-config.ts';
 
 const config: TestCaseConfig = {
 	libraries: {
@@ -6,4 +6,4 @@ const config: TestCaseConfig = {
 	},
 };
 
-export = config;
+export default config;

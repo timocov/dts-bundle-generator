@@ -1,6 +1,6 @@
 import assert from 'assert';
 
-import { checkSchemaMatch, schemaPrimitiveValues, SchemeDescriptor } from '../../src/config-file/check-schema-match';
+import { checkSchemaMatch, schemaPrimitiveValues, type SchemeDescriptor } from '../../src/config-file/check-schema-match.ts';
 
 interface TestObj {
 	foo: string;

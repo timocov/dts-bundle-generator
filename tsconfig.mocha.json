@@ -1,9 +1,0 @@
-{
-	// used by ts-node (see .mocharc.js) to run tests
-	"extends": "./tsconfig.options.json",
-	"compilerOptions": {
-		// TS >= 6 requires it to be set explicitly
-		"rootDir": ".",
-		"types": ["node", "mocha"]
-	}
-}

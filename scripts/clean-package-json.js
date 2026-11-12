@@ -5,11 +5,11 @@
  * but it seems that clean-publish isn't supported anymore and we can't use it in CI
  */
 
-const path = require('path');
-const fs = require('fs');
+import * as path from 'path';
+import * as fs from 'fs';
 
 function main() {
-	const packageJsonPath = path.resolve(__dirname, '..', 'package.json');
+	const packageJsonPath = path.resolve(import.meta.dirname, '..', 'package.json');
 
 	const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, { encoding: 'utf-8' }));
 
@@ -20,6 +20,6 @@ function main() {
 	fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n', { encoding: 'utf-8' });
 }
 
-if (require.main === module) {
+if (import.meta.main) {
 	main();
 }

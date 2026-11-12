@@ -1,9 +1,10 @@
+import { createRequire } from 'module';
 import * as path from 'path';
 
-import { errorLog } from '../logger';
-import { EntryPointConfig, CompilationOptions } from '../bundle-generator';
-import { getAbsolutePath } from '../helpers/get-absolute-path';
-import { checkSchemaMatch, SchemeDescriptor, schemaPrimitiveValues } from './check-schema-match';
+import { errorLog } from '../logger.ts';
+import type { EntryPointConfig, CompilationOptions } from '../bundle-generator.ts';
+import { getAbsolutePath } from '../helpers/get-absolute-path.ts';
+import { checkSchemaMatch, type SchemeDescriptor, schemaPrimitiveValues } from './check-schema-match.ts';
 
 export interface ConfigEntryPoint extends EntryPointConfig {
 	/**
@@ -31,12 +32,31 @@ export interface BundlerConfig {
 	compilationOptions?: CompilationOptions;
 }
 
+const require = createRequire(import.meta.url);
+
+/**
+ * Loads a config file synchronously.
+ * Both CommonJS and ES modules are supported (the latter is loaded via `require(esm)`, so top-level await isn't allowed),
+ * for ES modules the config is expected to be the default export.
+ */
+function requireConfigFile(configPath: string): unknown {
+	const loadedModule: unknown = require(configPath);
+	if (isModuleNamespaceObject(loadedModule) && loadedModule.default !== undefined) {
+		return loadedModule.default;
+	}
+
+	return loadedModule;
+}
+
+function isModuleNamespaceObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && (value as Record<symbol, unknown>)[Symbol.toStringTag] === 'Module';
+}
+
 /**
  * @internal Do not output this function in generated dts for the npm package
  */
 export function loadConfigFile(configPath: string): BundlerConfig {
-	// eslint-disable-next-line @typescript-eslint/no-var-requires
-	const possibleConfig = require(getAbsolutePath(configPath));
+	const possibleConfig = requireConfigFile(getAbsolutePath(configPath));
 
 	const errors: string[] = [];
 	if (!checkSchemaMatch(possibleConfig, configScheme, errors)) {

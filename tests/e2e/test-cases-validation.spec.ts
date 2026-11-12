@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import assert from 'assert';
 
-const testCasesDir = path.resolve(__dirname, 'test-cases');
+const testCasesDir = path.resolve(import.meta.dirname, 'test-cases');
 
 function isDirectory(filePath: string): boolean {
 	return fs.lstatSync(path.resolve(testCasesDir, filePath)).isDirectory();
@@ -22,7 +22,7 @@ describe(`e2e test cases validation`, () => {
 
 			assert.strictEqual(
 				fs.readFileSync(testCaseSpecFilePath, { encoding: 'utf-8' }).trim(),
-				`require('../run-test-case').runTestCase(__dirname);`,
+				`(await import('../run-test-case.ts')).runTestCase(import.meta.dirname);`,
 				'Every test case spec file content should match expected value to run tests'
 			);
 		});

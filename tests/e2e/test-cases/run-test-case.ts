@@ -1,10 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import assert from 'assert';
+import { pathToFileURL } from 'url';
 
-import { generateDtsBundle } from '../../../src/bundle-generator';
+import { generateDtsBundle } from '../../../src/bundle-generator.ts';
 
-import { TestCaseConfig } from './test-case-config';
+import type { TestCaseConfig } from './test-case-config.ts';
 
 interface TestCase {
 	inputFileName: string;
@@ -13,7 +14,7 @@ interface TestCase {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-const currentPackageVersion = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../package.json'), { encoding: 'utf-8' })).version as string;
+const currentPackageVersion = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '../../../package.json'), { encoding: 'utf-8' })).version as string;
 
 function prepareString(str: string): string {
 	return str.replace(/\r\n/g, '\n');
@@ -43,7 +44,7 @@ function findInputFile(testCaseDir: string): string {
 	throw new Error(`Cannot find input file in ${testCaseDir}`);
 }
 
-function getTestCaseConfig(testCaseDir: string): TestCase {
+async function getTestCaseConfig(testCaseDir: string): Promise<TestCase> {
 	const inputFileName = findInputFile(testCaseDir);
 
 	const outputFileName = path.resolve(testCaseDir, 'output.d.ts');
@@ -51,16 +52,15 @@ function getTestCaseConfig(testCaseDir: string): TestCase {
 
 	return {
 		inputFileName,
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
-		config: require(path.resolve(testCaseDir, 'config.ts')) as TestCaseConfig,
+		config: (await import(pathToFileURL(path.resolve(testCaseDir, 'config.ts')).href) as { default: TestCaseConfig }).default,
 		outputFileContent: prepareString(fs.readFileSync(outputFileName, 'utf-8')).replace(/\$PACKAGE_CURRENT_VERSION/g, currentPackageVersion),
 	};
 }
 
 export function runTestCase(testCaseDirPath: string): void {
 	const testCaseName = path.basename(testCaseDirPath);
-	it(`e2e | ${testCaseName}`, () => {
-		const testCase = getTestCaseConfig(testCaseDirPath);
+	it(`e2e | ${testCaseName}`, async () => {
+		const testCase = await getTestCaseConfig(testCaseDirPath);
 
 		const outputOptions = testCase.config.output || {};
 		if (outputOptions.noBanner === undefined) {

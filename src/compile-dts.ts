@@ -1,9 +1,9 @@
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import { verboseLog, warnLog } from './logger';
+import { verboseLog, warnLog } from './logger.ts';
 
-import { getCompilerOptions } from './get-compiler-options';
-import { checkProgramDiagnosticsErrors, checkDiagnosticsErrors } from './helpers/check-diagnostics-errors';
+import { getCompilerOptions } from './get-compiler-options.ts';
+import { checkProgramDiagnosticsErrors, checkDiagnosticsErrors } from './helpers/check-diagnostics-errors.ts';
 
 export interface CompileDtsResult {
 	program: ts.Program;

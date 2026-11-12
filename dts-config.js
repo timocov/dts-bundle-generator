@@ -1,6 +1,6 @@
 // @ts-check
 
-/** @type import('./src/config-file/load-config-file').BundlerConfig */
+/** @type import('./src/config-file/load-config-file.ts').BundlerConfig */
 const config = {
 	compilationOptions: {
 		preferredConfigPath: './tsconfig.options.json',
@@ -17,4 +17,5 @@ const config = {
 	],
 };
 
-module.exports = config;
+// eslint-disable-next-line import/no-default-export
+export default config;

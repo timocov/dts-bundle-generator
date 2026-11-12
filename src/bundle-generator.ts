@@ -1,7 +1,7 @@
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import { compileDts } from './compile-dts';
-import { TypesUsageEvaluator } from './types-usage-evaluator';
+import { compileDts } from './compile-dts.ts';
+import { TypesUsageEvaluator } from './types-usage-evaluator.ts';
 import {
 	ExportType,
 	getActualSymbol,
@@ -24,27 +24,27 @@ import {
 	isDeclareGlobalStatement,
 	isDeclareModule,
 	isNodeNamedDeclaration,
-	SourceFileExport,
+	type SourceFileExport,
 	splitTransientSymbol,
-} from './helpers/typescript';
+} from './helpers/typescript.ts';
 
 import {
 	getFileModuleInfo,
 	getModuleLikeModuleInfo,
 	getReferencedModuleInfo,
-	ModuleCriteria,
-	ModuleInfo,
+	type ModuleCriteria,
+	type ModuleInfo,
 	ModuleType,
-} from './module-info';
+} from './module-info.ts';
 
-import { generateOutput, ModuleImportsSet, OutputInputData, StatementSettings } from './generate-output';
+import { generateOutput, type ModuleImportsSet, type OutputInputData, type StatementSettings } from './generate-output.ts';
 
 import {
 	normalLog,
 	verboseLog,
 	warnLog,
-} from './logger';
-import { CollisionsResolver } from './collisions-resolver';
+} from './logger.ts';
+import { CollisionsResolver } from './collisions-resolver.ts';
 
 export interface CompilationOptions {
 	/**

@@ -1,6 +1,8 @@
 # Config file
 
-Config file might be either JSON file or JS file with CommonJS export of the config.
+Config file might be either JSON file or JS file with either CommonJS export (`module.exports = config`) or ES module default export (`export default config`) of the config.
+
+Note that the config file is loaded synchronously, so ES module configs cannot use top-level `await`.
 
 ## Schema
 

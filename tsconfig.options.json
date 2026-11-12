@@ -1,17 +1,19 @@
 {
 	"compilerOptions": {
 		"declaration": true,
-		"esModuleInterop": true,
-		"lib": ["es2020"],
-		"module": "commonjs",
+		"erasableSyntaxOnly": true,
+		"lib": ["es2022"],
+		"module": "nodenext",
 		"newLine": "LF",
 		"noEmitOnError": true,
 		"noFallthroughCasesInSwitch": true,
 		"noImplicitReturns": true,
 		"noUnusedLocals": true,
+		"rewriteRelativeImportExtensions": true,
 		"strict": true,
 		"stripInternal": true,
 		"types": ["node"],
-		"target": "es2020"
+		"target": "es2022",
+		"verbatimModuleSyntax": true
 	}
 }

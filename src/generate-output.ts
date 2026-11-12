@@ -1,6 +1,6 @@
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import { packageVersion } from './helpers/package-version';
+import { packageVersion } from './helpers/package-version.ts';
 import {
 	getClosestModuleLikeNode,
 	getModifiers,
@@ -9,7 +9,7 @@ import {
 	isModuleKeywordNamespace,
 	modifiersToMap,
 	recreateRootLevelNodeWithModifiers,
-} from './helpers/typescript';
+} from './helpers/typescript.ts';
 
 export interface ModuleImportsSet {
 	defaultImports: Set<string>;

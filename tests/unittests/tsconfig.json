@@ -1,15 +1,18 @@
 {
 	"extends": "../../tsconfig.options.json",
 	"compilerOptions": {
+		// tests are executed from sources directly so there is no need to emit anything
+		"allowImportingTsExtensions": true,
 		"composite": true,
+		"noEmit": true,
+		"rewriteRelativeImportExtensions": false,
 		"incremental": true,
-		"outDir": "./.tsc-out",
 		"types": ["node", "mocha"]
 	},
 	"references": [
 		{ "path": "../../src" },
 	],
 	"include": [
-		"**/*.ts"
+		"**/*.spec.ts"
 	]
 }
