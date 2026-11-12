@@ -3,12 +3,22 @@
   "name": "dts-bundle-generator",
   "version": "9.5.1",
   "description": "DTS Bundle Generator",
+  "type": "module",
   "main": "dist/bundle-generator.js",
   "typings": "dist/bundle-generator.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/bundle-generator.d.ts",
+      "default": "./dist/bundle-generator.js"
+    },
+    "./config-schema": {
+      "types": "./config-schema.d.ts"
+    }
+  },
   "bin": "dist/bin/dts-bundle-generator.js",
   "files": [
     "config-schema.d.ts",
-    "dist/**/*.d.ts",
+    "dist/bundle-generator.d.ts",
     "dist/**/*.js"
   ],
   "author": "Evgeniy Timokhov",
@@ -33,8 +43,7 @@
     "mocha": "~12.0.3",
     "npm-run-all": "~4.1.5",
     "rimraf": "~6.1.4",
-    "ts-compiler": "npm:typescript@7.0.2",
-    "ts-node": "~10.9.1"
+    "ts-compiler": "npm:typescript@7.0.2"
   },
   "license": "MIT",
   "readme": "README.md",

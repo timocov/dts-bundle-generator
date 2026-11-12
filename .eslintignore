@@ -2,9 +2,11 @@
 
 /dist/**
 /dts-out/**
+/config-schema.d.ts
 
 **/node_modules
 
 /tests/e2e/test-cases/*/**/*.ts
+/tests/unittests/fixtures/**
 
 !/tests/e2e/test-cases/**/*.spec.js

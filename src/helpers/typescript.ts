@@ -1,6 +1,6 @@
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import { warnLog } from '../logger';
+import { warnLog } from '../logger.ts';
 
 const namedDeclarationKinds = [
 	ts.SyntaxKind.InterfaceDeclaration,
@@ -193,11 +193,15 @@ export function getDeclarationsForSymbol(symbol: ts.Symbol): ts.Declaration[] {
 	return result;
 }
 
-export const enum ExportType {
-	CommonJS,
-	ES6Named,
-	ES6Default,
-}
+/* eslint-disable @typescript-eslint/naming-convention */
+export const ExportType = {
+	CommonJS: 0,
+	ES6Named: 1,
+	ES6Default: 2,
+} as const;
+/* eslint-enable @typescript-eslint/naming-convention */
+
+export type ExportType = typeof ExportType[keyof typeof ExportType];
 
 export interface SourceFileExport {
 	exportedName: string;

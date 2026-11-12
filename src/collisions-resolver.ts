@@ -1,4 +1,4 @@
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {
 	getActualSymbol,
@@ -7,8 +7,8 @@ import {
 	getDeclarationsForSymbol,
 	getNodeName,
 	resolveGlobalName,
-} from './helpers/typescript';
-import { verboseLog } from './logger';
+} from './helpers/typescript.ts';
+import { verboseLog } from './logger.ts';
 
 const renamingSupportedSymbols: readonly ts.SymbolFlags[] = [
 	ts.SymbolFlags.Alias,

@@ -1,9 +1,13 @@
-const enum LogLevel {
-	Verbose,
-	Normal,
-	Warning,
-	Error,
-}
+/* eslint-disable @typescript-eslint/naming-convention */
+const LogLevel = {
+	Verbose: 0,
+	Normal: 1,
+	Warning: 2,
+	Error: 3,
+} as const;
+/* eslint-enable @typescript-eslint/naming-convention */
+
+type LogLevel = typeof LogLevel[keyof typeof LogLevel];
 
 export function verboseLog(message: string): void {
 	logMessage(message, LogLevel.Verbose);
@@ -21,7 +25,7 @@ export function errorLog(message: string): void {
 	logMessage(message, LogLevel.Error);
 }
 
-let currentLogLevel = LogLevel.Error;
+let currentLogLevel: LogLevel = LogLevel.Error;
 
 export function enableVerbose(): void {
 	currentLogLevel = LogLevel.Verbose;

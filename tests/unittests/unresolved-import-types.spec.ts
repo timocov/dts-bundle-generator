@@ -1,11 +1,11 @@
 import assert from 'assert';
 import * as path from 'path';
 
-import { generateDtsBundle } from '../../src/bundle-generator';
+import { generateDtsBundle } from '../../src/bundle-generator.ts';
 
 describe('unresolved import types', () => {
-	const fixturesDir = path.resolve(__dirname, 'unresolved-import-types');
-	const compilationOptions = { preferredConfigPath: path.resolve(__dirname, '../e2e/test-cases/tsconfig.json') };
+	const fixturesDir = path.resolve(import.meta.dirname, 'fixtures', 'unresolved-import-types');
+	const compilationOptions = { preferredConfigPath: path.resolve(import.meta.dirname, '../e2e/test-cases/tsconfig.json') };
 
 	it('should fail by default and suggest the option when the module of an import type cannot be resolved', () => {
 		const filePath = path.resolve(fixturesDir, 'unresolved-module.d.ts');

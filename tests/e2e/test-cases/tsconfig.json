@@ -1,8 +1,25 @@
 {
-	"extends": "../../../tsconfig.options.json",
+	// options used to compile test cases (fixtures), they are intentionally independent from the project's options
 	"compilerOptions": {
 		// we especially set it to false to test that the tool set it to true inside and won't fail
 		"declaration": false,
-		"types": []
-	}
+		"esModuleInterop": true,
+		"lib": ["es2020"],
+		"module": "commonjs",
+		"newLine": "LF",
+		"noEmitOnError": true,
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": true,
+		"strict": true,
+		"stripInternal": true,
+		"types": [],
+		"target": "es2020"
+	},
+	// these files are part of ../tsconfig.json (keep in sync with its "include")
+	"exclude": [
+		"./**/config.ts",
+		"./run-test-case.ts",
+		"./test-case-config.ts"
+	]
 }

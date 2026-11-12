@@ -1,21 +1,25 @@
 import * as path from 'path';
 
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {
 	getLibraryName,
 	getTypesLibraryName,
-} from './helpers/node-modules';
+} from './helpers/node-modules.ts';
 
-import { fixPath } from './helpers/fix-path';
-import { NodeWithReferencedModule, resolveReferencedModule } from './helpers/typescript';
+import { fixPath } from './helpers/fix-path.ts';
+import { type NodeWithReferencedModule, resolveReferencedModule } from './helpers/typescript.ts';
 
-export const enum ModuleType {
-	ShouldBeInlined,
-	ShouldBeImported,
-	ShouldBeReferencedAsTypes,
-	ShouldBeUsedForModulesOnly,
-}
+/* eslint-disable @typescript-eslint/naming-convention */
+export const ModuleType = {
+	ShouldBeInlined: 0,
+	ShouldBeImported: 1,
+	ShouldBeReferencedAsTypes: 2,
+	ShouldBeUsedForModulesOnly: 3,
+} as const;
+/* eslint-enable @typescript-eslint/naming-convention */
+
+export type ModuleType = typeof ModuleType[keyof typeof ModuleType];
 
 export interface UsedModuleInfoCommon {
 	fileName: string;
@@ -23,22 +27,22 @@ export interface UsedModuleInfoCommon {
 }
 
 export interface InlinedModuleInfo extends UsedModuleInfoCommon {
-	type: ModuleType.ShouldBeInlined;
+	type: typeof ModuleType.ShouldBeInlined;
 }
 
 export interface ImportedModuleInfo extends UsedModuleInfoCommon {
-	type: ModuleType.ShouldBeImported;
+	type: typeof ModuleType.ShouldBeImported;
 	isExternal: true;
 }
 
 export interface ReferencedModuleInfo extends UsedModuleInfoCommon {
-	type: ModuleType.ShouldBeReferencedAsTypes;
+	type: typeof ModuleType.ShouldBeReferencedAsTypes;
 	typesLibraryName: string;
 	isExternal: true;
 }
 
 export interface UsedForModulesModuleInfo extends UsedModuleInfoCommon {
-	type: ModuleType.ShouldBeUsedForModulesOnly;
+	type: typeof ModuleType.ShouldBeUsedForModulesOnly;
 	isExternal: true;
 }
 

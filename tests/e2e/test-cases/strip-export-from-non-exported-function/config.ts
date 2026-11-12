@@ -1,5 +1,5 @@
-import { TestCaseConfig } from '../test-case-config';
+import type { TestCaseConfig } from '../test-case-config.ts';
 
 const config: TestCaseConfig = {};
 
-export = config;
+export default config;

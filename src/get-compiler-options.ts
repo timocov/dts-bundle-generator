@@ -1,13 +1,11 @@
-import * as ts from 'typescript';
+import ts from 'typescript';
 import * as path from 'path';
 
-import { getAbsolutePath } from './helpers/get-absolute-path';
-import { checkDiagnosticsErrors } from './helpers/check-diagnostics-errors';
-import { verboseLog } from './logger';
+import { getAbsolutePath } from './helpers/get-absolute-path.ts';
+import { checkDiagnosticsErrors } from './helpers/check-diagnostics-errors.ts';
+import { verboseLog } from './logger.ts';
 
-const enum Constants {
-	NoInputsWereFoundDiagnosticCode = 18003,
-}
+const noInputsWereFoundDiagnosticCode = 18003;
 
 const parseConfigHost: ts.ParseConfigHost = {
 	useCaseSensitiveFileNames: ts.sys.useCaseSensitiveFileNames,
@@ -34,8 +32,7 @@ export function getCompilerOptions(inputFileNames: readonly string[], preferredC
 
 	// we don't want to raise an error if no inputs found in a config file
 	// because this error is mostly for CLI, but we'll pass an inputs in createProgram
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
-	const diagnostics = compilerOptionsParseResult.errors.filter((d: ts.Diagnostic) => d.code !== Constants.NoInputsWereFoundDiagnosticCode);
+	const diagnostics = compilerOptionsParseResult.errors.filter((d: ts.Diagnostic) => d.code !== noInputsWereFoundDiagnosticCode);
 
 	checkDiagnosticsErrors(diagnostics, 'Error while processing tsconfig compiler options');
 

@@ -15,13 +15,13 @@ module.exports = {
 		node: true,
 	},
 	parserOptions: {
-		ecmaVersion: 2020,
+		ecmaVersion: 2022,
 		sourceType: 'module',
 	},
 	overrides: [
 		{
 			// rules specific for js files only
-			files: ['**/*.js'],
+			files: ['**/*.js', '**/*.cjs'],
 			rules: {
 				// enforces no braces where they can be omitted
 				// http://eslint.org/docs/rules/arrow-body-style
@@ -72,7 +72,9 @@ module.exports = {
 			],
 			parser: '@typescript-eslint/parser',
 			parserOptions: {
-				project: 'tsconfig.options.json',
+				// every file is checked within its own project (the nearest tsconfig.json which includes it), similar to how the editor does
+				projectService: true,
+				tsconfigRootDir: __dirname,
 				sourceType: 'module',
 			},
 			rules: {

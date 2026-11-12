@@ -1,4 +1,4 @@
-import * as ts from 'typescript';
+import ts from 'typescript';
 import {
 	getActualSymbol,
 	getDeclarationsForExportedValues,
@@ -10,8 +10,8 @@ import {
 	isDeclareModule,
 	isNodeNamedDeclaration,
 	splitTransientSymbol,
-} from './helpers/typescript';
-import { warnLog } from './logger';
+} from './helpers/typescript.ts';
+import { warnLog } from './logger.ts';
 
 export interface TypesUsageEvaluatorOptions {
 	/**
