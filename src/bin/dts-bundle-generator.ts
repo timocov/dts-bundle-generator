@@ -2,7 +2,7 @@
 
 import * as path from 'path';
 import ts from 'typescript';
-import yargs, { type Arguments } from 'yargs';
+import { Command } from 'commander';
 
 import { loadConfigFile, type BundlerConfig, type ConfigEntryPoint } from '../config-file/load-config-file.ts';
 
@@ -22,165 +22,168 @@ import {
 	warnLog,
 } from '../logger.ts';
 
-function toStringsArray(data: unknown): string[] | undefined {
-	if (data === undefined) {
-		return data;
-	}
+interface ParsedArgs {
+	files: string[];
 
-	if (!Array.isArray(data)) {
-		throw new Error(`${JSON.stringify(data)} is not an array`);
-	}
-
-	return data.map(String);
-}
-
-/* eslint-disable @typescript-eslint/naming-convention */
-interface ParsedArgs extends Arguments {
 	sort: boolean;
 	silent: boolean;
 	verbose: boolean;
-	'no-check': boolean;
-	'fail-on-class': boolean;
-	'inline-declare-global': boolean;
-	'inline-declare-externals': boolean;
-	'disable-symlinks-following': boolean;
-	'no-banner': boolean;
-	'respect-preserve-const-enum': boolean;
-	'export-referenced-types': boolean;
-	'allow-unresolved-import-types': boolean;
+	check: boolean;
+	failOnClass: boolean;
+	inlineDeclareGlobal: boolean;
+	inlineDeclareExternals: boolean;
+	disableSymlinksFollowing: boolean;
+	banner: boolean;
+	respectPreserveConstEnum: boolean;
+	exportReferencedTypes: boolean;
+	allowUnresolvedImportTypes: boolean;
 
-	'out-file': string | undefined;
-	'umd-module-name': string | undefined;
+	outFile: string | undefined;
+	umdModuleName: string | undefined;
 	project: string | undefined;
-	'check-project': string | undefined;
+	checkProject: string | undefined;
 	config: string | undefined;
 
-	'external-inlines': string[] | undefined;
-	'external-imports': string[] | undefined;
-	'external-types': string[] | undefined;
+	externalInlines: string[] | undefined;
+	externalImports: string[] | undefined;
+	externalTypes: string[] | undefined;
 }
-/* eslint-enable @typescript-eslint/naming-convention */
+
+/**
+ * An optional variadic option (e.g. `--external-types [names...]`) is `true` if it is specified without values.
+ * In this case (as well as for empty strings, e.g. `--external-types ""`) it is treated as an empty array.
+ */
+function toStringsArray(value: string[] | true | undefined): string[] | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+
+	return value === true ? [] : value.filter((item: string) => item.length !== 0);
+}
 
 function parseArgs(): ParsedArgs {
-	const yargsInstance = yargs(process.argv.slice(2));
-	return yargsInstance
-		.parserConfiguration({
-			/* eslint-disable @typescript-eslint/naming-convention */
-			'boolean-negation': false,
-			'camel-case-expansion': false,
-			'dot-notation': false,
-			'short-option-groups': false,
-			/* eslint-enable @typescript-eslint/naming-convention */
-		})
-		.usage('Usage: $0 [options] <file(s)>')
-		.demandCommand(0)
-		.option('out-file', {
-			alias: 'o',
-			type: 'string',
-			description: 'File name of generated d.ts',
-		})
-		.option('verbose', {
-			type: 'boolean',
-			default: false,
-			description: 'Enable verbose logging',
-		})
-		.option('silent', {
-			type: 'boolean',
-			default: false,
-			description: 'Disable any logging except errors',
-		})
-		.option('no-check', {
-			type: 'boolean',
-			default: false,
-			description: 'Skip validation of generated d.ts file',
-		})
-		.option('fail-on-class', {
-			type: 'boolean',
-			default: false,
-			description: 'Fail if generated dts contains class declaration',
-		})
-		.option('external-inlines', {
-			type: 'array',
-			description: 'Array of package names from node_modules to inline typings from.\n' +
-				'Used types will be inlined into the output file',
-			coerce: toStringsArray,
-		})
-		.option('external-imports', {
-			type: 'array',
-			description: 'Array of package names from node_modules to import typings from.\n' +
+	const program = new Command('dts-bundle-generator')
+		.usage('[options] <file(s)>')
+		.argument('[files...]')
+		.option(
+			'-o, --out-file <file>',
+			'File name of generated d.ts'
+		)
+		.option(
+			'--verbose',
+			'Enable verbose logging',
+			false
+		)
+		.option(
+			'--silent',
+			'Disable any logging except errors',
+			false
+		)
+		.option(
+			'--no-check',
+			'Skip validation of generated d.ts file'
+		)
+		.option(
+			'--fail-on-class',
+			'Fail if generated dts contains class declaration',
+			false
+		)
+		.option(
+			'--external-inlines [names...]',
+			'Array of package names from node_modules to inline typings from.\n' +
+				'Used types will be inlined into the output file'
+		)
+		.option(
+			'--external-imports [names...]',
+			'Array of package names from node_modules to import typings from.\n' +
 				'Used types will be imported using "import { First, Second } from \'library-name\';".\n' +
-				'By default all libraries will be imported (except inlined libraries and libraries from @types)',
-			coerce: toStringsArray,
-		})
-		.option('external-types', {
-			type: 'array',
-			description: 'Array of package names from @types to import typings from via the triple-slash reference directive.\n' +
-				'By default all packages are allowed and will be used according to their usages',
-			coerce: toStringsArray,
-		})
-		.option('umd-module-name', {
-			type: 'string',
-			description: 'Name of the UMD module. If specified then `export as namespace ModuleName;` will be emitted',
-		})
-		.option('project', {
-			type: 'string',
-			description: 'Path to the tsconfig.json file that will be used for the compilation',
-		})
-		.option('check-project', {
-			type: 'string',
-			description: 'Path to the tsconfig.json file that will be used for the validation of generated d.ts files (the --project value is used by default)',
-		})
-		.option('sort', {
-			type: 'boolean',
-			default: false,
-			description: 'Sort output nodes',
-		})
-		.option('inline-declare-global', {
-			type: 'boolean',
-			default: false,
-			description: 'Enables inlining of `declare global` statements contained in files which should be inlined (all local files and packages from `--external-inlines`)',
-		})
-		.option('inline-declare-externals', {
-			type: 'boolean',
-			default: false,
-			description: 'Enables inlining of `declare module` statements of the global modules (e.g. `declare module \'external-module\' {}`, but NOT `declare module \'./internal-module\' {}`) contained in files which should be inlined (all local files and packages from inlined libraries)',
-		})
-		.option('disable-symlinks-following', {
-			type: 'boolean',
-			default: false,
-			description: '(EXPERIMENTAL) Disables resolving of symlinks to the original path. See https://github.com/timocov/dts-bundle-generator/issues/39 for more information',
-		})
-		.option('respect-preserve-const-enum', {
-			type: 'boolean',
-			default: false,
-			description: 'Enables stripping the `const` keyword from every direct-exported (or re-exported) from entry file `const enum`. See https://github.com/timocov/dts-bundle-generator/issues/110 for more information',
-		})
-		.option('export-referenced-types', {
-			type: 'boolean',
-			default: false,
-			description: 'Marks all interfaces, types and const enums as exported even if they aren\'t exported directly. By default a node is exported only if it is exported from the root source file. Fails if a referenced type cannot be exported because it was renamed due to name collisions.',
-		})
-		.option('allow-unresolved-import-types', {
-			type: 'boolean',
-			default: false,
-			description: 'Keeps `import()` types whose module cannot be resolved as is (and prints a warning) instead of failing. Useful for libraries that intentionally check for optional modules in their typings',
-		})
-		.option('config', {
-			type: 'string',
-			description: 'File path to the generator config file',
-		})
-		.option('no-banner', {
-			type: 'boolean',
-			default: false,
-			description: 'Allows remove "Generated by dts-bundle-generator" comment from the output',
-		})
-		.version(packageVersion())
-		.strict()
-		.example('$0 path/to/your/entry-file.ts', '')
-		.example('$0 path/to/your/entry-file.ts path/to/your/entry-file-2.ts', '')
-		.example('$0 --external-types jquery react -- entry-file.ts', '')
-		.wrap(Math.min(100, yargsInstance.terminalWidth()))
-		.argv as ParsedArgs;
+				'By default all libraries will be imported (except inlined libraries and libraries from @types)'
+		)
+		.option(
+			'--external-types [names...]',
+			'Array of package names from @types to import typings from via the triple-slash reference directive.\n' +
+				'By default all packages are allowed and will be used according to their usages'
+		)
+		.option(
+			'--umd-module-name <name>',
+			'Name of the UMD module. If specified then `export as namespace ModuleName;` will be emitted'
+		)
+		.option(
+			'--project <path>',
+			'Path to the tsconfig.json file that will be used for the compilation'
+		)
+		.option(
+			'--check-project <path>',
+			'Path to the tsconfig.json file that will be used for the validation of generated d.ts files (the --project value is used by default)'
+		)
+		.option(
+			'--sort',
+			'Sort output nodes',
+			false
+		)
+		.option(
+			'--inline-declare-global',
+			'Enables inlining of `declare global` statements contained in files which should be inlined (all local files and packages from `--external-inlines`)',
+			false
+		)
+		.option(
+			'--inline-declare-externals',
+			'Enables inlining of `declare module` statements of the global modules (e.g. `declare module \'external-module\' {}`, but NOT `declare module \'./internal-module\' {}`) contained in files which should be inlined (all local files and packages from inlined libraries)',
+			false
+		)
+		.option(
+			'--disable-symlinks-following',
+			'(EXPERIMENTAL) Disables resolving of symlinks to the original path. See https://github.com/timocov/dts-bundle-generator/issues/39 for more information',
+			false
+		)
+		.option(
+			'--respect-preserve-const-enum',
+			'Enables stripping the `const` keyword from every direct-exported (or re-exported) from entry file `const enum`. See https://github.com/timocov/dts-bundle-generator/issues/110 for more information',
+			false
+		)
+		.option(
+			'--export-referenced-types',
+			'Marks all interfaces, types and const enums as exported even if they aren\'t exported directly. By default a node is exported only if it is exported from the root source file. Fails if a referenced type cannot be exported because it was renamed due to name collisions.',
+			false
+		)
+		.option(
+			'--allow-unresolved-import-types',
+			'Keeps `import()` types whose module cannot be resolved as is (and prints a warning) instead of failing. Useful for libraries that intentionally check for optional modules in their typings',
+			false
+		)
+		.option(
+			'--config <path>',
+			'File path to the generator config file'
+		)
+		.option(
+			'--no-banner',
+			'Allows remove "Generated by dts-bundle-generator" comment from the output'
+		)
+		.version(packageVersion(), '-v, --version', 'Show version number')
+		.helpOption('-h, --help', 'Show help')
+		.configureHelp({ helpWidth: Math.min(100, process.stdout.columns || 100) })
+		.addHelpText('after', `
+Examples:
+  $ dts-bundle-generator path/to/your/entry-file.ts
+  $ dts-bundle-generator path/to/your/entry-file.ts path/to/your/entry-file-2.ts
+  $ dts-bundle-generator --external-types jquery react -- entry-file.ts`)
+		.parse();
+
+	type RawOptions = Omit<ParsedArgs, 'files' | 'externalInlines' | 'externalImports' | 'externalTypes'> & {
+		externalInlines: string[] | true | undefined;
+		externalImports: string[] | true | undefined;
+		externalTypes: string[] | true | undefined;
+	};
+
+	const options = program.opts<RawOptions>();
+
+	return {
+		...options,
+		files: program.args,
+		externalInlines: toStringsArray(options.externalInlines),
+		externalImports: toStringsArray(options.externalImports),
+		externalTypes: toStringsArray(options.externalTypes),
+	};
 }
 
 function generateOutFileName(inputFilePath: string): string {
@@ -224,7 +227,7 @@ function main(): void {
 		enableNormalLog();
 	}
 
-	if (args['no-check'] && args['check-project'] !== undefined) {
+	if (!args.check && args.checkProject !== undefined) {
 		throw new Error('Cannot use both no-check and check-project options at the same time');
 	}
 
@@ -234,42 +237,42 @@ function main(): void {
 		verboseLog(`Trying to load config from ${args.config} file...`);
 		bundlerConfig = loadConfigFile(args.config);
 	} else {
-		if (args._.length < 1) {
+		if (args.files.length < 1) {
 			throw new Error('No input files specified');
 		}
 
-		if (args._.length > 1 && args['out-file']) {
+		if (args.files.length > 1 && args.outFile) {
 			throw new Error('Cannot use outFile with multiple entries');
 		}
 
 		bundlerConfig = {
-			entries: args._.map<ConfigEntryPoint>((entryPath: string | number) => {
+			entries: args.files.map<ConfigEntryPoint>((entryPath: string) => {
 				return {
-					filePath: String(entryPath),
-					outFile: args['out-file'],
-					noCheck: args['no-check'],
-					checkConfigPath: args['check-project'],
+					filePath: entryPath,
+					outFile: args.outFile,
+					noCheck: !args.check,
+					checkConfigPath: args.checkProject,
 					libraries: {
-						allowedTypesLibraries: args['external-types'],
-						importedLibraries: args['external-imports'],
-						inlinedLibraries: args['external-inlines'],
+						allowedTypesLibraries: args.externalTypes,
+						importedLibraries: args.externalImports,
+						inlinedLibraries: args.externalInlines,
 					},
 					output: {
-						inlineDeclareExternals: args['inline-declare-externals'],
-						inlineDeclareGlobals: args['inline-declare-global'],
-						umdModuleName: args['umd-module-name'],
+						inlineDeclareExternals: args.inlineDeclareExternals,
+						inlineDeclareGlobals: args.inlineDeclareGlobal,
+						umdModuleName: args.umdModuleName,
 						sortNodes: args.sort,
-						noBanner: args['no-banner'],
-						respectPreserveConstEnum: args['respect-preserve-const-enum'],
-						exportReferencedTypes: args['export-referenced-types'],
+						noBanner: !args.banner,
+						respectPreserveConstEnum: args.respectPreserveConstEnum,
+						exportReferencedTypes: args.exportReferencedTypes,
 					},
-					failOnClass: args['fail-on-class'],
+					failOnClass: args.failOnClass,
 				};
 			}),
 			compilationOptions: {
 				preferredConfigPath: args.project,
-				followSymlinks: !args['disable-symlinks-following'],
-				allowUnresolvedImportTypes: args['allow-unresolved-import-types'],
+				followSymlinks: !args.disableSymlinksFollowing,
+				allowUnresolvedImportTypes: args.allowUnresolvedImportTypes,
 			},
 		};
 	}
