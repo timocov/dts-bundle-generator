@@ -68,60 +68,65 @@ export declare function makeB(): B;
 Usage: dts-bundle-generator [options] <file(s)>
 
 Options:
-  --help                         Show help                                                 [boolean]
-  --out-file, -o                 File name of generated d.ts                                [string]
-  --verbose                      Enable verbose logging                   [boolean] [default: false]
-  --silent                       Disable any logging except errors        [boolean] [default: false]
-  --no-check                     Skip validation of generated d.ts file   [boolean] [default: false]
-  --fail-on-class                Fail if generated dts contains class declaration
-                                                                          [boolean] [default: false]
-  --external-inlines             Array of package names from node_modules to inline typings from.
-                                 Used types will be inlined into the output file             [array]
-  --external-imports             Array of package names from node_modules to import typings from.
-                                 Used types will be imported using "import { First, Second } from
-                                 'library-name';".
-                                 By default all libraries will be imported (except inlined libraries
-                                 and libraries from @types)                                  [array]
-  --external-types               Array of package names from @types to import typings from via the
-                                 triple-slash reference directive.
-                                 By default all packages are allowed and will be used according to
-                                 their usages                                                [array]
-  --umd-module-name              Name of the UMD module. If specified then `export as namespace
-                                 ModuleName;` will be emitted                               [string]
-  --project                      Path to the tsconfig.json file that will be used for the
-                                 compilation                                                [string]
-  --check-project                Path to the tsconfig.json file that will be used for the validation
-                                 of generated d.ts files (the --project value is used by default)
-                                                                                            [string]
-  --sort                         Sort output nodes                        [boolean] [default: false]
-  --inline-declare-global        Enables inlining of `declare global` statements contained in files
-                                 which should be inlined (all local files and packages from
-                                 `--external-inlines`)                    [boolean] [default: false]
-  --inline-declare-externals     Enables inlining of `declare module` statements of the global
-                                 modules (e.g. `declare module 'external-module' {}`, but NOT
-                                 `declare module './internal-module' {}`) contained in files which
-                                 should be inlined (all local files and packages from inlined
-                                 libraries)                               [boolean] [default: false]
-  --disable-symlinks-following   (EXPERIMENTAL) Disables resolving of symlinks to the original path.
-                                 See https://github.com/timocov/dts-bundle-generator/issues/39 for
-                                 more information                         [boolean] [default: false]
-  --respect-preserve-const-enum  Enables stripping the `const` keyword from every direct-exported
-                                 (or re-exported) from entry file `const enum`. See
-                                 https://github.com/timocov/dts-bundle-generator/issues/110 for more
-                                 information                              [boolean] [default: false]
-  --export-referenced-types      Marks all interfaces, types and const enums as exported even if they
-                                 aren't exported directly. By default a node is exported only if it
-                                 is exported from the root source file. Fails if a referenced type
-                                 cannot be exported because it was renamed due to name collisions.
-                                                                          [boolean] [default: false]
+  -o, --out-file <file>            File name of generated d.ts
+  --verbose                        Enable verbose logging (default: false)
+  --silent                         Disable any logging except errors (default: false)
+  --no-check                       Skip validation of generated d.ts file
+  --fail-on-class                  Fail if generated dts contains class declaration (default: false)
+  --external-inlines [names...]    Array of package names from node_modules to inline typings from.
+                                   Used types will be inlined into the output file
+  --external-imports [names...]    Array of package names from node_modules to import typings from.
+                                   Used types will be imported using "import { First, Second } from
+                                   'library-name';".
+                                   By default all libraries will be imported (except inlined
+                                   libraries and libraries from @types)
+  --external-types [names...]      Array of package names from @types to import typings from via the
+                                   triple-slash reference directive.
+                                   By default all packages are allowed and will be used according to
+                                   their usages
+  --umd-module-name <name>         Name of the UMD module. If specified then `export as namespace
+                                   ModuleName;` will be emitted
+  --project <path>                 Path to the tsconfig.json file that will be used for the
+                                   compilation
+  --check-project <path>           Path to the tsconfig.json file that will be used for the
+                                   validation of generated d.ts files (the --project value is used
+                                   by default)
+  --sort                           Sort output nodes (default: false)
+  --inline-declare-global          Enables inlining of `declare global` statements contained in
+                                   files which should be inlined (all local files and packages from
+                                   `--external-inlines`) (default: false)
+  --inline-declare-externals       Enables inlining of `declare module` statements of the global
+                                   modules (e.g. `declare module 'external-module' {}`, but NOT
+                                   `declare module './internal-module' {}`) contained in files which
+                                   should be inlined (all local files and packages from inlined
+                                   libraries) (default: false)
+  --disable-symlinks-following     (EXPERIMENTAL) Disables resolving of symlinks to the original
+                                   path. See
+                                   https://github.com/timocov/dts-bundle-generator/issues/39 for
+                                   more information (default: false)
+  --respect-preserve-const-enum    Enables stripping the `const` keyword from every direct-exported
+                                   (or re-exported) from entry file `const enum`. See
+                                   https://github.com/timocov/dts-bundle-generator/issues/110 for
+                                   more information (default: false)
+  --export-referenced-types        Marks all interfaces, types and const enums as exported even if
+                                   they aren't exported directly. By default a node is exported only
+                                   if it is exported from the root source file. Fails if a
+                                   referenced type cannot be exported because it was renamed due to
+                                   name collisions. (default: false)
   --allow-unresolved-import-types  Keeps `import()` types whose module cannot be resolved as is (and
-                                 prints a warning) instead of failing. Useful for libraries that
-                                 intentionally check for optional modules in their typings
-                                                                          [boolean] [default: false]
-  --config                       File path to the generator config file                     [string]
-  --no-banner                    Allows remove "Generated by dts-bundle-generator" comment from the
-                                 output                                   [boolean] [default: false]
-  --version                      Show version number                                       [boolean]
+                                   prints a warning) instead of failing. Useful for libraries that
+                                   intentionally check for optional modules in their typings
+                                   (default: false)
+  --config <path>                  File path to the generator config file
+  --no-banner                      Allows remove "Generated by dts-bundle-generator" comment from
+                                   the output
+  -v, --version                    Show version number
+  -h, --help                       Show help
+
+Examples:
+  $ dts-bundle-generator path/to/your/entry-file.ts
+  $ dts-bundle-generator path/to/your/entry-file.ts path/to/your/entry-file-2.ts
+  $ dts-bundle-generator --external-types jquery react -- entry-file.ts
 ```
 
 ### Examples
